@@ -5,11 +5,22 @@ use std::num::NonZero;
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+/// 怪物稀有度
+/// - BigBoss 周本首领以及逐光捡金变种
+/// - LittleBoss 剧情敌人首领，如杰帕德、银枝等
+/// - Elite 精英怪，凝滞虚影（角色突破材料）
+/// - Minion 小怪
+/// - MinionV2 小怪
 pub enum Rank {
+    /// 周本 Boss
     BigBoss,
+    /// 精英怪物
     Elite,
+    /// 剧情 Boss
     LittleBoss,
+    /// 普通怪物，目前总共就 21 种，不清楚和 MinionLv2 的区别
     Minion,
+    /// 普通怪物，不清楚和 Minion 的区别
     MinionLv2,
 }
 
@@ -426,7 +437,7 @@ pub(crate) struct MonsterTemplateConfig {
     #[serde(rename = "MonsterTemplateID")]
     monster_template_id: u32,
     #[serde(rename = "TemplateGroupID")]
-    template_group_id: Option<NonZero<u32>>,
+    pub(crate) template_group_id: Option<NonZero<u32>>,
     #[serde(rename = "AtlasSortID")]
     atlas_sort_id: Option<NonZero<u8>>,
     monster_name: Text,
@@ -480,6 +491,10 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
             .and_then(|id| game.monster_camp(id));
         Self::VO {
             id: self.monster_template_id,
+            group: self
+                .template_group_id
+                .map(|id| id.get())
+                .unwrap_or_default(),
             name: game.text(&self.monster_name),
             camp_name: camp.map(|camp| camp.name).unwrap_or_default(),
             rank: self.rank,
@@ -706,7 +721,7 @@ impl<'a> PO<'a> for MonsterSkillConfig {
             extra_effect_list: self
                 .extra_effect_id_list
                 .iter()
-                .filter_map(|&id| game.extra_effect(id))
+                .filter_map(|&id| game.extra_effect_config(id))
                 .collect(),
             damage_type: self.damage_type,
             skill_trigger_key: self.skill_trigger_key,

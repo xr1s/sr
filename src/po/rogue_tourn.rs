@@ -44,9 +44,13 @@ impl Wiki for MiracleCategory {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum FormulaCategory {
+    /// 二星方程
     Epic,
+    /// 三星方程
     Legendary,
+    /// 临界方程
     PathEcho,
+    /// 一星方程
     Rare,
 }
 
@@ -225,7 +229,7 @@ pub(crate) struct RogueTournMiracle {
     #[serde(rename = "MiracleDisplayID")]
     miracle_display_id: u16,
     #[serde(rename = "HandbookMiracleID")]
-    handbook_miracle_id: Option<u16>,
+    handbook_miracle_id: Option<NonZero<u16>>,
 }
 
 impl ID for RogueTournMiracle {
@@ -246,7 +250,7 @@ impl<'a> PO<'a> for RogueTournMiracle {
                 .unwrap(),
             handbook: self
                 .handbook_miracle_id
-                .and_then(|id| game.rogue_tourn_handbook_miracle(id)),
+                .and_then(|id| game.rogue_tourn_handbook_miracle(id.get())),
         }
     }
 }
@@ -290,7 +294,7 @@ impl<'a> PO<'a> for RogueTournMiracleDisplay {
             extra_effect: self
                 .extra_effect
                 .iter()
-                .map(|&id| game.extra_effect(id))
+                .map(|&id| game.extra_effect_config(id))
                 .map(Option::unwrap)
                 .collect(),
             bg_desc: game.text(&self.miracle_bg_desc),
@@ -433,7 +437,7 @@ impl<'a> PO<'a> for RogueTournFormulaDisplay {
             extra_effect: self
                 .extra_effect
                 .iter()
-                .map(|&id| game.extra_effect(id))
+                .map(|&id| game.extra_effect_config(id))
                 .map(Option::unwrap)
                 .collect(),
         }

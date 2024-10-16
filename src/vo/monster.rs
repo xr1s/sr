@@ -8,22 +8,52 @@ use std::borrow::Cow;
 type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 
 #[derive(Clone, Debug)]
+/// 对应一种怪物类型，不同的怪物类型可能是同一个种族（建模头像相同），但是一般数值上会有差异
 pub struct MonsterTemplateConfig<'a> {
     pub id: u32,
+    /// 怪物种族，一般同一个 group 中的怪物的建模、头像是一样的
+    /// 举例来说错误、完整是两个 Template，但是它们 TemplateGroupID 是相等的
+    /// 无 TemplateGroupID 的大多是召唤物，但也有一系列模拟宇宙扑满（存护扑满、毁灭扑满）
+    pub group: u32,
     pub name: &'a str,
+    /// 阵营名字，如果不存在阵营名，可以将 id 保留到十位查询 group 的阵营
     pub camp_name: &'a str,
+    // 怪物稀有度（周本Boss、Boss、精英怪、小怪）
     pub rank: Rank,
+    /// 基础攻击值
+    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
+    /// 也会随着等级提升成长
     pub attack_base: u16,
+    /// 基础防御值
+    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
+    /// 也会随着等级提升成长
     pub defence_base: u16,
+    /// 基础生命值
+    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
+    /// 也会随着剧情中敌方的等级成长
     pub hp_base: f32,
+    /// 基础速度值
+    /// 在具体的 MonsterConfig 中会按对应 modify_value 增长
+    /// 也会随着剧情中敌方的等级成长
     pub speed_base: u16,
+    /// 基础韧性值
+    /// 在具体的 MonsterConfig 中会按对应 modify_value 增长
     pub stance_base: u16,
+    /// 基础暴击伤害值
     pub critical_damage_base: f32,
+    /// 基础效果抗性值
     pub status_resistance_base: f32,
+    /// 不明
     pub minimum_fatigue_ratio: f32,
+    /// 不明
     pub stance_count: u8,
+    /// 首动提前多少（绝大部分怪物该数值小于 1）
+    /// 如等于 0 表示进入战斗后立即行动
+    /// 如等于 0.2 表示提前 80%，以此类推
     pub initial_delay_ratio: f32,
+    /// 不明，目前所有怪物中该值缺少物理和雷两种属性
     pub stance_type: Option<StanceType>,
+    /// 不明
     pub npc_monster_list: Vec<NPCMonsterData<'a>>,
 }
 
@@ -39,6 +69,7 @@ pub struct NPCMonsterData<'a> {
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Debug)]
+/// 对应游戏中的每种怪物
 pub struct MonsterConfig<'a> {
     #[derivative(Debug = "ignore")]
     pub(crate) game: &'a crate::GameData,
@@ -72,6 +103,7 @@ impl<'a> MonsterConfig<'a> {
             .unwrap_or(1)
     }
 
+    /// 列出某一阶段的技能
     pub fn phase_skill(&'a self, phase: u8) -> Vec<&'a MonsterSkillConfig<'a>> {
         let mut skills = self
             .skill_list
@@ -87,14 +119,17 @@ impl<'a> MonsterConfig<'a> {
         skills
     }
 
+    /// 基础速度
     pub fn speed(&self) -> u16 {
         self.template.speed_base + self.speed_modify_value as u16
     }
 
+    /// 基础抗性
     pub fn stance(&self) -> u16 {
         (self.template.stance_base + self.stance_modify_value as u16) / 3
     }
 
+    /// 敌人所有技能的伤害属性
     pub fn damage_types(&self) -> Vec<Element> {
         self.skill_list
             .iter()
@@ -104,6 +139,7 @@ impl<'a> MonsterConfig<'a> {
             .collect()
     }
 
+    /// 召唤物，不过这大概不完整，目前没找到能完整列出召唤物的手段
     pub fn summons(&self) -> Vec<MonsterConfig> {
         const NON_SUMMON_CUSTOM_VALUE_KEYS: [MonsterConfigCustomValueKey; 10] = [
             MonsterConfigCustomValueKey::CocoliaChangePhaseInsertController,
@@ -125,7 +161,7 @@ impl<'a> MonsterConfig<'a> {
     }
 }
 
-impl<'a> crate::Wiki for MonsterConfig<'a> {
+impl crate::Wiki for MonsterConfig<'_> {
     fn wiki(&self) -> Cow<'static, str> {
         let mut wiki = String::new();
         // 名称
@@ -189,6 +225,7 @@ impl<'a> crate::Wiki for MonsterConfig<'a> {
             .intersperse("、")
             .collect::<String>();
         wiki.push_str(&summon_names);
+        // 需要去看下 wiki 模板这几个参数是干什么的
         wiki.push_str("\n|血量档位=");
         wiki.push_str("\n|血量比例总=");
         wiki.push_str("\n|血量1名字=");
@@ -304,13 +341,22 @@ impl<'a> crate::Wiki for MonsterConfig<'a> {
 pub struct MonsterSkillConfig<'a> {
     pub name: &'a str,
     pub desc: String,
+    /// 目前只有两种 天赋、技能
+    // TODO: 改为 enum
     pub type_desc: &'a str,
+    /// 技能分类，单攻、群攻、扩散等
+    // TODO: 改为 enum
     pub tag: &'a str,
+    /// 技能在角色的哪个阶段会出现
     pub phase_list: &'a [u8],
+    /// 大招
     pub is_threat: bool,
-    pub extra_effect_list: Vec<super::misc::ExtraEffect<'a>>,
+    /// 技能的特殊效果说明
+    pub extra_effect_list: Vec<super::misc::ExtraEffectConfig<'a>>,
+    /// 技能造成的元素伤害类型
     pub damage_type: Option<Element>,
     pub skill_trigger_key: SkillTriggerKey,
+    /// 技能命中我方角色后为对应角色的充能增加多少
     pub sp_hit_base: u16,
 }
 

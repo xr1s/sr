@@ -17,7 +17,7 @@ pub struct GameData {
     text_map: std::collections::HashMap<i32, String, fnv::FnvBuildHasher>,
 
     // misc
-    extra_effect: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffect>>,
+    extra_effect: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffectConfig>>,
 
     // monster
     monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
