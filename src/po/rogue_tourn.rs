@@ -203,12 +203,12 @@ impl<'a> PO<'a> for RogueTournWeeklyDisplay {
             })
             .collect::<Vec<_>>();
         let names = params.iter().map(Name::name).collect::<Vec<_>>();
-        let mut content = game.text(&self.weekly_display_content).to_string();
-        for (index, name) in names.iter().enumerate().map(|(k, v)| (k + 1, v)) {
-            // TODO: 这样肯定不行，下一个目标是拓展 Formatter 支持 String 参数
-            let formatter = String::from('#') + &index.to_string();
-            content = content.replace(&formatter, name);
-        }
+        let names = names
+            .iter()
+            .map(crate::format::Formattable::from)
+            .collect::<Vec<_>>();
+        let content = crate::format::format(game.text(&self.weekly_display_content), &names);
+
         Self::VO {
             id: self.weekly_display_id,
             content,
@@ -285,7 +285,7 @@ impl<'a> PO<'a> for RogueTournMiracleDisplay {
         let params = self
             .desc_param_list
             .iter()
-            .map(|param| param.value)
+            .map(|param| crate::format::Formattable::from(&param.value))
             .collect::<Vec<_>>();
         Self::VO {
             id: self.miracle_display_id,

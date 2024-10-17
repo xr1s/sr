@@ -490,8 +490,9 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
             .map(|id| id.get())
             .and_then(|id| game.monster_camp(id));
         Self::VO {
+            game,
             id: self.monster_template_id,
-            group: self
+            group_id: self
                 .template_group_id
                 .map(|id| id.get())
                 .unwrap_or_default(),
@@ -710,8 +711,13 @@ impl ID for MonsterSkillConfig {
 impl<'a> PO<'a> for MonsterSkillConfig {
     type VO = vo::monster::MonsterSkillConfig<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        let params = self.param_list.iter().map(|v| v.value).collect::<Vec<_>>();
+        let params = self
+            .param_list
+            .iter()
+            .map(|v| crate::format::Formattable::from(&v.value))
+            .collect::<Vec<_>>();
         Self::VO {
+            id: self.skill_id,
             name: game.text(&self.skill_name),
             desc: crate::format::format(game.text(&self.skill_desc), &params),
             type_desc: game.text(&self.skill_type_desc),

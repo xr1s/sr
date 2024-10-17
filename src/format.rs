@@ -1,3 +1,98 @@
+trait FormatArgs {
+    /// #1% 形式
+    fn write_raw(&self, f: &mut Formatter<'_>, percent: bool);
+    /// #1[i]% 形式
+    fn write_int(&self, f: &mut Formatter<'_>, percent: bool);
+    /// #1[f1]% 形式
+    fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool);
+}
+
+impl FormatArgs for &'_ str {
+    fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        f.result.push_str(self);
+        if percent {
+            f.result.push('%');
+        }
+    }
+
+    fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        f.result.push_str(self);
+        f.result.push_str("[i]");
+        if percent {
+            f.result.push('%');
+        }
+    }
+
+    fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        f.result.push_str(self);
+        f.result.push_str("[f");
+        if prec != 0 {
+            f.result.push_str(&prec.to_string());
+            f.result.push(']');
+        }
+        if percent {
+            f.result.push('%');
+        }
+    }
+}
+
+impl FormatArgs for u32 {
+    fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        self.write_int(f, percent);
+    }
+
+    fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        use thousands::Separable;
+        let value = if percent { *self * 100 } else { *self };
+        f.result.push_str(&value.separate_with_commas());
+        if percent {
+            f.result.push('%');
+        }
+    }
+
+    fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        let value = *self as f32;
+        FormatArgs::write_float(&value, f, prec, percent);
+    }
+}
+
+impl FormatArgs for f32 {
+    fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        let value = if percent { *self * 100. } else { *self };
+        f.result.push_str(&format!("{}", value));
+    }
+
+    fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        let value = if percent { *self * 100. } else { *self } as u32;
+        FormatArgs::write_int(&value, f, false);
+        if percent {
+            f.result.push('%');
+        }
+    }
+
+    fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        let value = if percent { *self * 100. } else { *self };
+        f.result.push_str(&format!("{value:.0$}", prec));
+        if percent {
+            f.result.push('%');
+        }
+    }
+}
+
+pub struct Formattable<'a>(&'a dyn FormatArgs);
+
+impl<'a> From<&'a f32> for Formattable<'a> {
+    fn from(value: &'a f32) -> Self {
+        Self(value)
+    }
+}
+
+impl<'a> From<&'a &str> for Formattable<'a> {
+    fn from(value: &'a &str) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 enum FormatState {
     Literal,
@@ -9,10 +104,9 @@ enum FormatState {
     XmlTag, // 按理来说，tag 是存在嵌套的，但是这里暂时不考虑了
 }
 
-#[derive(Debug)]
 pub struct Formatter<'a> {
     template: &'a str,
-    parameters: &'a [f32],
+    parameters: &'a [Formattable<'a>],
 
     keep_xml_tag: bool,
 
@@ -23,7 +117,7 @@ pub struct Formatter<'a> {
 }
 
 impl<'a> Formatter<'a> {
-    pub fn new(template: &'a str, parameters: &'a [f32]) -> Self {
+    pub fn new(template: &'a str, parameters: &'a [Formattable]) -> Self {
         Self {
             template,
             parameters,
@@ -107,10 +201,10 @@ impl<'a> Formatter<'a> {
     }
 
     fn format_single(&mut self) {
-        let percent = self.state == FormatState::Percent;
         if self.state == FormatState::Literal {
             return;
         }
+        let percent = self.state == FormatState::Percent;
         if self.arg_num > self.parameters.len() {
             self.state = FormatState::Literal;
             self.result.push('#');
@@ -125,24 +219,16 @@ impl<'a> Formatter<'a> {
             }
             return;
         }
-        let mut arg = self.parameters[self.arg_num - 1];
-        if percent {
-            arg *= 100.;
-        }
+        let arg = &self.parameters[self.arg_num - 1];
         if self.fmt_arg.is_empty() {
-            self.result.push_str(&arg.to_string());
+            arg.0.write_raw(self, percent);
         }
         if self.fmt_arg.as_bytes().first() == Some(&b'f') {
             let prec = self.fmt_arg.as_bytes()[1] - b'0';
-            self.result.push_str(&format!("{:.1$}", arg, prec as _));
+            arg.0.write_float(self, prec as usize, percent);
         }
         if self.fmt_arg.as_bytes().first() == Some(&b'i') {
-            use thousands::Separable;
-            let arg = arg as i32;
-            self.result.push_str(&arg.separate_with_commas());
-        }
-        if percent {
-            self.result.push('%');
+            arg.0.write_int(self, percent);
         }
         self.fmt_arg = String::new();
         self.state = FormatState::Literal;
@@ -157,7 +243,7 @@ impl<'a> Formatter<'a> {
     }
 }
 
-pub fn format(template: &str, parameters: &[f32]) -> String {
+pub fn format(template: &str, parameters: &[Formattable]) -> String {
     Formatter::new(template, parameters)
         .keep_xml_tag(false)
         .format()

@@ -32,7 +32,7 @@ impl<'a> PO<'a> for ExtraEffectConfig {
         let params = self
             .desc_param_list
             .iter()
-            .map(|v| v.value)
+            .map(|v| crate::format::Formattable::from(&v.value))
             .collect::<Vec<_>>();
         Self::VO {
             id: self.extra_effect_id,

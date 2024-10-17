@@ -1,20 +1,25 @@
+use std::borrow::Cow;
+
 use crate::po::monster::{
     AbilityName, CampType, CharacterType, CustomValueTag, DebuffResistKey,
     MonsterConfigCustomValueKey, Rank, SkillTriggerKey, StanceType, SubType,
 };
 use crate::po::Element;
-use std::borrow::Cow;
+use crate::GameData;
 
 type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 
-#[derive(Clone, Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Debug)]
 /// 对应一种怪物类型，不同的怪物类型可能是同一个种族（建模头像相同），但是一般数值上会有差异
 pub struct MonsterTemplateConfig<'a> {
+    #[derivative(Debug = "ignore")]
+    pub(crate) game: &'a GameData,
     pub id: u32,
     /// 怪物种族，一般同一个 group 中的怪物的建模、头像是一样的
     /// 举例来说错误、完整是两个 Template，但是它们 TemplateGroupID 是相等的
     /// 无 TemplateGroupID 的大多是召唤物，但也有一系列模拟宇宙扑满（存护扑满、毁灭扑满）
-    pub group: u32,
+    pub group_id: u32,
     pub name: &'a str,
     /// 阵营名字，如果不存在阵营名，可以将 id 保留到十位查询 group 的阵营
     pub camp_name: &'a str,
@@ -57,6 +62,34 @@ pub struct MonsterTemplateConfig<'a> {
     pub npc_monster_list: Vec<NPCMonsterData<'a>>,
 }
 
+impl MonsterTemplateConfig<'_> {
+    /// 同种族敌人（头像、建模相同的敌人）
+    /// 在 BWIKI 上被称为「系列」
+    fn group(&self) -> impl Iterator<Item = MonsterTemplateConfig> {
+        let group_id = self.id / 10 * 10;
+        self.game
+            .list_monster_template_config()
+            .into_iter()
+            .filter(move |template| template.group_id == group_id)
+    }
+
+    /// 找到 group 的原型，原型上会多一些信息，比如 camp_name 不是空的
+    pub fn group_prototype(&self) -> MonsterTemplateConfig {
+        // 必须要有，因为 self 就是一个满足条件的结果
+        // 只有一种情况 panic，当 group_id 不等于 template_id / 10 * 10
+        self.group().next().unwrap_or_else(|| self.clone())
+    }
+
+    /// 游戏图鉴中的阵营，如「反物质军团」、「惊梦剧团」等
+    /// 函数成本略高昂，需要扫描一遍完整敌人列表
+    pub fn camp(&self) -> &str {
+        if !self.camp_name.is_empty() {
+            return self.camp_name;
+        }
+        self.group_prototype().camp_name
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct NPCMonsterData<'a> {
     pub id: u32,
@@ -93,7 +126,7 @@ pub struct MonsterConfig<'a> {
     pub override_ai_skill_sequence: Vec<MonsterSkillConfig<'a>>,
 }
 
-impl<'a> MonsterConfig<'a> {
+impl MonsterConfig<'_> {
     pub fn phase(&self) -> u8 {
         self.skill_list
             .iter()
@@ -104,7 +137,7 @@ impl<'a> MonsterConfig<'a> {
     }
 
     /// 列出某一阶段的技能
-    pub fn phase_skill(&'a self, phase: u8) -> Vec<&'a MonsterSkillConfig<'a>> {
+    pub fn phase_skill(&self, phase: u8) -> Vec<&MonsterSkillConfig> {
         let mut skills = self
             .skill_list
             .iter()
@@ -171,16 +204,18 @@ impl crate::Wiki for MonsterConfig<'_> {
         wiki.push_str("\n|系列=");
         // 分类（阵营）
         wiki.push_str("\n|分类=");
-        wiki.push_str(self.template.camp_name);
+        wiki.push_str(self.template.camp());
         wiki.push_str("<!-- 选填：反物质军团、裂界造物、雅利洛-Ⅵ、仙舟「罗浮」、虫群、星际和平公司、惊梦剧团、忆域迷因、模拟宇宙、星核猎手、银河 -->");
         // 类型（周本Boss、剧情Boss等，这里没法获取全部，需要手动处理）
-        let typ = match self.template.rank {
+        let mut typ = match self.template.rank {
             Rank::BigBoss => "周本BOSS",
             Rank::Elite => "强敌",
             Rank::LittleBoss => "剧情BOSS",
-            Rank::Minion => "普通",
-            Rank::MinionLv2 => "普通",
+            Rank::Minion | Rank::MinionLv2 => "普通",
         };
+        if self.template.group_id == 0 && !self.name.contains("扑满") {
+            typ = "召唤物";
+        }
         wiki.push_str("\n|类型=");
         wiki.push_str(typ);
         wiki.push_str(
@@ -339,6 +374,7 @@ impl crate::Wiki for MonsterConfig<'_> {
 
 #[derive(Clone, Debug)]
 pub struct MonsterSkillConfig<'a> {
+    pub id: u32,
     pub name: &'a str,
     pub desc: String,
     /// 目前只有两种 天赋、技能

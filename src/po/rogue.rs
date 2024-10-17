@@ -54,7 +54,11 @@ impl ID for RogueMazeBuff {
 impl<'a> PO<'a> for RogueMazeBuff {
     type VO = vo::rogue::RogueMazeBuff<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        let params = self.param_list.iter().map(|v| v.value).collect::<Vec<_>>();
+        let params = self
+            .param_list
+            .iter()
+            .map(|v| crate::format::Formattable::from(&v.value))
+            .collect::<Vec<_>>();
         Self::VO {
             id: self.id,
             lv: self.lv,
