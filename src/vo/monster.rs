@@ -66,27 +66,28 @@ impl MonsterTemplateConfig<'_> {
     /// 同种族敌人（头像、建模相同的敌人）
     /// 在 BWIKI 上被称为「系列」
     fn group(&self) -> impl Iterator<Item = MonsterTemplateConfig> {
-        let group_id = self.id / 10 * 10;
-        self.game
-            .list_monster_template_config()
-            .into_iter()
-            .filter(move |template| template.group_id == group_id)
+        self.game.monster_template_config_group(self.group_id)
     }
 
     /// 找到 group 的原型，原型上会多一些信息，比如 camp_name 不是空的
     pub fn group_prototype(&self) -> MonsterTemplateConfig {
         // 必须要有，因为 self 就是一个满足条件的结果
-        // 只有一种情况 panic，当 group_id 不等于 template_id / 10 * 10
-        self.group().next().unwrap_or_else(|| self.clone())
+        self.group()
+            // 这里有一个假设, 就是原型的 ID 等于 GroupID
+            .find(|monster| monster.id == self.group_id)
+            .unwrap_or_else(|| self.clone())
     }
 
     /// 游戏图鉴中的阵营，如「反物质军团」、「惊梦剧团」等
-    /// 函数成本略高昂，需要扫描一遍完整敌人列表
     pub fn camp(&self) -> &str {
         if !self.camp_name.is_empty() {
             return self.camp_name;
         }
-        self.group_prototype().camp_name
+        // 一个坑，有些怪物的 camp_name 不在原型上, 因此还是只能把所有的都找过去
+        self.group()
+            .find(|monster| !monster.camp_name.is_empty())
+            .map(|monster| monster.camp_name)
+            .unwrap_or_default()
     }
 }
 

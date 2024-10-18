@@ -2,9 +2,11 @@ use crate::po;
 use crate::vo;
 use crate::PO;
 
+use super::GameData;
+
 type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 
-impl super::GameData {
+impl GameData {
     fn _rogue_tourn_content_display(
         &self,
     ) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournContentDisplay> {
@@ -60,7 +62,7 @@ impl super::GameData {
     }
 }
 
-impl super::GameData {
+impl GameData {
     pub fn rogue_tourn_weekly_challenge(
         &self,
         id: u16,

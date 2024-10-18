@@ -21,6 +21,10 @@ pub struct GameData {
 
     // monster
     monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
+    /// 因为存在自引用, 所以只好储存 group_id 到 id 的映射;
+    /// 考虑到以后可能还会做名称到对象的映射，未来可能会全部重构到 Arc 中.
+    /// TODO: Rust 似乎没有多索引映射表, 要不要考虑自己实现一个?
+    monster_template_config_group: OnceLock<fnv::FnvHashMap<u32, Vec<u32>>>,
     monster_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterConfig>>,
     npc_monster_data: OnceLock<FnvIndexMap<u32, po::monster::NPCMonsterData>>,
     monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterSkillConfig>>,
@@ -61,6 +65,7 @@ impl GameData {
             extra_effect: OnceLock::new(),
             // monster
             monster_template_config: OnceLock::new(),
+            monster_template_config_group: OnceLock::new(),
             monster_config: OnceLock::new(),
             npc_monster_data: OnceLock::new(),
             monster_skill_config: OnceLock::new(),
