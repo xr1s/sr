@@ -714,7 +714,7 @@ impl<'a> PO<'a> for MonsterSkillConfig {
         let params = self
             .param_list
             .iter()
-            .map(|v| crate::format::Formattable::from(&v.value))
+            .map(|v| crate::format::Argument::from(&v.value))
             .collect::<Vec<_>>();
         Self::VO {
             id: self.skill_id,

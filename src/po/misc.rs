@@ -29,15 +29,15 @@ impl<'a> PO<'a> for ExtraEffectConfig {
     type VO = vo::misc::ExtraEffectConfig<'a>;
 
     fn vo(&self, game: &'a GameData) -> Self::VO {
-        let params = self
+        let arguments = self
             .desc_param_list
             .iter()
-            .map(|v| crate::format::Formattable::from(&v.value))
+            .map(|v| crate::format::Argument::from(&v.value))
             .collect::<Vec<_>>();
         Self::VO {
             id: self.extra_effect_id,
             name: game.text(&self.extra_effect_name),
-            desc: crate::format::format(game.text(&self.extra_effect_desc), &params),
+            desc: crate::format::format(game.text(&self.extra_effect_desc), &arguments),
         }
     }
 }

@@ -205,7 +205,7 @@ impl<'a> PO<'a> for RogueTournWeeklyDisplay {
         let names = params.iter().map(Name::name).collect::<Vec<_>>();
         let names = names
             .iter()
-            .map(crate::format::Formattable::from)
+            .map(crate::format::Argument::from)
             .collect::<Vec<_>>();
         let content = crate::format::format(game.text(&self.weekly_display_content), &names);
 
@@ -282,15 +282,15 @@ impl ID for RogueTournMiracleDisplay {
 impl<'a> PO<'a> for RogueTournMiracleDisplay {
     type VO = vo::rogue_tourn::RogueTournMiracleDisplay<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        let params = self
+        let arguments = self
             .desc_param_list
             .iter()
-            .map(|param| crate::format::Formattable::from(&param.value))
+            .map(|param| crate::format::Argument::from(&param.value))
             .collect::<Vec<_>>();
         Self::VO {
             id: self.miracle_display_id,
             name: game.text(&self.miracle_name),
-            desc: crate::format::format(game.text(&self.miracle_desc), &params),
+            desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
             extra_effect: self
                 .extra_effect
                 .iter()

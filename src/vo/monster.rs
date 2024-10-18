@@ -105,7 +105,7 @@ pub struct NPCMonsterData<'a> {
 /// 对应游戏中的每种怪物
 pub struct MonsterConfig<'a> {
     #[derivative(Debug = "ignore")]
-    pub(crate) game: &'a crate::GameData,
+    pub(crate) game: &'a GameData,
     pub id: u32,
     pub template: MonsterTemplateConfig<'a>,
     pub name: &'a str,
