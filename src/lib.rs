@@ -1,12 +1,13 @@
 #![feature(iter_intersperse)]
 
+pub mod format;
+pub mod game;
 pub mod po;
 pub mod vo;
 
-pub mod format;
-pub mod game;
-
 pub use game::GameData;
+
+pub(crate) type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 
 pub trait ID {
     type ID: Eq + PartialEq + std::hash::Hash;

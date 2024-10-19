@@ -5,9 +5,7 @@ use crate::po::monster::{
     MonsterConfigCustomValueKey, Rank, SkillTriggerKey, StanceType, SubType,
 };
 use crate::po::Element;
-use crate::GameData;
-
-type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
+use crate::{FnvIndexMap, GameData};
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Debug)]

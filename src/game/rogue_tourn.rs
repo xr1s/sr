@@ -1,10 +1,4 @@
-use crate::po;
-use crate::vo;
-use crate::PO;
-
-use super::GameData;
-
-type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
+use crate::{po, vo, FnvIndexMap, GameData, PO};
 
 impl GameData {
     fn _rogue_tourn_content_display(

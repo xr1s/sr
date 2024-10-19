@@ -1,11 +1,4 @@
-use crate::po;
-use crate::vo;
-use crate::ID;
-use crate::PO;
-
-use super::GameData;
-
-type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
+use crate::{po, vo, FnvIndexMap, GameData, ID, PO};
 
 impl GameData {
     fn _monster_template_config(&self) -> &FnvIndexMap<u32, po::monster::MonsterTemplateConfig> {

@@ -1,16 +1,15 @@
+mod item;
 mod misc;
 mod monster;
 mod rogue;
 mod rogue_tourn;
 
-use crate::po;
+use crate::{po, FnvIndexMap};
 
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::OnceLock;
-
-type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 
 pub struct GameData {
     base: PathBuf,
@@ -18,6 +17,9 @@ pub struct GameData {
 
     // misc
     extra_effect: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffectConfig>>,
+    item_config: OnceLock<FnvIndexMap<u32, po::misc::ItemConfig>>,
+    item_use_data: OnceLock<FnvIndexMap<u32, po::misc::ItemUseData>>,
+    reward_data: OnceLock<FnvIndexMap<u32, po::misc::RewardData>>,
 
     // monster
     monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
@@ -63,6 +65,10 @@ impl GameData {
             text_map: serde_json::from_reader(text_map_reader).unwrap(),
             // misc
             extra_effect: OnceLock::new(),
+            reward_data: OnceLock::new(),
+            // item
+            item_config: OnceLock::new(),
+            item_use_data: OnceLock::new(),
             // monster
             monster_template_config: OnceLock::new(),
             monster_template_config_group: OnceLock::new(),
