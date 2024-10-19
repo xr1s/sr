@@ -2,12 +2,12 @@ use crate::{po, vo, FnvIndexMap, GameData, PO};
 
 impl GameData {
     fn _extra_effect_config(&self) -> &FnvIndexMap<u32, po::misc::ExtraEffectConfig> {
-        self.extra_effect
+        self._extra_effect
             .get_or_init(|| self.load_to_map("ExcelOutput/ExtraEffectConfig.json"))
     }
 
     fn _reward_data(&self) -> &FnvIndexMap<u32, po::misc::RewardData> {
-        self.reward_data
+        self._reward_data
             .get_or_init(|| self.load_to_map("ExcelOutput/RewardData.json"))
     }
 }

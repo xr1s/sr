@@ -2,7 +2,7 @@ use crate::{po, vo, FnvIndexMap, GameData, PO};
 
 impl GameData {
     fn _rogue_maze_buff(&self) -> &FnvIndexMap<u32, po::rogue::RogueMazeBuff> {
-        self.rogue_maze_buff
+        self._rogue_maze_buff
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueMazeBuff.json"))
     }
 }

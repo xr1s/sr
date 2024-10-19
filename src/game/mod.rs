@@ -16,42 +16,42 @@ pub struct GameData {
     text_map: std::collections::HashMap<i32, String, fnv::FnvBuildHasher>,
 
     // misc
-    extra_effect: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffectConfig>>,
-    item_config: OnceLock<FnvIndexMap<u32, po::misc::ItemConfig>>,
-    item_use_data: OnceLock<FnvIndexMap<u32, po::misc::ItemUseData>>,
-    reward_data: OnceLock<FnvIndexMap<u32, po::misc::RewardData>>,
+    _extra_effect: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffectConfig>>,
+    _item_config: OnceLock<FnvIndexMap<u32, po::misc::ItemConfig>>,
+    _item_use_data: OnceLock<FnvIndexMap<u32, po::misc::ItemUseData>>,
+    _reward_data: OnceLock<FnvIndexMap<u32, po::misc::RewardData>>,
 
     // monster
-    monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
+    _monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
     /// 因为存在自引用, 所以只好储存 group_id 到 id 的映射;
     /// 考虑到以后可能还会做名称到对象的映射，未来可能会全部重构到 Arc 中.
     /// TODO: Rust 似乎没有多索引映射表, 要不要考虑自己实现一个?
-    monster_template_config_group: OnceLock<fnv::FnvHashMap<u32, Vec<u32>>>,
-    monster_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterConfig>>,
-    npc_monster_data: OnceLock<FnvIndexMap<u32, po::monster::NPCMonsterData>>,
-    monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterSkillConfig>>,
-    monster_camp: OnceLock<FnvIndexMap<u8, po::monster::MonsterCamp>>,
+    _monster_template_config_group: OnceLock<fnv::FnvHashMap<u32, Vec<u32>>>,
+    _monster_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterConfig>>,
+    _npc_monster_data: OnceLock<FnvIndexMap<u32, po::monster::NPCMonsterData>>,
+    _monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterSkillConfig>>,
+    _monster_camp: OnceLock<FnvIndexMap<u8, po::monster::MonsterCamp>>,
 
     // rogue
     /// 模拟宇宙祝福
-    rogue_maze_buff: OnceLock<FnvIndexMap<u32, po::rogue::RogueMazeBuff>>,
+    _rogue_maze_buff: OnceLock<FnvIndexMap<u32, po::rogue::RogueMazeBuff>>,
 
     // rogue_tourn
-    rogue_tourn_content_display:
+    _rogue_tourn_content_display:
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournContentDisplay>>,
     /// 差分宇宙周期演算
-    rogue_tourn_weekly_challenge: OnceLock<Vec<po::rogue_tourn::RogueTournWeeklyChallenge>>,
-    rogue_tourn_weekly_display:
+    _rogue_tourn_weekly_challenge: OnceLock<Vec<po::rogue_tourn::RogueTournWeeklyChallenge>>,
+    _rogue_tourn_weekly_display:
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournWeeklyDisplay>>,
     /// 差分宇宙奇物
-    rogue_tourn_miracle: OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracle>>,
-    rogue_tourn_miracle_display:
+    _rogue_tourn_miracle: OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracle>>,
+    _rogue_tourn_miracle_display:
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracleDisplay>>,
-    rogue_tourn_handbook_miracle:
+    _rogue_tourn_handbook_miracle:
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournHandbookMiracle>>,
     /// 差分宇宙方程
-    rogue_tourn_formula: OnceLock<FnvIndexMap<u32, po::rogue_tourn::RogueTournFormula>>,
-    rogue_tourn_formula_display:
+    _rogue_tourn_formula: OnceLock<FnvIndexMap<u32, po::rogue_tourn::RogueTournFormula>>,
+    _rogue_tourn_formula_display:
         OnceLock<FnvIndexMap<u32, po::rogue_tourn::RogueTournFormulaDisplay>>,
 }
 
@@ -64,29 +64,29 @@ impl GameData {
             base,
             text_map: serde_json::from_reader(text_map_reader).unwrap(),
             // misc
-            extra_effect: OnceLock::new(),
-            reward_data: OnceLock::new(),
+            _extra_effect: OnceLock::new(),
+            _reward_data: OnceLock::new(),
             // item
-            item_config: OnceLock::new(),
-            item_use_data: OnceLock::new(),
+            _item_config: OnceLock::new(),
+            _item_use_data: OnceLock::new(),
             // monster
-            monster_template_config: OnceLock::new(),
-            monster_template_config_group: OnceLock::new(),
-            monster_config: OnceLock::new(),
-            npc_monster_data: OnceLock::new(),
-            monster_skill_config: OnceLock::new(),
-            monster_camp: OnceLock::new(),
+            _monster_template_config: OnceLock::new(),
+            _monster_template_config_group: OnceLock::new(),
+            _monster_config: OnceLock::new(),
+            _npc_monster_data: OnceLock::new(),
+            _monster_skill_config: OnceLock::new(),
+            _monster_camp: OnceLock::new(),
             // rogue
-            rogue_maze_buff: OnceLock::new(),
+            _rogue_maze_buff: OnceLock::new(),
             // rogue_tourn
-            rogue_tourn_content_display: OnceLock::new(),
-            rogue_tourn_weekly_challenge: OnceLock::new(),
-            rogue_tourn_weekly_display: OnceLock::new(),
-            rogue_tourn_miracle: OnceLock::new(),
-            rogue_tourn_miracle_display: OnceLock::new(),
-            rogue_tourn_handbook_miracle: OnceLock::new(),
-            rogue_tourn_formula: OnceLock::new(),
-            rogue_tourn_formula_display: OnceLock::new(),
+            _rogue_tourn_content_display: OnceLock::new(),
+            _rogue_tourn_weekly_challenge: OnceLock::new(),
+            _rogue_tourn_weekly_display: OnceLock::new(),
+            _rogue_tourn_miracle: OnceLock::new(),
+            _rogue_tourn_miracle_display: OnceLock::new(),
+            _rogue_tourn_handbook_miracle: OnceLock::new(),
+            _rogue_tourn_formula: OnceLock::new(),
+            _rogue_tourn_formula_display: OnceLock::new(),
         }
     }
 

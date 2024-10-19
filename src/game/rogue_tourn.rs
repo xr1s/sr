@@ -4,12 +4,12 @@ impl GameData {
     fn _rogue_tourn_content_display(
         &self,
     ) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournContentDisplay> {
-        self.rogue_tourn_content_display
+        self._rogue_tourn_content_display
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournContentDisplay.json"))
     }
 
     fn _rogue_tourn_weekly_challenge(&self) -> &[po::rogue_tourn::RogueTournWeeklyChallenge] {
-        self.rogue_tourn_weekly_challenge.get_or_init(|| {
+        self._rogue_tourn_weekly_challenge.get_or_init(|| {
             let path = self.base.join("ExcelOutput/RogueTournWeeklyChallenge.json");
             let file = std::fs::File::open(path).unwrap();
             let reader = std::io::BufReader::new(file);
@@ -20,38 +20,38 @@ impl GameData {
     fn _rogue_tourn_weekly_display(
         &self,
     ) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournWeeklyDisplay> {
-        self.rogue_tourn_weekly_display
+        self._rogue_tourn_weekly_display
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournWeeklyDisplay.json"))
     }
 
     fn _rogue_tourn_miracle(&self) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracle> {
-        self.rogue_tourn_miracle
+        self._rogue_tourn_miracle
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournMiracle.json"))
     }
 
     fn _rogue_tourn_handbook_miracle(
         &self,
     ) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournHandbookMiracle> {
-        self.rogue_tourn_handbook_miracle
+        self._rogue_tourn_handbook_miracle
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournHandbookMiracle.json"))
     }
 
     fn _rogue_tourn_miracle_display(
         &self,
     ) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracleDisplay> {
-        self.rogue_tourn_miracle_display
+        self._rogue_tourn_miracle_display
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournMiracleDisplay.json"))
     }
 
     fn _rogue_tourn_formula(&self) -> &FnvIndexMap<u32, po::rogue_tourn::RogueTournFormula> {
-        self.rogue_tourn_formula
+        self._rogue_tourn_formula
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournFormula.json"))
     }
 
     fn _rogue_tourn_formula_display(
         &self,
     ) -> &FnvIndexMap<u32, po::rogue_tourn::RogueTournFormulaDisplay> {
-        self.rogue_tourn_formula_display
+        self._rogue_tourn_formula_display
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournFormulaDisplay.json"))
     }
 }

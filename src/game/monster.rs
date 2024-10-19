@@ -2,12 +2,12 @@ use crate::{po, vo, FnvIndexMap, GameData, ID, PO};
 
 impl GameData {
     fn _monster_template_config(&self) -> &FnvIndexMap<u32, po::monster::MonsterTemplateConfig> {
-        self.monster_template_config
+        self._monster_template_config
             .get_or_init(|| self.load_to_map("ExcelOutput/MonsterTemplateConfig.json"))
     }
 
     fn _monster_template_config_group(&self) -> &fnv::FnvHashMap<u32, Vec<u32>> {
-        self.monster_template_config_group.get_or_init(|| {
+        self._monster_template_config_group.get_or_init(|| {
             let mut multimap = fnv::FnvHashMap::<u32, Vec<u32>>::default();
             for monster in self._monster_template_config().values() {
                 if monster.template_group_id.is_none() {
@@ -23,22 +23,22 @@ impl GameData {
     }
 
     fn _monster_config(&self) -> &FnvIndexMap<u32, po::monster::MonsterConfig> {
-        self.monster_config
+        self._monster_config
             .get_or_init(|| self.load_to_map("ExcelOutput/MonsterConfig.json"))
     }
 
     fn _npc_monster_data(&self) -> &FnvIndexMap<u32, po::monster::NPCMonsterData> {
-        self.npc_monster_data
+        self._npc_monster_data
             .get_or_init(|| self.load_to_map("ExcelOutput/NPCMonsterData.json"))
     }
 
     fn _monster_skill_config(&self) -> &FnvIndexMap<u32, po::monster::MonsterSkillConfig> {
-        self.monster_skill_config
+        self._monster_skill_config
             .get_or_init(|| self.load_to_map("ExcelOutput/MonsterSkillConfig.json"))
     }
 
     fn _monster_camp(&self) -> &FnvIndexMap<u8, po::monster::MonsterCamp> {
-        self.monster_camp
+        self._monster_camp
             .get_or_init(|| self.load_to_map("ExcelOutput/MonsterCamp.json"))
     }
 }

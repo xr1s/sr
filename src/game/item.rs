@@ -4,12 +4,12 @@ use super::GameData;
 
 impl GameData {
     fn _item_config(&self) -> &FnvIndexMap<u32, po::misc::ItemConfig> {
-        self.item_config
+        self._item_config
             .get_or_init(|| self.load_to_map("ExcelOutput/ItemConfig.json"))
     }
 
     fn _item_use_data(&self) -> &FnvIndexMap<u32, po::misc::ItemUseData> {
-        self.item_use_data
+        self._item_use_data
             .get_or_init(|| self.load_to_map("ExcelOutput/ItemUseData.json"))
     }
 }
