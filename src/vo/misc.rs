@@ -42,6 +42,7 @@ pub struct ItemConfig<'a> {
     pub use_method: Option<UseMethod>,
     /// 使用效果根据 `use_method` 决定, 通过 `use_data_id` 关联到具体效果
     /// 具体效果在不同类型的对象里, 无法在这里简单映射
+    /// 2.6 之后似乎消失了?
     pub use_data_id: u32,
 }
 

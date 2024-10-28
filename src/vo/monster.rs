@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use crate::po::monster::{
-    AbilityName, CampType, CharacterType, CustomValueTag, DebuffResistKey,
-    MonsterConfigCustomValueKey, Rank, SkillTriggerKey, StanceType, SubType,
-};
+use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, StanceType, SubType};
 use crate::po::Element;
 use crate::{FnvIndexMap, GameData};
 
@@ -116,12 +113,12 @@ pub struct MonsterConfig<'a> {
     pub speed_modify_value: i16,
     pub stance_modify_value: i16,
     pub skill_list: Vec<MonsterSkillConfig<'a>>,
-    pub custom_values: FnvIndexMap<MonsterConfigCustomValueKey, i32>,
+    pub custom_values: FnvIndexMap<&'a str, i32>,
     pub debuff_resist: FnvIndexMap<DebuffResistKey, f32>,
-    pub custom_value_tags: &'a [CustomValueTag],
+    pub custom_value_tags: Vec<&'a str>,
     pub stance_weak_list: &'a [Element],
     pub damage_type_resistance: fnv::FnvHashMap<Element, f32>,
-    pub ability_name_list: &'a [AbilityName],
+    pub ability_name_list: Vec<&'a str>,
     pub override_ai_skill_sequence: Vec<MonsterSkillConfig<'a>>,
 }
 
@@ -173,21 +170,8 @@ impl MonsterConfig<'_> {
 
     /// 召唤物，不过这大概不完整，目前没找到能完整列出召唤物的手段
     pub fn summons(&self) -> Vec<MonsterConfig> {
-        const NON_SUMMON_CUSTOM_VALUE_KEYS: [MonsterConfigCustomValueKey; 10] = [
-            MonsterConfigCustomValueKey::CocoliaChangePhaseInsertController,
-            MonsterConfigCustomValueKey::FlopSide,
-            MonsterConfigCustomValueKey::HardLevel,
-            MonsterConfigCustomValueKey::IsWeeklyBoss,
-            MonsterConfigCustomValueKey::MonsterAMLElite0100AICounter01,
-            MonsterConfigCustomValueKey::MonsterCount,
-            MonsterConfigCustomValueKey::MonsterRO015SummonID,
-            MonsterConfigCustomValueKey::MonsterXPElite0201AIFlag,
-            MonsterConfigCustomValueKey::TV01RandomPoolID,
-            MonsterConfigCustomValueKey::TV01EliteChance,
-        ];
         self.custom_values
             .iter()
-            .filter(|(&key, _)| !NON_SUMMON_CUSTOM_VALUE_KEYS.contains(&key))
             .filter_map(|(_, &id)| self.game.monster_config(id as u32))
             .collect()
     }
@@ -390,7 +374,7 @@ pub struct MonsterSkillConfig<'a> {
     pub extra_effect_list: Vec<super::misc::ExtraEffectConfig<'a>>,
     /// 技能造成的元素伤害类型
     pub damage_type: Option<Element>,
-    pub skill_trigger_key: SkillTriggerKey,
+    pub skill_trigger_key: &'a str,
     /// 技能命中我方角色后为对应角色的充能增加多少
     pub sp_hit_base: u16,
 }
