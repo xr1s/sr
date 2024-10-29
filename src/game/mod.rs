@@ -15,10 +15,12 @@ pub struct GameData {
     base: PathBuf,
     text_map: std::collections::HashMap<i32, String, fnv::FnvBuildHasher>,
 
+    // item
+    _item_config: OnceLock<FnvIndexMap<u32, po::item::ItemConfig>>,
+    _item_use_data: OnceLock<FnvIndexMap<u32, po::item::ItemUseData>>,
+
     // misc
     _extra_effect: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffectConfig>>,
-    _item_config: OnceLock<FnvIndexMap<u32, po::misc::ItemConfig>>,
-    _item_use_data: OnceLock<FnvIndexMap<u32, po::misc::ItemUseData>>,
     _reward_data: OnceLock<FnvIndexMap<u32, po::misc::RewardData>>,
 
     // monster

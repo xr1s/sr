@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use crate::Wiki;
 
 pub mod challenge;
+pub mod item;
 pub mod misc;
 pub mod monster;
 pub mod rogue;
