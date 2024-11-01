@@ -2,6 +2,7 @@ mod item;
 mod misc;
 mod monster;
 mod rogue;
+mod rogue_magic;
 mod rogue_tourn;
 
 use crate::{po, FnvIndexMap};
@@ -43,6 +44,10 @@ pub struct GameData {
     _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracle>>,
     _rogue_handbook_miracle_type: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracleType>>,
 
+    // rogue_magic
+    /// 不可知域
+    _rogue_magic_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracle>>,
+
     // rogue_tourn
     _rogue_tourn_content_display:
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournContentDisplay>>,
@@ -52,8 +57,7 @@ pub struct GameData {
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournWeeklyDisplay>>,
     /// 差分宇宙奇物
     _rogue_tourn_miracle: OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracle>>,
-    _rogue_tourn_miracle_display:
-        OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracleDisplay>>,
+    _rogue_tourn_miracle_display: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracleDisplay>>,
     _rogue_tourn_handbook_miracle:
         OnceLock<FnvIndexMap<u16, po::rogue_tourn::RogueTournHandbookMiracle>>,
     /// 差分宇宙方程
@@ -89,6 +93,8 @@ impl GameData {
             _rogue_miracle_display: OnceLock::new(),
             _rogue_handbook_miracle: OnceLock::new(),
             _rogue_handbook_miracle_type: OnceLock::new(),
+            // rogue_magic_miracle
+            _rogue_magic_miracle: OnceLock::new(),
             // rogue_tourn
             _rogue_tourn_content_display: OnceLock::new(),
             _rogue_tourn_weekly_challenge: OnceLock::new(),
@@ -104,7 +110,7 @@ impl GameData {
     pub(crate) fn text(&self, text: &po::Text) -> &str {
         self.text_map
             .get(&text.hash)
-            .map(|s| &**s)
+            .map(String::as_str)
             .unwrap_or_default()
     }
 

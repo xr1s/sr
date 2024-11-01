@@ -83,8 +83,8 @@ pub(crate) struct RogueMiracle {
     #[serde(rename = "UnlockHandbookMiracleID")]
     unlock_handbook_miracle_id: Option<NonZero<u16>>,
     miracle_desc: Text,
-    desc_param_list: Vec<()>, // 只有空 []
-    extra_effect: Vec<u32>,   // 只有空 []
+    desc_param_list: Vec<Value<f32>>,
+    extra_effect: Vec<u32>, // 只有空 []
 }
 
 impl ID for RogueMiracle {
@@ -97,11 +97,22 @@ impl ID for RogueMiracle {
 impl<'a> PO<'a> for RogueMiracle {
     type VO = vo::rogue::RogueMiracle<'a>;
     fn vo(&self, game: &'a GameData) -> Self::VO {
+        let arguments = self
+            .desc_param_list
+            .iter()
+            .map(|param| &param.value)
+            .map(crate::format::Argument::from)
+            .collect::<Vec<_>>();
         Self::VO {
             id: self.miracle_id,
-            display: game.rogue_miracle_display(self.miracle_display_id).unwrap(),
-            desc: game.text(&self.miracle_desc),
-            handbook: self
+            // 存在一些奇物, 图鉴中展示的是模拟宇宙的效果, 游戏过程中展示的是差分宇宙的效果
+            // 这一类奇物主要是差分宇宙新增的奇物和商店相关奇物 (邪恶机械卫星#900和「中等念头」群体机)
+            display: game
+                .rogue_miracle_display(self.miracle_display_id)
+                .or_else(|| game.rogue_tourn_miracle_display(self.miracle_display_id))
+                .unwrap(),
+            desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
+            unlock_handbook: self
                 .unlock_handbook_miracle_id
                 .and_then(|id| game.rogue_handbook_miracle(id.get())),
         }
@@ -148,6 +159,12 @@ impl<'a> PO<'a> for RogueMiracleDisplay {
             desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
             bg_desc: game.text(&self.miracle_bg_desc),
             tag: game.text(&self.miracle_tag),
+            extra_effect: self
+                .extra_effect
+                .iter()
+                .map(|&id| game.extra_effect_config(id))
+                .map(Option::unwrap)
+                .collect(),
         }
     }
 }
@@ -187,7 +204,12 @@ impl<'a> PO<'a> for RogueHandbookMiracle {
                 .map(|&typ| game.rogue_handbook_miracle_type(typ))
                 .map(Option::unwrap)
                 .collect(),
-            display: game.rogue_miracle_display(self.miracle_dispaly_id).unwrap(),
+            // 存在一些奇物, 图鉴中展示的是模拟宇宙的效果, 游戏过程中展示的是差分宇宙的效果
+            // 这一类奇物主要是差分宇宙新增的奇物和商店相关奇物 (邪恶机械卫星#900和「中等念头」群体机)
+            display: game
+                .rogue_miracle_display(self.miracle_dispaly_id)
+                .or_else(|| game.rogue_tourn_miracle_display(self.miracle_dispaly_id))
+                .unwrap(),
             order: self.order,
         }
     }

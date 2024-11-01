@@ -35,7 +35,7 @@ pub struct RogueTournMiracle<'a> {
     /// 奇物星级：加权、三星、二星、一星、负面
     pub category: MiracleCategory,
     /// 奇物文案和图标
-    pub display: RogueTournMiracleDisplay<'a>,
+    pub display: vo::rogue::RogueMiracleDisplay<'a>,
     /// 图鉴中的奇物展示
     pub handbook: Option<RogueTournHandbookMiracle<'a>>,
 }
@@ -47,24 +47,9 @@ impl Name for RogueTournMiracle<'_> {
 }
 
 #[derive(Clone, Debug)]
-pub struct RogueTournMiracleDisplay<'a> {
-    pub id: u16,
-    /// 名称
-    pub name: &'a str,
-    /// 奇物效果
-    pub desc: String,
-    /// 奇物效果中，带有下划线的特殊效果的详细介绍
-    pub extra_effect: Vec<vo::misc::ExtraEffectConfig<'a>>,
-    /// 背景故事
-    pub bg_desc: &'a str,
-    /// 无意义，目前只有空字符串
-    pub tag: &'a str,
-}
-
-#[derive(Clone, Debug)]
 pub struct RogueTournHandbookMiracle<'a> {
     pub id: u16,
-    pub display: RogueTournMiracleDisplay<'a>,
+    pub display: vo::rogue::RogueMiracleDisplay<'a>,
     /// 奇物稀有度
     pub category: MiracleCategory,
     /// 图鉴中未解锁时的提示文案，目前只有一种

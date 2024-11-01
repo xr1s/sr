@@ -1,3 +1,5 @@
+use crate::{vo, Name};
+
 #[derive(Clone, Debug)]
 /// 模拟宇宙祝福（方程、回响也在此）
 pub struct RogueMazeBuff<'a> {
@@ -22,17 +24,31 @@ pub struct RogueMazeBuff<'a> {
 pub struct RogueMiracle<'a> {
     pub id: u16,
     pub display: RogueMiracleDisplay<'a>,
-    pub desc: &'a str,
-    pub handbook: Option<RogueHandbookMiracle<'a>>,
+    pub desc: String,
+    /// 没有 unlock_handbook 的一般是可以同时携带多个、效果不同的奇物
+    /// 如分裂咕咕钟、绝对失败处方
+    pub unlock_handbook: Option<RogueHandbookMiracle<'a>>,
+}
+
+impl Name for RogueMiracle<'_> {
+    fn name(&self) -> &str {
+        self.display.name
+    }
 }
 
 #[derive(Clone, Debug)]
 /// 模拟宇宙奇物展示数据（效果、背景故事等）
 pub struct RogueMiracleDisplay<'a> {
     pub id: u16,
+    /// 名称
     pub name: &'a str,
+    /// 奇物效果
     pub desc: String,
+    /// 奇物效果中，带有下划线的特殊效果的详细介绍
+    pub extra_effect: Vec<vo::misc::ExtraEffectConfig<'a>>,
+    /// 背景故事
     pub bg_desc: &'a str,
+    /// 无意义，目前只有空字符串
     pub tag: &'a str,
 }
 

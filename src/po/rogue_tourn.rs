@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::num::NonZero;
 use std::path::PathBuf;
 
-use super::{Text, Value};
+use super::Text;
 use crate::{po::Path, vo, GameData, Name, Wiki, ID, PO};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
@@ -251,54 +251,6 @@ impl<'a> PO<'a> for RogueTournMiracle {
             handbook: self
                 .handbook_miracle_id
                 .and_then(|id| game.rogue_tourn_handbook_miracle(id.get())),
-        }
-    }
-}
-
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub(crate) struct RogueTournMiracleDisplay {
-    #[serde(rename = "MiracleDisplayID")]
-    miracle_display_id: u16,
-    miracle_name: Text,
-    miracle_desc: Text,
-    desc_param_list: Vec<Value<f32>>,
-    extra_effect: Vec<u32>,
-    #[serde(rename = "MiracleBGDesc")]
-    miracle_bg_desc: Text,
-    miracle_tag: Text,
-    miracle_icon_path: PathBuf,
-    miracle_figure_icon_path: PathBuf,
-}
-
-impl ID for RogueTournMiracleDisplay {
-    type ID = u16;
-    fn id(&self) -> Self::ID {
-        self.miracle_display_id
-    }
-}
-
-impl<'a> PO<'a> for RogueTournMiracleDisplay {
-    type VO = vo::rogue_tourn::RogueTournMiracleDisplay<'a>;
-    fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        let arguments = self
-            .desc_param_list
-            .iter()
-            .map(|param| crate::format::Argument::from(&param.value))
-            .collect::<Vec<_>>();
-        Self::VO {
-            id: self.miracle_display_id,
-            name: game.text(&self.miracle_name),
-            desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
-            extra_effect: self
-                .extra_effect
-                .iter()
-                .map(|&id| game.extra_effect_config(id))
-                .map(Option::unwrap)
-                .collect(),
-            bg_desc: game.text(&self.miracle_bg_desc),
-            tag: game.text(&self.miracle_tag),
         }
     }
 }

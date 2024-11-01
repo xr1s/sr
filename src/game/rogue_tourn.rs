@@ -36,9 +36,7 @@ impl GameData {
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournHandbookMiracle.json"))
     }
 
-    fn _rogue_tourn_miracle_display(
-        &self,
-    ) -> &FnvIndexMap<u16, po::rogue_tourn::RogueTournMiracleDisplay> {
+    fn _rogue_tourn_miracle_display(&self) -> &FnvIndexMap<u16, po::rogue::RogueMiracleDisplay> {
         self._rogue_tourn_miracle_display
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueTournMiracleDisplay.json"))
     }
@@ -84,10 +82,7 @@ impl GameData {
             .map(|po| po.vo(self))
     }
 
-    pub fn rogue_tourn_miracle_display(
-        &self,
-        id: u16,
-    ) -> Option<vo::rogue_tourn::RogueTournMiracleDisplay> {
+    pub fn rogue_tourn_miracle_display(&self, id: u16) -> Option<vo::rogue::RogueMiracleDisplay> {
         self._rogue_tourn_miracle_display()
             .get(&id)
             .map(|po| po.vo(self))
