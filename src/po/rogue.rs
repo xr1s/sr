@@ -1,4 +1,4 @@
-use std::{num::NonZero, path::PathBuf};
+use std::{collections::HashMap, num::NonZero, path::PathBuf};
 
 use crate::{vo, GameData, ID, PO};
 
@@ -18,6 +18,11 @@ pub enum BuffEffect {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum MazeBuffType {
     Level,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum MonsterDropType {
+    AreaDrop,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -242,6 +247,69 @@ impl<'a> PO<'a> for RogueHandbookMiracleType {
         Self::VO {
             id: self.rogue_handbook_miracle_type,
             title: game.text(&self.rogue_miracle_type_title),
+        }
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RogueMonsterGroup {
+    #[serde(rename = "RogueMonsterGroupID")]
+    rogue_monster_group_id: u32,
+    #[serde_as(as = "HashMap<_, _>")]
+    rogue_monster_list_and_weight: Vec<(u32, u8)>,
+}
+
+impl ID for RogueMonsterGroup {
+    type ID = u32;
+    fn id(&self) -> Self::ID {
+        self.rogue_monster_group_id
+    }
+}
+
+impl<'a> PO<'a> for RogueMonsterGroup {
+    type VO = vo::rogue::RogueMonsterGroup<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.rogue_monster_group_id,
+            list_and_weight: self
+                .rogue_monster_list_and_weight
+                .iter()
+                .map(|&(id, weight)| (game.rogue_monster(id).unwrap(), weight))
+                .collect(),
+        }
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RogueMonster {
+    #[serde(rename = "RogueMonsterID")]
+    rogue_monster_id: u32,
+    #[serde(rename = "NpcMonsterID")]
+    npc_monster_id: u32,
+    #[serde(rename = "EventID")]
+    event_id: u32, // 不明，疑似 StageConfig.json
+    monster_drop_type: Option<MonsterDropType>,
+}
+
+impl ID for RogueMonster {
+    type ID = u32;
+    fn id(&self) -> Self::ID {
+        self.rogue_monster_id
+    }
+}
+
+impl<'a> PO<'a> for RogueMonster {
+    type VO = vo::rogue::RogueMonster<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.rogue_monster_id,
+            npc_monster: game.npc_monster_data(self.npc_monster_id).unwrap(),
         }
     }
 }

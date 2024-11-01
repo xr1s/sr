@@ -1,6 +1,4 @@
-use std::borrow::Cow;
-use std::num::NonZero;
-use std::path::PathBuf;
+use std::{borrow::Cow, collections::HashMap, num::NonZero, path::PathBuf};
 
 use super::Text;
 use crate::{po::Path, vo, GameData, Name, Wiki, ID, PO};
@@ -103,15 +101,15 @@ pub(crate) struct RogueTournWeeklyChallenge {
     weekly_content_detail_list: Vec<u16>,
     #[serde(rename = "RewardID")]
     reward_id: u32,
-    #[serde_as(as = "std::collections::HashMap<_, _>")]
+    #[serde_as(as = "HashMap<_, _>")]
     display_final_monster_groups: Vec<(u8, u32)>, // 理论是 map，目前 key 只有 0
-    #[serde_as(as = "std::collections::HashMap<_, _>")]
+    #[serde_as(as = "HashMap<_, _>")]
     // 理论是 map，目前 key 只有 0, 3，分别是难度 V3 之前和之后的敌人列表
     display_monster_groups_1: Vec<(u8, u32)>,
-    #[serde_as(as = "std::collections::HashMap<_, _>")]
+    #[serde_as(as = "HashMap<_, _>")]
     // 理论是 map，目前 key 只有 0, 3，分别是难度 V3 之前和之后的敌人列表
     display_monster_groups_2: Vec<(u8, u32)>,
-    #[serde_as(as = "std::collections::HashMap<_, _>")]
+    #[serde_as(as = "HashMap<_, _>")]
     display_monster_groups_3: Vec<(u8, u32)>, // 理论是 map，目前 key 只有 0
 }
 
@@ -153,6 +151,21 @@ impl<'a> PO<'a> for RogueTournWeeklyChallenge {
             miracle: content_list
                 .iter_mut()
                 .flat_map(|content| std::mem::take(&mut content.miracle))
+                .collect(),
+            monster_group_1: self
+                .display_monster_groups_1
+                .iter()
+                .map(|&(lv, id)| (lv, game.rogue_monster_group(id).unwrap()))
+                .collect(),
+            monster_group_2: self
+                .display_monster_groups_2
+                .iter()
+                .map(|&(lv, id)| (lv, game.rogue_monster_group(id).unwrap()))
+                .collect(),
+            monster_group_3: self
+                .display_monster_groups_3
+                .iter()
+                .map(|&(lv, id)| (lv, game.rogue_monster_group(id).unwrap()))
                 .collect(),
         }
     }

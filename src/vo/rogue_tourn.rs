@@ -1,6 +1,10 @@
+use std::borrow::Cow;
+
+use chrono::Datelike;
+
 use crate::po::rogue_tourn::{FormulaCategory, MiracleCategory};
 use crate::po::Path;
-use crate::{vo, Name};
+use crate::{vo, Name, Wiki};
 
 #[derive(Clone, Debug)]
 /// 周期演算
@@ -18,6 +22,124 @@ pub struct RogueTournWeeklyChallenge<'a> {
     pub formula: Vec<RogueTournFormula<'a>>,
     /// 从 .content 成员中提取出来的本周所有预设构筑奇物
     pub miracle: Vec<RogueTournMiracle<'a>>,
+    /// 第一位面首领
+    pub monster_group_1: Vec<(u8, vo::rogue::RogueMonsterGroup<'a>)>,
+    /// 第二位面首领
+    pub monster_group_2: Vec<(u8, vo::rogue::RogueMonsterGroup<'a>)>,
+    /// 第三位面首领
+    pub monster_group_3: Vec<(u8, vo::rogue::RogueMonsterGroup<'a>)>,
+}
+
+impl RogueTournWeeklyChallenge<'_> {
+    pub fn start_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
+        const ASIA_SHANGHAI: chrono::FixedOffset =
+            chrono::FixedOffset::east_opt(8 * 60 * 60).unwrap();
+        const FIRST_CHALLENGE_START_DATETIME: chrono::NaiveDateTime = chrono::NaiveDateTime::new(
+            chrono::NaiveDate::from_ymd_opt(2024, 6, 19).unwrap(),
+            chrono::NaiveTime::from_hms_opt(4, 0, 0).unwrap(),
+        );
+        let mut start_time = FIRST_CHALLENGE_START_DATETIME
+            .and_local_timezone(ASIA_SHANGHAI)
+            .unwrap();
+        if self.id > 1 {
+            let since_monday = FIRST_CHALLENGE_START_DATETIME
+                .weekday()
+                .num_days_from_monday();
+            start_time -= chrono::TimeDelta::days(since_monday as _);
+        }
+        start_time + chrono::TimeDelta::weeks(self.id as i64 - 1)
+    }
+
+    pub fn end_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
+        let start_time = self.start_time();
+        start_time - chrono::TimeDelta::days(start_time.weekday().num_days_from_monday() as _)
+            + chrono::TimeDelta::weeks(1)
+            - chrono::TimeDelta::nanoseconds(1)
+    }
+}
+
+impl Wiki for RogueTournWeeklyChallenge<'_> {
+    fn wiki(&self) -> Cow<'static, str> {
+        let mut wiki = String::from("{{周期演算|");
+        wiki.push_str(self.name);
+        wiki.push_str("|开始时间=");
+        wiki.push_str(&self.start_time().format("%Y/%m/%d").to_string());
+        wiki.push_str("|结束时间=");
+        let end_date = self.end_time().date_naive().pred_opt().unwrap();
+        wiki.push_str(&end_date.format("%Y/%m/%d").to_string());
+        if !self.miracle.is_empty() {
+            static XML_TAG: std::sync::LazyLock<regex::Regex> =
+                std::sync::LazyLock::new(|| regex::Regex::new("</?[^>]+>").unwrap());
+            let miracles = self
+                .miracle
+                .iter()
+                .map(RogueTournMiracle::name)
+                // 专门为了处理「醒觉<unbreak>-310</unbreak>」加了这两句 replace
+                // TODO: 应该可以前置处理？比如在 name 里或者直接在 po -> vo 过程中处理？
+                .map(|name| XML_TAG.replace_all(name, ""))
+                // 处理「邪恶机械卫星＃900」
+                .map(|name| name.replace('#', "＃"))
+                .intersperse(", ".to_string())
+                .collect::<String>();
+            wiki.push_str("|起始奇物=");
+            wiki.push_str(&miracles);
+        }
+        if !self.formula.is_empty() {
+            let formulas = self
+                .formula
+                .iter()
+                .map(|formula| {
+                    if formula.category == FormulaCategory::PathEcho
+                        || ["筑城者", "赏金猎人"].contains(&formula.name())
+                    {
+                        Cow::Owned(formula.name().to_string() + "（方程）")
+                    } else {
+                        Cow::Borrowed(formula.name())
+                    }
+                })
+                .intersperse(Cow::Borrowed(", "))
+                .collect::<String>();
+            wiki.push_str("|起始方程=");
+            wiki.push_str(&formulas);
+        }
+        static AUTOMATON: std::sync::LazyLock<regex::Regex> =
+            std::sync::LazyLock::new(|| regex::Regex::new("自动机兵「([^」]+)」").unwrap());
+        macro_rules! boss {
+            ($plane:ident, $number:literal) => {
+                for (level, group) in &self.$plane {
+                    wiki.push_str("|第");
+                    wiki.push($number);
+                    wiki.push_str("位面首领");
+                    if *level != 0 {
+                        wiki.push('V');
+                        wiki.push_str(&level.to_string())
+                    }
+                    wiki.push('=');
+                    let monsters = group
+                        .list_and_weight
+                        .iter()
+                        .map(|(monster, _)| AUTOMATON.replace(monster.name(), "自动机兵•$1"))
+                        .intersperse(Cow::Borrowed(", "))
+                        .collect::<String>();
+                    wiki.push_str(&monsters);
+                }
+            };
+        }
+        boss!(monster_group_1, '一');
+        boss!(monster_group_2, '二');
+        boss!(monster_group_3, '三');
+        let contents = self
+            .content_detail
+            .iter()
+            .map(String::as_str)
+            .map(|s| s.strip_prefix("●").unwrap_or(s))
+            .intersperse(", ")
+            .collect::<String>();
+        wiki.push_str("|规则=");
+        wiki.push_str(&contents);
+        wiki.push_str("}}");
+        Cow::Owned(wiki)
+    }
 }
 
 #[derive(Clone, Debug)]

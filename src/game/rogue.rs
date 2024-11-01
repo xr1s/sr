@@ -27,6 +27,16 @@ impl GameData {
         self._rogue_handbook_miracle_type
             .get_or_init(|| self.load_to_map("ExcelOutput/RogueHandbookMiracleType.json"))
     }
+
+    fn _rogue_monster_group(&self) -> &FnvIndexMap<u32, po::rogue::RogueMonsterGroup> {
+        self._rogue_monster_group
+            .get_or_init(|| self.load_to_map("ExcelOutput/RogueMonsterGroup.json"))
+    }
+
+    fn _rogue_monster(&self) -> &FnvIndexMap<u32, po::rogue::RogueMonster> {
+        self._rogue_monster
+            .get_or_init(|| self.load_to_map("ExcelOutput/RogueMonster.json"))
+    }
 }
 
 impl GameData {
@@ -62,5 +72,13 @@ impl GameData {
         self._rogue_handbook_miracle_type()
             .get(&id)
             .map(|po| po.vo(self))
+    }
+
+    pub fn rogue_monster_group(&self, id: u32) -> Option<vo::rogue::RogueMonsterGroup> {
+        self._rogue_monster_group().get(&id).map(|po| po.vo(self))
+    }
+
+    pub fn rogue_monster(&self, id: u32) -> Option<vo::rogue::RogueMonster> {
+        self._rogue_monster().get(&id).map(|po| po.vo(self))
     }
 }

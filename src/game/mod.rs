@@ -43,6 +43,8 @@ pub struct GameData {
     _rogue_miracle_display: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracleDisplay>>,
     _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracle>>,
     _rogue_handbook_miracle_type: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracleType>>,
+    _rogue_monster_group: OnceLock<FnvIndexMap<u32, po::rogue::RogueMonsterGroup>>,
+    _rogue_monster: OnceLock<FnvIndexMap<u32, po::rogue::RogueMonster>>,
 
     // rogue_magic
     /// 不可知域
@@ -93,6 +95,8 @@ impl GameData {
             _rogue_miracle_display: OnceLock::new(),
             _rogue_handbook_miracle: OnceLock::new(),
             _rogue_handbook_miracle_type: OnceLock::new(),
+            _rogue_monster_group: OnceLock::new(),
+            _rogue_monster: OnceLock::new(),
             // rogue_magic_miracle
             _rogue_magic_miracle: OnceLock::new(),
             // rogue_tourn

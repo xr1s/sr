@@ -68,3 +68,22 @@ pub struct RogueHandbookMiracleType<'a> {
     pub id: u16,
     pub title: &'a str,
 }
+
+#[derive(Clone, Debug)]
+// 模拟宇宙一轮战斗的敌人，目前只用于差分宇宙周期演算 Boss
+pub struct RogueMonsterGroup<'a> {
+    pub id: u32,
+    pub list_and_weight: Vec<(vo::rogue::RogueMonster<'a>, u8)>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RogueMonster<'a> {
+    pub id: u32,
+    pub npc_monster: vo::monster::NPCMonsterData<'a>,
+}
+
+impl Name for RogueMonster<'_> {
+    fn name(&self) -> &str {
+        self.npc_monster.name
+    }
+}
