@@ -37,6 +37,11 @@ pub struct GameData {
     // rogue
     /// 模拟宇宙祝福
     _rogue_maze_buff: OnceLock<FnvIndexMap<u32, po::rogue::RogueMazeBuff>>,
+    /// 模拟宇宙奇物
+    _rogue_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracle>>,
+    _rogue_miracle_display: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracleDisplay>>,
+    _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracle>>,
+    _rogue_handbook_miracle_type: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracleType>>,
 
     // rogue_tourn
     _rogue_tourn_content_display:
@@ -80,6 +85,10 @@ impl GameData {
             _monster_camp: OnceLock::new(),
             // rogue
             _rogue_maze_buff: OnceLock::new(),
+            _rogue_miracle: OnceLock::new(),
+            _rogue_miracle_display: OnceLock::new(),
+            _rogue_handbook_miracle: OnceLock::new(),
+            _rogue_handbook_miracle_type: OnceLock::new(),
             // rogue_tourn
             _rogue_tourn_content_display: OnceLock::new(),
             _rogue_tourn_weekly_challenge: OnceLock::new(),

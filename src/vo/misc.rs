@@ -15,4 +15,7 @@ pub struct RewardData<'a> {
     pub counts: &'a [u32; 6],
     pub levels: &'a [u8; 6],
     pub ranks: &'a [u8; 6],
+    /// 星琼
+    pub hcoin: u16,
+    pub is_special: bool,
 }

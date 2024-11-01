@@ -47,6 +47,7 @@ pub(crate) struct RewardData {
     counts: [u32; 6],
     levels: [u8; 6], // 只有 null 和 1
     ranks: [u8; 6],  // 只有 null 和 1
+    /// 星琼
     hcoin: u16,
     is_special: bool,
 }
@@ -67,6 +68,8 @@ impl<'a> PO<'a> for RewardData {
             counts: &self.counts,
             levels: &self.levels,
             ranks: &self.ranks,
+            hcoin: self.hcoin,
+            is_special: self.is_special,
         }
     }
 }
@@ -137,4 +140,13 @@ impl<'de> serde::Deserialize<'de> for RewardData {
         }
         deserializer.deserialize_struct("RewardData", FIELDS, Visitor)
     }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ScheduleData {
+    #[serde(rename = "ID")]
+    id: u32,
+    begin_time: std::time::SystemTime,
 }
