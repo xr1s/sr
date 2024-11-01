@@ -114,7 +114,9 @@ impl<'a> PO<'a> for RogueMiracle {
             desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
             unlock_handbook: self
                 .unlock_handbook_miracle_id
-                .and_then(|id| game.rogue_handbook_miracle(id.get())),
+                .map(NonZero::get)
+                .map(|id| game.rogue_handbook_miracle(id))
+                .map(Option::unwrap),
         }
     }
 }

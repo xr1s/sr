@@ -13,7 +13,7 @@ pub struct RogueTournWeeklyChallenge<'a> {
     /// 点进介绍后的详情，一般是多一句进入第一位面时获得本周预设构筑
     pub content_detail: Vec<String>,
     /// 左下角展示的奖励，目前为止全部都是固定的 3 遗失晶块 + 30 遗器残骸
-    pub reward: (), // TODO,
+    pub reward: vo::misc::RewardData<'a>,
     /// 从 .content 成员中提取出来的本周所有预设构筑方程
     pub formula: Vec<RogueTournFormula<'a>>,
     /// 从 .content 成员中提取出来的本周所有预设构筑奇物

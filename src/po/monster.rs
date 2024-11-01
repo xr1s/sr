@@ -173,15 +173,13 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         let camp = self
             .monster_camp_id
-            .map(|id| id.get())
-            .and_then(|id| game.monster_camp(id));
+            .map(NonZero::get)
+            .map(|id| game.monster_camp(id))
+            .map(Option::unwrap);
         Self::VO {
             game,
             id: self.monster_template_id,
-            group_id: self
-                .template_group_id
-                .map(|id| id.get())
-                .unwrap_or_default(),
+            group_id: self.template_group_id.map(NonZero::get).unwrap_or_default(),
             name: game.text(&self.monster_name),
             camp_name: camp.map(|camp| camp.name).unwrap_or_default(),
             rank: self.rank,
@@ -193,7 +191,7 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
             critical_damage_base: self.critical_damage_base.value,
             status_resistance_base: self.status_resistance_base.unwrap_or_default().value,
             minimum_fatigue_ratio: self.minimum_fatigue_ratio.value,
-            stance_count: self.stance_count.map(|v| v.get()).unwrap_or_default(),
+            stance_count: self.stance_count.map(NonZero::get).unwrap_or_default(),
             initial_delay_ratio: self.initial_delay_ratio.unwrap_or_default().value,
             npc_monster_list: self
                 .npc_monster_list

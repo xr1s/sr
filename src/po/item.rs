@@ -221,7 +221,7 @@ impl<'a> PO<'a> for ItemConfig {
             bg_desc: game.text(&self.item_bg_desc),
             pile_limit: self.pile_limit,
             use_method: self.use_method,
-            use_data_id: self.use_data_id.map(|id| id.get()).unwrap_or_default(),
+            use_data_id: self.use_data_id.map(NonZero::get).unwrap_or_default(),
         }
     }
 }

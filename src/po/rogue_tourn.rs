@@ -58,10 +58,10 @@ pub enum FormulaCategory {
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct DescParam {
-    #[serde(rename = "FGMDOEKGPEE")]
+    #[serde(rename = "EOMLKKGEAEF")]
     r#type: DescParamType,
     #[serde_as(as = "serde_with::DisplayFromStr")]
-    #[serde(rename = "NLABNDMDIKM")]
+    #[serde(rename = "HPPEILAONGE")]
     value: u32,
 }
 
@@ -145,7 +145,7 @@ impl<'a> PO<'a> for RogueTournWeeklyChallenge {
                 .map(Option::unwrap)
                 .map(|display| display.content)
                 .collect(),
-            reward: (), // TODO
+            reward: game.reward_data(self.reward_id).unwrap(),
             formula: content_list
                 .iter_mut()
                 .flat_map(|content| std::mem::take(&mut content.formula))
@@ -250,7 +250,9 @@ impl<'a> PO<'a> for RogueTournMiracle {
                 .unwrap(),
             handbook: self
                 .handbook_miracle_id
-                .and_then(|id| game.rogue_tourn_handbook_miracle(id.get())),
+                .map(NonZero::get)
+                .map(|id| game.rogue_tourn_handbook_miracle(id))
+                .map(Option::unwrap),
         }
     }
 }
@@ -346,7 +348,7 @@ impl<'a> PO<'a> for RogueTournFormula {
             main_buff_type: buff_type_id_to_path(self.main_buff_type_id),
             main_buff_num: self.main_buff_num,
             sub_buff_type: self.sub_buff_type_id.map(buff_type_id_to_path),
-            sub_buff_num: self.sub_buff_num.map(|u| u.get()).unwrap_or_default(),
+            sub_buff_num: self.sub_buff_num.map(NonZero::get).unwrap_or_default(),
             category: self.formula_category,
             maze_buff: game.rogue_maze_buff(self.maze_buff_id).unwrap(),
             display: game
@@ -356,7 +358,9 @@ impl<'a> PO<'a> for RogueTournFormula {
             story: (), // TODO
             unlock_display: self
                 .unlock_display_id
-                .and_then(|id| game.rogue_tourn_content_display(id.get())),
+                .map(NonZero::get)
+                .map(|id| game.rogue_tourn_content_display(id))
+                .map(Option::unwrap),
         }
     }
 }

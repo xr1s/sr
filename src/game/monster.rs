@@ -10,13 +10,12 @@ impl GameData {
         self._monster_template_config_group.get_or_init(|| {
             let mut multimap = fnv::FnvHashMap::<u32, Vec<u32>>::default();
             for monster in self._monster_template_config().values() {
-                if monster.template_group_id.is_none() {
-                    continue;
+                if let Some(group_id) = monster.template_group_id {
+                    multimap
+                        .entry(group_id.get())
+                        .or_default()
+                        .push(monster.id());
                 }
-                multimap
-                    .entry(monster.template_group_id.unwrap().get())
-                    .or_default()
-                    .push(monster.id());
             }
             multimap
         })
