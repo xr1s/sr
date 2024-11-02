@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 
-use chrono::Datelike;
-
 use crate::po::rogue_tourn::{FormulaCategory, MiracleCategory};
 use crate::po::Path;
 use crate::{vo, Name, Wiki};
@@ -31,29 +29,27 @@ pub struct RogueTournWeeklyChallenge<'a> {
 }
 
 impl RogueTournWeeklyChallenge<'_> {
-    pub fn start_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
-        const ASIA_SHANGHAI: chrono::FixedOffset =
-            chrono::FixedOffset::east_opt(8 * 60 * 60).unwrap();
-        const FIRST_CHALLENGE_START_DATETIME: chrono::NaiveDateTime = chrono::NaiveDateTime::new(
-            chrono::NaiveDate::from_ymd_opt(2024, 6, 19).unwrap(),
-            chrono::NaiveTime::from_hms_opt(4, 0, 0).unwrap(),
+    const FIRST_CHALLENGE_MONDAY: chrono::DateTime<chrono::FixedOffset> =
+        chrono::DateTime::from_naive_utc_and_offset(
+            chrono::NaiveDateTime::new(
+                chrono::NaiveDate::from_ymd_opt(2024, 6, 17).unwrap(),
+                chrono::NaiveTime::from_hms_opt(4, 0, 0).unwrap(),
+            ),
+            chrono::FixedOffset::east_opt(8 * 60 * 60).unwrap(),
         );
-        let mut start_time = FIRST_CHALLENGE_START_DATETIME
-            .and_local_timezone(ASIA_SHANGHAI)
-            .unwrap();
-        if self.id > 1 {
-            let since_monday = FIRST_CHALLENGE_START_DATETIME
-                .weekday()
-                .num_days_from_monday();
-            start_time -= chrono::TimeDelta::days(since_monday as _);
+
+    pub fn start_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
+        if self.id == 1 {
+            // 第一期跟随版本开放日期，周三十点开始
+            return Self::FIRST_CHALLENGE_MONDAY
+                + chrono::TimeDelta::days(2)
+                + chrono::TimeDelta::hours(6);
         }
-        start_time + chrono::TimeDelta::weeks(self.id as i64 - 1)
+        Self::FIRST_CHALLENGE_MONDAY + chrono::TimeDelta::weeks(self.id as i64 - 1)
     }
 
     pub fn end_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
-        let start_time = self.start_time();
-        start_time - chrono::TimeDelta::days(start_time.weekday().num_days_from_monday() as _)
-            + chrono::TimeDelta::weeks(1)
+        Self::FIRST_CHALLENGE_MONDAY + chrono::TimeDelta::weeks(self.id as _)
             - chrono::TimeDelta::nanoseconds(1)
     }
 }
@@ -68,18 +64,11 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
         let end_date = self.end_time().date_naive().pred_opt().unwrap();
         wiki.push_str(&end_date.format("%Y/%m/%d").to_string());
         if !self.miracle.is_empty() {
-            static XML_TAG: std::sync::LazyLock<regex::Regex> =
-                std::sync::LazyLock::new(|| regex::Regex::new("</?[^>]+>").unwrap());
             let miracles = self
                 .miracle
                 .iter()
-                .map(RogueTournMiracle::name)
-                // 专门为了处理「醒觉<unbreak>-310</unbreak>」加了这两句 replace
-                // TODO: 应该可以前置处理？比如在 name 里或者直接在 po -> vo 过程中处理？
-                .map(|name| XML_TAG.replace_all(name, ""))
-                // 处理「邪恶机械卫星＃900」
-                .map(|name| name.replace('#', "＃"))
-                .intersperse(", ".to_string())
+                .map(RogueTournMiracle::wiki_name)
+                .intersperse(Cow::Borrowed(", "))
                 .collect::<String>();
             wiki.push_str("|起始奇物=");
             wiki.push_str(&miracles);
@@ -88,22 +77,12 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
             let formulas = self
                 .formula
                 .iter()
-                .map(|formula| {
-                    if formula.category == FormulaCategory::PathEcho
-                        || ["筑城者", "赏金猎人"].contains(&formula.name())
-                    {
-                        Cow::Owned(formula.name().to_string() + "（方程）")
-                    } else {
-                        Cow::Borrowed(formula.name())
-                    }
-                })
+                .map(RogueTournFormula::wiki_name)
                 .intersperse(Cow::Borrowed(", "))
                 .collect::<String>();
             wiki.push_str("|起始方程=");
             wiki.push_str(&formulas);
         }
-        static AUTOMATON: std::sync::LazyLock<regex::Regex> =
-            std::sync::LazyLock::new(|| regex::Regex::new("自动机兵「([^」]+)」").unwrap());
         macro_rules! boss {
             ($plane:ident, $number:literal) => {
                 for (level, group) in &self.$plane {
@@ -118,7 +97,7 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
                     let monsters = group
                         .list_and_weight
                         .iter()
-                        .map(|(monster, _)| AUTOMATON.replace(monster.name(), "自动机兵•$1"))
+                        .map(|(monster, _)| monster.wiki_name())
                         .intersperse(Cow::Borrowed(", "))
                         .collect::<String>();
                     wiki.push_str(&monsters);
@@ -165,6 +144,13 @@ pub struct RogueTournMiracle<'a> {
 impl Name for RogueTournMiracle<'_> {
     fn name(&self) -> &str {
         self.display.name
+    }
+    fn wiki_name(&self) -> Cow<'_, str> {
+        match self.id {
+            6122 => Cow::Borrowed("邪恶机械卫星＃900"),
+            6505 => Cow::Borrowed("醒觉-310"),
+            _ => Cow::Borrowed(self.name()),
+        }
     }
 }
 
@@ -213,6 +199,15 @@ pub struct RogueTournFormula<'a> {
 impl Name for RogueTournFormula<'_> {
     fn name(&self) -> &str {
         self.maze_buff.name
+    }
+    fn wiki_name(&self) -> Cow<'_, str> {
+        if self.category == FormulaCategory::PathEcho
+            || ["赏金猎人", "筑城者"].contains(&self.name())
+        {
+            Cow::Owned(self.name().to_string() + "（方程）")
+        } else {
+            Cow::Borrowed(self.name())
+        }
     }
 }
 

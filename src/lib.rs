@@ -21,6 +21,7 @@ trait PO<'a> {
 
 pub trait Name {
     fn name(&self) -> &str;
+    fn wiki_name(&self) -> std::borrow::Cow<'_, str>;
 }
 
 impl<L: Name, R: Name> Name for either::Either<L, R> {
@@ -28,6 +29,12 @@ impl<L: Name, R: Name> Name for either::Either<L, R> {
         match self {
             Self::Left(l) => l.name(),
             Self::Right(r) => r.name(),
+        }
+    }
+    fn wiki_name(&self) -> std::borrow::Cow<'_, str> {
+        match self {
+            Self::Left(l) => l.wiki_name(),
+            Self::Right(r) => r.wiki_name(),
         }
     }
 }

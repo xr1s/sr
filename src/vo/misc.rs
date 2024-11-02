@@ -11,9 +11,13 @@ pub struct ExtraEffectConfig<'a> {
 #[derive(Clone, Debug)]
 pub struct RewardData<'a> {
     pub id: u32,
+    /// 奖励可能是物品、光锥、角色，后两者常出现于活动奖励
     pub item_ids: &'a [u32; 6],
+    /// 数量
     pub counts: &'a [u32; 6],
+    /// 不明，目前全部都是 1
     pub levels: &'a [u8; 6],
+    /// 不明，目前全部都是 1
     pub ranks: &'a [u8; 6],
     /// 星琼
     pub hcoin: u16,

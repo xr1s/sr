@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{vo, Name};
 
 #[derive(Clone, Debug)]
@@ -33,6 +35,9 @@ pub struct RogueMiracle<'a> {
 impl Name for RogueMiracle<'_> {
     fn name(&self) -> &str {
         self.display.name
+    }
+    fn wiki_name(&self) -> Cow<'_, str> {
+        Cow::Borrowed(self.name())
     }
 }
 
@@ -85,5 +90,15 @@ pub struct RogueMonster<'a> {
 impl Name for RogueMonster<'_> {
     fn name(&self) -> &str {
         self.npc_monster.name
+    }
+    fn wiki_name(&self) -> Cow<'_, str> {
+        if let Some(name) = self.name().strip_prefix("自动机兵「") {
+            let lend = name.find('」').unwrap();
+            let rbeg = lend + "」".len();
+            let (l, r) = (&name[..lend], &name[rbeg..]);
+            Cow::Owned("自动机兵•".to_string() + l + r)
+        } else {
+            Cow::Borrowed(self.name())
+        }
     }
 }
