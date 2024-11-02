@@ -26,8 +26,6 @@ pub struct GameData {
     _monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterSkillConfig>>,
     _monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
     /// 因为存在自引用, 所以只好储存 group_id 到 id 的映射;
-    /// 考虑到以后可能还会做名称到对象的映射，未来可能会全部重构到 Arc 中.
-    /// TODO: Rust 似乎没有多索引映射表, 要不要考虑自己实现一个?
     _monster_template_config_group: OnceLock<fnv::FnvHashMap<u32, Vec<u32>>>,
     _npc_monster_data: OnceLock<FnvIndexMap<u32, po::monster::NPCMonsterData>>,
 
@@ -169,8 +167,10 @@ impl GameData {
 
 macro_rules! impl_field {
     // 入口
-    ($field:ident, $head:ident $( :: $tail:tt )+) => {
-        impl_field!(@ $field, $head$(::$tail)+, $($tail)+);
+    ($field:ident, $typ:ty) => {
+        paste::paste! {
+            impl_field!($field, $typ, stringify!([<$field:camel>]));
+        }
     };
 
     // 出口
@@ -189,15 +189,6 @@ macro_rules! impl_field {
                 self.[<_$field>]().values().map(|po| po.vo(self)).collect()
             }
         }
-    };
-
-    // 求 basename
-    (@ $field:ident, $typ:ty, $json:ident) => {
-        impl_field!($field, $typ, stringify!($json));
-    };
-
-    (@ $field:ident, $typ:ty, $head:ident $($tail:ident)+) => {
-        impl_field!(@ $field, $typ, $($tail)+);
     };
 }
 
@@ -230,7 +221,7 @@ impl GameData {
     impl_field!(monster_config, monster::MonsterConfig);
     impl_field!(monster_skill_config, monster::MonsterSkillConfig);
     impl_field!(monster_template_config, monster::MonsterTemplateConfig);
-    impl_field!(npc_monster_data, monster::NPCMonsterData);
+    impl_field!(npc_monster_data, monster::NPCMonsterData, "NPCMonsterData");
     // rogue
     impl_field!(rogue_handbook_miracle, rogue::RogueHandbookMiracle);
     impl_field!(rogue_handbook_miracle_type, rogue::RogueHandbookMiracleType);
@@ -240,14 +231,14 @@ impl GameData {
     impl_field!(rogue_monster, rogue::RogueMonster);
     impl_field!(rogue_monster_group, rogue::RogueMonsterGroup);
     // rogue magic
-    impl_field!(rogue_magic_miracle, rogue::RogueMiracle, "RogueMagicMiracle");
+    impl_field!(rogue_magic_miracle, rogue::RogueMiracle);
     // rogue tourn
     impl_field!(rogue_tourn_content_display, rogue::tourn::RogueTournContentDisplay);
     impl_field!(rogue_tourn_formula, rogue::tourn::RogueTournFormula);
     impl_field!(rogue_tourn_formula_display, rogue::tourn::RogueTournFormulaDisplay);
     impl_field!(rogue_tourn_handbook_miracle, rogue::tourn::RogueTournHandbookMiracle);
     impl_field!(rogue_tourn_miracle, rogue::tourn::RogueTournMiracle);
-    impl_field!(rogue_tourn_miracle_display, rogue::RogueMiracleDisplay, "RogueTournMiracleDisplay");
+    impl_field!(rogue_tourn_miracle_display, rogue::RogueMiracleDisplay);
     impl_field!(rogue_tourn_weekly_challenge, rogue::tourn::RogueTournWeeklyChallenge);
     impl_field!(rogue_tourn_weekly_display, rogue::tourn::RogueTournWeeklyDisplay);
 }
