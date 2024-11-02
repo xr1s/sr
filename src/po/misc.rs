@@ -34,8 +34,8 @@ impl<'a> PO<'a> for ExtraEffectConfig {
             .collect::<Vec<_>>();
         Self::VO {
             id: self.extra_effect_id,
-            name: game.text(&self.extra_effect_name),
-            desc: crate::format::format(game.text(&self.extra_effect_desc), &arguments),
+            name: game.text(self.extra_effect_name),
+            desc: crate::format::format(game.text(self.extra_effect_desc), &arguments),
         }
     }
 }

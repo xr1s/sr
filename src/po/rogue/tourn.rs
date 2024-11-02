@@ -84,7 +84,7 @@ impl<'a> PO<'a> for RogueTournContentDisplay {
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.display_id,
-            content: game.text(&self.display_content),
+            content: game.text(self.display_content),
         }
     }
 }
@@ -131,7 +131,7 @@ impl<'a> PO<'a> for RogueTournWeeklyChallenge {
             .collect::<Vec<_>>();
         Self::VO {
             id: self.challenge_id,
-            name: game.text(&self.weekly_name),
+            name: game.text(self.weekly_name),
             content: content_list
                 .iter_mut()
                 .map(|content| std::mem::take(&mut content.content))
@@ -220,7 +220,7 @@ impl<'a> PO<'a> for RogueTournWeeklyDisplay {
             .iter()
             .map(crate::format::Argument::from)
             .collect::<Vec<_>>();
-        let content = crate::format::format(game.text(&self.weekly_display_content), &names);
+        let content = crate::format::format(game.text(self.weekly_display_content), &names);
 
         Self::VO {
             id: self.weekly_display_id,
@@ -402,7 +402,7 @@ impl<'a> PO<'a> for RogueTournFormulaDisplay {
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.formula_display_id,
-            story: game.text(&self.formula_story),
+            story: game.text(self.formula_story),
             extra_effect: self
                 .extra_effect
                 .iter()

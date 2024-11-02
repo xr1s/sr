@@ -70,10 +70,10 @@ impl<'a> PO<'a> for RogueMazeBuff {
             id: self.id,
             lv: self.lv,
             max_lv: self.lv_max,
-            name: game.text(&self.buff_name),
-            desc: crate::format::format(game.text(&self.buff_desc), &params),
-            simple_desc: crate::format::format(game.text(&self.buff_simple_desc), &params),
-            desc_battle: game.text(&self.buff_desc_battle),
+            name: game.text(self.buff_name),
+            desc: crate::format::format(game.text(self.buff_desc), &params),
+            simple_desc: crate::format::format(game.text(self.buff_simple_desc), &params),
+            desc_battle: game.text(self.buff_desc_battle),
         }
     }
 }
@@ -118,7 +118,7 @@ impl<'a> PO<'a> for RogueMiracle {
                 .rogue_miracle_display(self.miracle_display_id)
                 .or_else(|| game.rogue_tourn_miracle_display(self.miracle_display_id))
                 .unwrap(),
-            desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
+            desc: crate::format::format(game.text(self.miracle_desc), &arguments),
             unlock_handbook: self
                 .unlock_handbook_miracle_id
                 .map(NonZero::get)
@@ -164,10 +164,10 @@ impl<'a> PO<'a> for RogueMiracleDisplay {
             .collect::<Vec<_>>();
         Self::VO {
             id: self.miracle_display_id,
-            name: game.text(&self.miracle_name),
-            desc: crate::format::format(game.text(&self.miracle_desc), &arguments),
-            bg_desc: game.text(&self.miracle_bg_desc),
-            tag: game.text(&self.miracle_tag),
+            name: game.text(self.miracle_name),
+            desc: crate::format::format(game.text(self.miracle_desc), &arguments),
+            bg_desc: game.text(self.miracle_bg_desc),
+            tag: game.text(self.miracle_tag),
             extra_effect: self
                 .extra_effect
                 .iter()
@@ -248,7 +248,7 @@ impl<'a> PO<'a> for RogueHandbookMiracleType {
     fn vo(&self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.rogue_handbook_miracle_type,
-            title: game.text(&self.rogue_miracle_type_title),
+            title: game.text(self.rogue_miracle_type_title),
         }
     }
 }

@@ -180,7 +180,7 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
             game,
             id: self.monster_template_id,
             group_id: self.template_group_id.map(NonZero::get).unwrap_or_default(),
-            name: game.text(&self.monster_name),
+            name: game.text(self.monster_name),
             camp_name: camp.map(|camp| camp.name).unwrap_or_default(),
             rank: self.rank,
             attack_base: self.attack_base.value,
@@ -263,9 +263,9 @@ impl<'a> PO<'a> for MonsterConfig {
             template: game
                 .monster_template_config(self.monster_template_id)
                 .unwrap(),
-            name: game.text(&self.monster_name),
-            introduction: game.text(&self.monster_introduction),
-            battle_introduction: game.text(&self.monster_battle_introduction),
+            name: game.text(self.monster_name),
+            introduction: game.text(self.monster_introduction),
+            battle_introduction: game.text(self.monster_battle_introduction),
             attack_modify_ratio: self.attack_modify_ratio.value,
             defence_modify_ratio: self.defence_modify_ratio.value,
             hp_modify_ratio: self.hp_modify_ratio.value,
@@ -346,8 +346,8 @@ impl<'a> PO<'a> for NPCMonsterData {
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.id,
-            name: game.text(&self.npc_name),
-            title: game.text(&self.npc_title),
+            name: game.text(self.npc_name),
+            title: game.text(self.npc_title),
             character_type: self.character_type,
             sub_type: self.sub_type,
             rank: self.rank,
@@ -402,10 +402,10 @@ impl<'a> PO<'a> for MonsterSkillConfig {
             .collect::<Vec<_>>();
         Self::VO {
             id: self.skill_id,
-            name: game.text(&self.skill_name),
-            desc: crate::format::format(game.text(&self.skill_desc), &params),
-            type_desc: game.text(&self.skill_type_desc),
-            tag: game.text(&self.skill_tag),
+            name: game.text(self.skill_name),
+            desc: crate::format::format(game.text(self.skill_desc), &params),
+            type_desc: game.text(self.skill_type_desc),
+            tag: game.text(self.skill_tag),
             phase_list: &self.phase_list,
             is_threat: self.is_threat,
             extra_effect_list: self
@@ -446,7 +446,7 @@ impl<'a> PO<'a> for MonsterCamp {
         Self::VO {
             id: self.id,
             sort_id: self.sort_id,
-            name: game.text(&self.name),
+            name: game.text(self.name),
             r#type: self.camp_type,
         }
     }

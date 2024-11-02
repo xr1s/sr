@@ -109,7 +109,7 @@ impl GameData {
         }
     }
 
-    pub(crate) fn text(&self, text: &po::Text) -> &str {
+    pub(crate) fn text(&self, text: po::Text) -> &str {
         self.text_map
             .get(&text.hash)
             .map(String::as_str)
