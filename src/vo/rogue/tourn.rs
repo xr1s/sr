@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use crate::po::rogue_tourn::{FormulaCategory, MiracleCategory};
+use crate::po::rogue::tourn::{FormulaCategory, MiracleCategory};
 use crate::po::Path;
 use crate::{vo, Name, Wiki};
 
 #[derive(Clone, Debug)]
 /// 周期演算
 pub struct RogueTournWeeklyChallenge<'a> {
-    pub id: u16,
+    pub id: u8,
     /// 标题
     pub name: &'a str,
     /// 文字介绍，一般是初始获得方程和初始获得奇物的介绍
@@ -187,7 +187,7 @@ pub struct RogueTournFormula<'a> {
     /// 对应模拟宇宙祝福（方程名称、效果文案都在此）
     pub maze_buff: vo::rogue::RogueMazeBuff<'a>,
     /// 方程的背景故事文案和特殊效果说明
-    pub display: vo::rogue_tourn::RogueTournFormulaDisplay<'a>,
+    pub display: vo::rogue::tourn::RogueTournFormulaDisplay<'a>,
     /// 是否在图鉴中（临界方程均为 false）
     pub is_in_handbook: bool,
     /// 临界方程和三星方程首次展开的推演故事

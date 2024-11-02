@@ -80,7 +80,7 @@ impl ID for RogueTournContentDisplay {
 }
 
 impl<'a> PO<'a> for RogueTournContentDisplay {
-    type VO = vo::rogue_tourn::RogueTournContentDisplay<'a>;
+    type VO = vo::rogue::tourn::RogueTournContentDisplay<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.display_id,
@@ -95,7 +95,7 @@ impl<'a> PO<'a> for RogueTournContentDisplay {
 #[serde(deny_unknown_fields)]
 pub(crate) struct RogueTournWeeklyChallenge {
     #[serde(rename = "ChallengeID")]
-    challenge_id: u16,
+    challenge_id: u8,
     weekly_name: Text,
     weekly_content_list: Vec<u16>,
     weekly_content_detail_list: Vec<u16>,
@@ -114,14 +114,14 @@ pub(crate) struct RogueTournWeeklyChallenge {
 }
 
 impl ID for RogueTournWeeklyChallenge {
-    type ID = u16;
+    type ID = u8;
     fn id(&self) -> Self::ID {
         self.challenge_id
     }
 }
 
 impl<'a> PO<'a> for RogueTournWeeklyChallenge {
-    type VO = vo::rogue_tourn::RogueTournWeeklyChallenge<'a>;
+    type VO = vo::rogue::tourn::RogueTournWeeklyChallenge<'a>;
     fn vo(&self, game: &'a GameData) -> Self::VO {
         let mut content_list = self
             .weekly_content_list
@@ -189,7 +189,7 @@ impl ID for RogueTournWeeklyDisplay {
 }
 
 impl<'a> PO<'a> for RogueTournWeeklyDisplay {
-    type VO = vo::rogue_tourn::RogueTournWeeklyDisplay<'a>;
+    type VO = vo::rogue::tourn::RogueTournWeeklyDisplay<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         use DescParamType::{Formula, Miracle};
         let formula = self
@@ -253,7 +253,7 @@ impl ID for RogueTournMiracle {
 }
 
 impl<'a> PO<'a> for RogueTournMiracle {
-    type VO = vo::rogue_tourn::RogueTournMiracle<'a>;
+    type VO = vo::rogue::tourn::RogueTournMiracle<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.miracle_id,
@@ -290,7 +290,7 @@ impl ID for RogueTournHandbookMiracle {
 }
 
 impl<'a> PO<'a> for RogueTournHandbookMiracle {
-    type VO = vo::rogue_tourn::RogueTournHandbookMiracle<'a>;
+    type VO = vo::rogue::tourn::RogueTournHandbookMiracle<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.handbook_miracle_id,
@@ -340,7 +340,7 @@ impl ID for RogueTournFormula {
 }
 
 impl<'a> PO<'a> for RogueTournFormula {
-    type VO = vo::rogue_tourn::RogueTournFormula<'a>;
+    type VO = vo::rogue::tourn::RogueTournFormula<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         fn buff_type_id_to_path(buff_type_id: impl Into<u8>) -> Path {
             match buff_type_id.into() {
@@ -398,7 +398,7 @@ impl ID for RogueTournFormulaDisplay {
 }
 
 impl<'a> PO<'a> for RogueTournFormulaDisplay {
-    type VO = vo::rogue_tourn::RogueTournFormulaDisplay<'a>;
+    type VO = vo::rogue::tourn::RogueTournFormulaDisplay<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.formula_display_id,

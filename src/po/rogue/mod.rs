@@ -1,3 +1,5 @@
+pub(crate) mod tourn;
+
 use std::{collections::HashMap, num::NonZero, path::PathBuf};
 
 use crate::{vo, GameData, ID, PO};
