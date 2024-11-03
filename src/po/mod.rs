@@ -4,7 +4,9 @@ use crate::Wiki;
 
 pub mod challenge;
 pub mod item;
+pub mod map;
 pub mod misc;
+pub mod mission;
 pub mod monster;
 pub mod rogue;
 
@@ -80,13 +82,15 @@ impl Wiki for Path {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Text {
     pub hash: i32,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize,
+)]
 #[serde(rename_all = "PascalCase")]
 pub struct Value<T> {
     pub value: T,

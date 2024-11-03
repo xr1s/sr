@@ -1,6 +1,12 @@
 use crate::po::item::{ItemMainType, ItemSubType, Rarity, UseMethod};
 use crate::{vo, GameData};
 
+#[derive(Clone, Debug)]
+pub struct ItemList<'a> {
+    pub item: ItemConfig<'a>,
+    pub num: u16,
+}
+
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Debug)]
 pub struct ItemConfig<'a> {
@@ -23,9 +29,9 @@ pub struct ItemConfig<'a> {
     /// 具体效果在不同类型的对象里, 无法在这里简单映射
     /// 2.6 之后似乎消失了?
     pub use_data_id: u32,
+    /// 道具拆分效果，比如光锥、遗器
+    pub return_item_id_list: Vec<ItemList<'a>>,
 }
-
-impl ItemConfig<'_> {}
 
 #[derive(Clone, Debug)]
 pub struct ItemUseData<'a> {

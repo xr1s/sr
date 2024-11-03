@@ -172,7 +172,7 @@ impl MonsterConfig<'_> {
     pub fn summons(&self) -> Vec<MonsterConfig> {
         self.custom_values
             .iter()
-            .filter_map(|(_, &id)| self.game.monster_config(id as u32))
+            .filter_map(|(_, &id)| self.game.monster_config(id as _))
             .collect()
     }
 }

@@ -81,6 +81,18 @@ mod sealed {
             }
         }
     }
+
+    impl Formattable for u16 {
+        fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+            <u32 as Formattable>::write_raw(&(*self as u32), f, percent);
+        }
+        fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+            <u32 as Formattable>::write_int(&(*self as u32), f, percent);
+        }
+        fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+            <u32 as Formattable>::write_float(&(*self as u32), f, prec, percent);
+        }
+    }
 }
 
 pub struct Argument<'a>(&'a dyn sealed::Formattable);
@@ -93,6 +105,12 @@ impl<'a> From<&'a f32> for Argument<'a> {
 
 impl<'a> From<&'a &str> for Argument<'a> {
     fn from(value: &'a &str) -> Self {
+        Self(value)
+    }
+}
+
+impl<'a> From<&'a u16> for Argument<'a> {
+    fn from(value: &'a u16) -> Self {
         Self(value)
     }
 }

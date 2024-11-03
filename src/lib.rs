@@ -1,3 +1,4 @@
+#![feature(debug_closure_helpers)]
 #![feature(iter_intersperse)]
 
 pub mod format;
@@ -8,6 +9,7 @@ pub mod vo;
 pub use game::GameData;
 
 pub(crate) type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
+pub(crate) type FnvMultiMap<K, V> = multimap::MultiMap<K, V, fnv::FnvBuildHasher>;
 
 pub trait ID {
     type ID: Eq + PartialEq + std::hash::Hash;

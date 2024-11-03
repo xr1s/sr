@@ -107,7 +107,7 @@ pub enum SkillModifier {
     TwoTurnNotCancel,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct CustomValue {
     #[serde(rename = "MFKLINKCPPA")]
@@ -142,13 +142,13 @@ pub(crate) struct MonsterTemplateConfig {
     #[serde(rename = "NatureID")]
     nature_id: u8, // 目前只有 1
     attack_base: Value<u16>,
-    defence_base: Value<u16>,
+    defence_base: Option<Value<NonZero<u16>>>,
     #[serde(rename = "HPBase")]
     hp_base: Value<f32>,
     speed_base: Option<Value<NonZero<u16>>>,
     stance_base: Option<Value<NonZero<u16>>>,
     stance_type: Option<StanceType>,
-    critical_damage_base: Value<f32>,
+    critical_damage_base: Option<Value<f32>>,
     status_resistance_base: Option<Value<f32>>,
     minimum_fatigue_ratio: Value<f32>,
     #[serde(rename = "AIPath")]
@@ -184,11 +184,14 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
             camp_name: camp.map(|camp| camp.name).unwrap_or_default(),
             rank: self.rank,
             attack_base: self.attack_base.value,
-            defence_base: self.defence_base.value,
+            defence_base: self.defence_base.map(|v| v.value.get()).unwrap_or_default(),
             hp_base: self.hp_base.value,
             speed_base: self.speed_base.map(|v| v.value.get()).unwrap_or_default(),
             stance_base: self.stance_base.map(|v| v.value.get()).unwrap_or_default(),
-            critical_damage_base: self.critical_damage_base.value,
+            critical_damage_base: self
+                .critical_damage_base
+                .map(|v| v.value)
+                .unwrap_or_default(),
             status_resistance_base: self.status_resistance_base.unwrap_or_default().value,
             minimum_fatigue_ratio: self.minimum_fatigue_ratio.value,
             stance_count: self.stance_count.map(NonZero::get).unwrap_or_default(),
@@ -197,14 +200,11 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
                 .npc_monster_list
                 .iter()
                 .filter_map(|&id| {
-                    let npc = game.npc_monster_data(id);
-                    if npc.is_none() {
-                        log::warn!(
-                            "monster_template_config {} npc_monster_list not found: {id}",
-                            self.monster_template_id
-                        );
+                    if id == 1005010 || id == 1012010 || id == 8022020 {
+                        None // TODO: 疑似缺数据
+                    } else {
+                        game.npc_monster_data(id)
                     }
-                    npc
                 })
                 .collect(),
             stance_type: self.stance_type,
@@ -260,8 +260,9 @@ impl<'a> PO<'a> for MonsterConfig {
         Self::VO {
             game,
             id: self.monster_id,
-            template: game
-                .monster_template_config(self.monster_template_id)
+            template: None
+                .or_else(|| game.monster_template_config(self.monster_template_id))
+                .or_else(|| game.monster_template_unique_config(self.monster_template_id))
                 .unwrap(),
             name: game.text(self.monster_name),
             introduction: game.text(self.monster_introduction),
@@ -274,7 +275,10 @@ impl<'a> PO<'a> for MonsterConfig {
             skill_list: self
                 .skill_list
                 .iter()
-                .map(|&id| game.monster_skill_config(id))
+                .map(|&id| {
+                    None.or_else(|| game.monster_skill_config(id))
+                        .or_else(|| game.monster_skill_unique_config(id))
+                })
                 .map(Option::unwrap)
                 .collect(),
             custom_values: self
@@ -411,7 +415,8 @@ impl<'a> PO<'a> for MonsterSkillConfig {
             extra_effect_list: self
                 .extra_effect_id_list
                 .iter()
-                .filter_map(|&id| game.extra_effect_config(id))
+                .map(|&id| game.extra_effect_config(id))
+                .map(Option::unwrap)
                 .collect(),
             damage_type: self.damage_type,
             skill_trigger_key: self.skill_trigger_key.as_str(),

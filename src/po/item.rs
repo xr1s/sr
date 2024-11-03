@@ -10,6 +10,8 @@ pub enum ItemMainType {
     /// 有个图标用来展示, 实际不存在的道具
     /// 出现在黑塔模拟宇宙遗器模板
     Display,
+    /// 光锥, 仅出现在 ItemConfigEquipment.json 中
+    Equipment,
     /// 各种材料, 非常多非常杂, 参见 ItemSubType
     Material,
     /// 任务道具
@@ -43,6 +45,10 @@ pub enum ItemSubType {
     /// 对应 ItemMainType 为 Usable
     /// 对应 UseMethod 为 AutoConversionItem 自动转换
     ChessRogueDiceSurface,
+    /// 星魂, 仅出现在 ItemConfigAvatarRank.json 中
+    Eidolon,
+    /// 光锥, 仅出现在 ItemConfigEquipment.json 中
+    Equipment,
     /// 星天演武仪典技能和饮料
     /// 对应 ItemMainType 为 Material
     FightFestSkill,
@@ -164,12 +170,37 @@ pub enum UseMethod {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum SellType {
     Destroy,
+    Sell,
+}
+
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ItemList {
+    #[serde(rename = "ItemID")]
+    pub(crate) item_id: u32,
+    #[serde(rename = "ItemNum")]
+    pub(crate) item_num: Option<NonZero<u16>>,
+}
+
+impl<'a> PO<'a> for ItemList {
+    type VO = vo::item::ItemList<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            item: None
+                .or_else(|| game.item_config(self.item_id))
+                .or_else(|| game.item_config_avatar_rank(self.item_id))
+                .or_else(|| game.item_config_equipment(self.item_id))
+                .unwrap(),
+            num: self.item_num.map(NonZero::get).unwrap_or_default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-pub(crate) struct ItemConfig {
+pub struct ItemConfig {
     #[serde(rename = "ID")]
     id: u32,
     item_main_type: ItemMainType,
@@ -193,7 +224,7 @@ pub(crate) struct ItemConfig {
     use_data_id: Option<NonZero<u32>>,
     custom_data_list: Vec<u16>,
     #[serde(rename = "ReturnItemIDList")]
-    return_item_id_list: [(); 0], // 只有空
+    return_item_id_list: Vec<ItemList>,
     item_group: Option<NonZero<u16>>,
     sell_type: Option<SellType>,
     #[serde(default)]
@@ -222,6 +253,11 @@ impl<'a> PO<'a> for ItemConfig {
             pile_limit: self.pile_limit,
             use_method: self.use_method,
             use_data_id: self.use_data_id.map(NonZero::get).unwrap_or_default(),
+            return_item_id_list: self
+                .return_item_id_list
+                .iter()
+                .map(|item| item.vo(game))
+                .collect(),
         }
     }
 }

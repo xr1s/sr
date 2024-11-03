@@ -185,7 +185,7 @@ pub struct RogueTournFormula<'a> {
     /// 方程稀有度
     pub category: FormulaCategory,
     /// 对应模拟宇宙祝福（方程名称、效果文案都在此）
-    pub maze_buff: vo::rogue::RogueMazeBuff<'a>,
+    pub maze_buff: vo::misc::MazeBuff<'a>,
     /// 方程的背景故事文案和特殊效果说明
     pub display: vo::rogue::tourn::RogueTournFormulaDisplay<'a>,
     /// 是否在图鉴中（临界方程均为 false）
