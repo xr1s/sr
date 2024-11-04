@@ -199,13 +199,9 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
             npc_monster_list: self
                 .npc_monster_list
                 .iter()
-                .filter_map(|&id| {
-                    if id == 1005010 || id == 1012010 || id == 8022020 {
-                        None // TODO: 疑似缺数据
-                    } else {
-                        game.npc_monster_data(id)
-                    }
-                })
+                .filter(|&&id| id != 1005010 && id != 1012010 && id != 8022020) // TODO: 疑似缺数据
+                .map(|&id| game.npc_monster_data(id))
+                .map(Option::unwrap)
                 .collect(),
             stance_type: self.stance_type,
         }

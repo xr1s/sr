@@ -23,6 +23,10 @@ pub struct GameData {
     _challenge_story_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_story_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
     _challenge_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
+    _stage_infinite_group: OnceLock<FnvIndexMap<u32, po::challenge::StageInfiniteGroup>>,
+    _stage_infinite_monster_group:
+        OnceLock<FnvIndexMap<u32, po::challenge::StageInfiniteMonsterGroup>>,
+    _stage_infinite_wave_config: OnceLock<FnvIndexMap<u32, po::challenge::StageInfiniteWaveConfig>>,
 
     // item
     /// 道具
@@ -126,6 +130,9 @@ impl GameData {
             _challenge_story_reward_line: OnceLock::new(),
             _challenge_story_target_config: OnceLock::new(),
             _challenge_target_config: OnceLock::new(),
+            _stage_infinite_group: OnceLock::new(),
+            _stage_infinite_monster_group: OnceLock::new(),
+            _stage_infinite_wave_config: OnceLock::new(),
             // map
             _map_entrance: OnceLock::new(),
             _mapping_info: OnceLock::new(),
@@ -310,6 +317,9 @@ impl GameData {
     field!(challenge_story_maze_config, u16 => challenge::MazeConfig);
     field!(challenge_story_target_config, u16 => challenge::TargetConfig);
     field!(challenge_target_config, u16 => challenge::TargetConfig);
+    field!(stage_infinite_group, u32 => challenge::StageInfiniteGroup);
+    field!(stage_infinite_monster_group, u32 => challenge::StageInfiniteMonsterGroup);
+    field!(stage_infinite_wave_config, u32 => challenge::StageInfiniteWaveConfig);
     // item
     field!(item_config, u32 => item::ItemConfig);
     field!(item_config_avatar_rank, u32 => item::ItemConfig);

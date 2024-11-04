@@ -8,7 +8,7 @@ use std::{num::NonZero, path::PathBuf};
 
 use crate::{vo, GameData, ID, PO};
 
-use super::{Element, Text};
+use super::{Element, Text, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 /// 逐光捡金类型
@@ -95,13 +95,12 @@ impl<'a> PO<'a> for GroupConfig {
                 .map(NonZero::get)
                 .map(|id| game.map_entrance(id))
                 .map(Option::unwrap),
-            mapping_info: self.mapping_info_id.map(NonZero::get).and_then(|id| {
-                if id == 1220 {
-                    None // TODO: 疑似缺数据
-                } else {
-                    Some(game.mapping_info(id).unwrap())
-                }
-            }),
+            mapping_info: self
+                .mapping_info_id
+                .map(NonZero::get)
+                .filter(|&id| id != 1220) // TODO: 疑似缺数据
+                .map(|id| game.mapping_info(id))
+                .map(Option::unwrap),
             world: self
                 .world_id
                 .map(NonZero::get)
@@ -273,6 +272,113 @@ impl<'a> PO<'a> for RewardLine {
             group_id: self.group_id,
             star_count: self.star_count,
             reward: game.reward_data(self.reward_id).unwrap(),
+        }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StageInfiniteGroup {
+    #[serde(rename = "WaveGroupID")]
+    wave_group_id: u32,
+    #[serde(rename = "WaveIDList")]
+    wave_id_list: Vec<u32>,
+}
+
+impl ID for StageInfiniteGroup {
+    type ID = u32;
+    fn id(&self) -> Self::ID {
+        self.wave_group_id
+    }
+}
+
+impl<'a> PO<'a> for StageInfiniteGroup {
+    type VO = vo::challenge::StageInfiniteGroup<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.wave_group_id,
+            wave_list: self
+                .wave_id_list
+                .iter()
+                .map(|&id| game.stage_infinite_wave_config(id))
+                .map(Option::unwrap)
+                .collect(),
+        }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StageInfiniteMonsterGroup {
+    #[serde(rename = "InfiniteMonsterGroupID")]
+    infinite_monster_group_id: u32,
+    monster_list: Vec<u32>,
+    elite_group: Option<NonZero<u16>>,
+}
+
+impl ID for StageInfiniteMonsterGroup {
+    type ID = u32;
+    fn id(&self) -> Self::ID {
+        self.infinite_monster_group_id
+    }
+}
+
+impl<'a> PO<'a> for StageInfiniteMonsterGroup {
+    type VO = vo::challenge::StageInfiniteMonsterGroup<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.infinite_monster_group_id,
+            monster_list: self
+                .monster_list
+                .iter()
+                .filter(|&&id| id != 0 && id != 300205001) // TODO: 疑似缺数据
+                // 应该是王下一桶
+                .map(|&id| game.monster_config(id))
+                .map(Option::unwrap)
+                .collect(),
+            elite_group: self.elite_group.map(NonZero::get).unwrap_or_default(),
+        }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StageInfiniteWaveConfig {
+    #[serde(rename = "InfiniteWaveID")]
+    infinite_wave_id: u32,
+    #[serde(rename = "MonsterGroupIDList")]
+    monster_group_id_list: Vec<u32>,
+    max_monster_count: u16,
+    max_teammate_count: u8,
+    ability: String,
+    param_list: Vec<Value<f32>>,
+    clear_previous_ability: bool,
+}
+
+impl ID for StageInfiniteWaveConfig {
+    type ID = u32;
+    fn id(&self) -> Self::ID {
+        self.infinite_wave_id
+    }
+}
+
+impl<'a> PO<'a> for StageInfiniteWaveConfig {
+    type VO = vo::challenge::StageInfiniteWaveConfig<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.infinite_wave_id,
+            monster_group_list: self
+                .monster_group_id_list
+                .iter()
+                .map(|&id| game.stage_infinite_monster_group(id))
+                .map(Option::unwrap)
+                .collect(),
+            max_monster_count: self.max_monster_count,
+            max_teammate_count: self.max_teammate_count,
+            clear_previous_ability: self.clear_previous_ability,
         }
     }
 }

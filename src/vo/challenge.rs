@@ -57,6 +57,28 @@ pub struct RewardLine<'a> {
 }
 
 #[derive(Clone, Debug)]
+pub struct StageInfiniteGroup<'a> {
+    pub id: u32,
+    pub wave_list: Vec<StageInfiniteWaveConfig<'a>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct StageInfiniteMonsterGroup<'a> {
+    pub id: u32,
+    pub monster_list: Vec<vo::monster::MonsterConfig<'a>>,
+    pub elite_group: u16,
+}
+
+#[derive(Clone, Debug)]
+pub struct StageInfiniteWaveConfig<'a> {
+    pub id: u32,
+    pub monster_group_list: Vec<StageInfiniteMonsterGroup<'a>>,
+    pub max_monster_count: u16,
+    pub max_teammate_count: u8,
+    pub clear_previous_ability: bool,
+}
+
+#[derive(Clone, Debug)]
 pub struct TargetConfig {
     pub id: u16,
     pub r#type: TargetType,
