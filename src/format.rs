@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 mod sealed {
     use super::Formatter;
 
@@ -123,7 +125,9 @@ enum FormatState {
     FormatArg,
     FmtArgEnd,
     Percent,
-    XmlTag,
+    UnityEscape,
+    UnityTagKey,
+    UnityTagVal,
 }
 
 pub struct Formatter<'a> {
@@ -131,11 +135,14 @@ pub struct Formatter<'a> {
     arguments: &'a [Argument<'a>],
 
     keep_xml_tag: bool,
+    wiki: bool,
 
     state: FormatState,
     result: String,
     arg_num: usize,
     fmt_arg: String,
+    tag_key: String,
+    tag_val: String,
 }
 
 impl<'a> Formatter<'a> {
@@ -144,15 +151,23 @@ impl<'a> Formatter<'a> {
             template,
             arguments,
             keep_xml_tag: true,
+            wiki: false,
             state: FormatState::Literal,
             result: String::with_capacity(template.len()),
             arg_num: 0,
             fmt_arg: String::new(),
+            tag_key: String::new(),
+            tag_val: String::new(),
         }
     }
 
-    pub fn keep_xml_tag(&mut self, keep: bool) -> &mut Self {
+    pub fn keep_xml_tag(mut self, keep: bool) -> Self {
         self.keep_xml_tag = keep;
+        self
+    }
+
+    pub fn wiki(mut self, wiki: bool) -> Self {
+        self.wiki = wiki;
         self
     }
 
@@ -163,8 +178,12 @@ impl<'a> Formatter<'a> {
                     self.state = FormatState::Hashbang;
                     return;
                 }
-                if char == '<' && !self.keep_xml_tag {
-                    self.state = FormatState::XmlTag;
+                if char == '<' && (!self.keep_xml_tag || self.wiki) {
+                    self.state = FormatState::UnityTagKey;
+                    return;
+                }
+                if char == '\\' {
+                    self.state = FormatState::UnityEscape;
                     return;
                 }
                 self.result.push(char);
@@ -214,10 +233,30 @@ impl<'a> Formatter<'a> {
                 self.format_single();
                 self.feed(char);
             }
-            FormatState::XmlTag => {
-                if char == '>' {
-                    self.state = FormatState::Literal;
+            FormatState::UnityEscape => {
+                self.state = FormatState::Literal;
+                self.result.push_str(&match char {
+                    'n' => Cow::Borrowed(if self.wiki { "<br />" } else { "\n" }),
+                    _ => Cow::Owned("\\".to_string() + &char.to_string()),
+                });
+            }
+            FormatState::UnityTagKey => {
+                if char == '=' {
+                    self.state = FormatState::UnityTagVal;
+                    return;
                 }
+                if char == '>' {
+                    self.unity_to_wiki();
+                    return;
+                }
+                self.tag_key.push(char);
+            }
+            FormatState::UnityTagVal => {
+                if char == '>' {
+                    self.unity_to_wiki();
+                    return;
+                }
+                self.tag_val.push(char);
             }
         }
     }
@@ -256,7 +295,32 @@ impl<'a> Formatter<'a> {
         self.state = FormatState::Literal;
     }
 
-    fn format(&mut self) -> String {
+    /// 将 Unity XML 格式转为 MediaWiki 需要的格式
+    /// 目前就碰到几种固定的 Tag，硬编码就完事儿了
+    fn unity_to_wiki(&mut self) {
+        self.result.push_str(&match self.tag_key.as_str() {
+            "u" => Cow::Borrowed("{{效果说明"),
+            "i" | "/i" => Cow::Borrowed("''"),
+            "color" => {
+                let mut color = String::from("{{颜色|");
+                color += match &self.tag_val.to_lowercase()[1..] {
+                    "e47d00" | "e47d00ff" => "描述",
+                    "88785a" | "88785aff" => "描述1",
+                    "f29e38" | "f29e38ff" => "描述2",
+                    _ => &self.tag_val[1..],
+                };
+                Cow::Owned(color + "|")
+            }
+            // 闭合标签
+            "/u" | "/color" => Cow::Borrowed("}}"),
+            _ => Cow::Borrowed(""),
+        });
+        self.state = FormatState::Literal;
+        self.tag_key = String::new();
+        self.tag_val = String::new();
+    }
+
+    pub fn format(&mut self) -> String {
         for char in self.template.chars() {
             self.feed(char);
         }
@@ -266,7 +330,9 @@ impl<'a> Formatter<'a> {
 }
 
 pub fn format(template: &str, arguments: &[Argument]) -> String {
-    Formatter::new(template, arguments)
-        .keep_xml_tag(false)
-        .format()
+    Formatter::new(template, arguments).format()
+}
+
+pub fn format_wiki(template: &str) -> String {
+    Formatter::new(template, &[]).wiki(true).format()
 }
