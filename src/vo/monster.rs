@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, StanceType, SubType};
 use crate::po::Element;
-use crate::{FnvIndexMap, GameData};
+use crate::{FnvIndexMap, GameData, Name};
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Debug)]
@@ -149,8 +149,16 @@ impl MonsterConfig<'_> {
     }
 
     /// 基础速度
+    /// 65 级开始，速度 = 基础速度 * 1.10
+    /// 78 级开始，速度 = 基础速度 * 1.20
+    /// 86 级开始，速度 = 基础速度 * 1.32
     pub fn speed(&self) -> u16 {
         self.template.speed_base + self.speed_modify_value as u16
+    }
+
+    /// 满级速度（指 `speed` 函数的 86 级版本）
+    pub fn max_speed(&self) -> f32 {
+        self.speed() as f32 * 1.32
     }
 
     /// 基础抗性
@@ -163,8 +171,8 @@ impl MonsterConfig<'_> {
         self.skill_list
             .iter()
             .filter_map(|skill| skill.damage_type)
-            .collect::<fnv::FnvHashSet<_>>()
-            .drain()
+            .collect::<indexmap::IndexSet<_, fnv::FnvBuildHasher>>()
+            .drain(..)
             .collect()
     }
 
@@ -177,12 +185,21 @@ impl MonsterConfig<'_> {
     }
 }
 
+impl Name for MonsterConfig<'_> {
+    fn name(&self) -> &str {
+        self.name
+    }
+    fn wiki_name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::Borrowed(self.name)
+    }
+}
+
 impl crate::Wiki for MonsterConfig<'_> {
     fn wiki(&self) -> Cow<'static, str> {
         let mut wiki = String::new();
         // 名称
         wiki.push_str("{{敌人\n|名称=");
-        wiki.push_str(self.name);
+        wiki.push_str(&self.wiki_name());
         wiki.push_str("\n|实装版本=");
         wiki.push_str("\n|系列=");
         // 分类（阵营）
@@ -232,15 +249,34 @@ impl crate::Wiki for MonsterConfig<'_> {
         wiki.push_str("\n|掉落素材=");
         wiki.push_str("\n|掉落期望=");
         wiki.push_str("\n|TAG=");
+        let mut tags = Vec::<&'static str>::new();
+        let summons = self.summons();
+        if !summons.is_empty() {
+            tags.push("召唤");
+        }
+        if self.name().ends_with("（完整）") {
+            tags.push("完整");
+        }
+        if self.name().ends_with("（错误）") {
+            tags.push("错误");
+        }
+        wiki.push_str(&tags.join("、"));
+        wiki.push_str("\n|速度=");
+        let speed = self.speed();
+        wiki.push_str(&speed.to_string());
+        if speed != 0 {
+            wiki.push('~');
+            let max_speed = self.max_speed() as u16;
+            wiki.push_str(&max_speed.to_string());
+        }
         wiki.push_str("\n|韧性=");
         wiki.push_str(&self.stance().to_string());
         // 召唤物
         wiki.push_str("\n|召唤物=");
-        let summon_names = self
-            .summons()
-            .into_iter()
-            .map(|monster| monster.name)
-            .intersperse("、")
+        let summon_names = summons
+            .iter()
+            .map(MonsterConfig::wiki_name)
+            .intersperse(Cow::Borrowed("、"))
             .collect::<String>();
         wiki.push_str(&summon_names);
         // 需要去看下 wiki 模板这几个参数是干什么的
@@ -294,8 +330,8 @@ impl crate::Wiki for MonsterConfig<'_> {
         let resists = self
             .debuff_resist
             .iter()
-            .map(|(debuff, _)| format!("{}抵抗", debuff.wiki()))
-            .intersperse("、".to_string())
+            .map(|(debuff, _)| debuff.wiki())
+            .intersperse(Cow::Borrowed("、"))
             .collect::<String>();
         wiki.push_str(&resists);
         // 技能
@@ -334,7 +370,7 @@ impl crate::Wiki for MonsterConfig<'_> {
                     ("名称", skill.name, ""),
                     ("TAG", skill.tag, ""),
                     ("能量", &sp_hit, ""),
-                    ("GIF", "", ""),
+                    ("GIF", "", "<!-- 无技能动画填0 -->"),
                     ("描述", &skill.desc.replace("\\n", "<br />"), ""),
                 ];
                 let index_str = (index + 1).to_string();
@@ -349,8 +385,7 @@ impl crate::Wiki for MonsterConfig<'_> {
                 }
             }
         }
-
-        wiki.push_str("\n}}");
+        wiki.push_str("\n}}{{WIKI底部导航|角色图鉴=展开}}");
         std::borrow::Cow::Owned(wiki)
     }
 }

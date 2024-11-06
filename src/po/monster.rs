@@ -80,13 +80,13 @@ pub enum DebuffResistKey {
 impl crate::Wiki for DebuffResistKey {
     fn wiki(&self) -> std::borrow::Cow<'static, str> {
         std::borrow::Cow::Borrowed(match self {
-            Self::Confine => "Confine",
-            Self::Ctrl => "控制",
-            Self::Frozen => "冻结",
-            Self::Burn => "灼烧",
-            Self::Electric => "触电",
-            Self::Poison => "Poison",
-            Self::Entangle => "纠缠",
+            Self::Confine => "禁锢抵抗",
+            Self::Ctrl => "控制抵抗",
+            Self::Frozen => "冻结抵抗",
+            Self::Burn => "灼烧抵抗",
+            Self::Electric => "触电抵抗",
+            Self::Poison => "风化抵抗",
+            Self::Entangle => "纠缠抵抗",
         })
     }
 }

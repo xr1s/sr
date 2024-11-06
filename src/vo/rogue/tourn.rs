@@ -32,13 +32,13 @@ impl RogueTournWeeklyChallenge<'_> {
     const FIRST_CHALLENGE_MONDAY: chrono::DateTime<chrono::FixedOffset> =
         chrono::DateTime::from_naive_utc_and_offset(
             chrono::NaiveDateTime::new(
-                chrono::NaiveDate::from_ymd_opt(2024, 6, 17).unwrap(),
-                chrono::NaiveTime::from_hms_opt(4, 0, 0).unwrap(),
+                chrono::NaiveDate::from_ymd_opt(2024, 6, 16).unwrap(),
+                chrono::NaiveTime::from_hms_opt(20, 0, 0).unwrap(),
             ),
             chrono::FixedOffset::east_opt(8 * 60 * 60).unwrap(),
         );
 
-    pub fn start_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
+    pub fn begin_time(&self) -> chrono::DateTime<chrono::FixedOffset> {
         if self.id == 1 {
             // 第一期跟随版本开放日期，周三十点开始
             return Self::FIRST_CHALLENGE_MONDAY
@@ -59,7 +59,7 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
         let mut wiki = String::from("{{周期演算|");
         wiki.push_str(self.name);
         wiki.push_str("|开始时间=");
-        wiki.push_str(&self.start_time().format("%Y/%m/%d").to_string());
+        wiki.push_str(&self.begin_time().format("%Y/%m/%d").to_string());
         wiki.push_str("|结束时间=");
         let end_date = self.end_time().date_naive().pred_opt().unwrap();
         wiki.push_str(&end_date.format("%Y/%m/%d").to_string());
