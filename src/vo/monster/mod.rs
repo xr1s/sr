@@ -1,3 +1,5 @@
+pub mod guide;
+
 use std::borrow::Cow;
 
 use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, StanceType, SubType};
@@ -10,16 +12,6 @@ pub struct Camp<'a> {
     pub sort_id: u8,
     pub name: &'a str,
     pub r#type: CampType,
-}
-
-#[derive(Clone, Debug)]
-pub struct NPCMonsterData<'a> {
-    pub id: u32,
-    pub name: &'a str,
-    pub title: &'a str,
-    pub character_type: CharacterType,
-    pub sub_type: SubType,
-    pub rank: Rank,
 }
 
 #[derive(derivative::Derivative)]
@@ -494,6 +486,16 @@ impl crate::Wiki for Config<'_> {
         wiki.push_str("\n}}{{WIKI底部导航|角色图鉴=展开}}");
         std::borrow::Cow::Owned(wiki)
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct NPCMonsterData<'a> {
+    pub id: u32,
+    pub name: &'a str,
+    pub title: &'a str,
+    pub character_type: CharacterType,
+    pub sub_type: SubType,
+    pub rank: Rank,
 }
 
 #[derive(Clone, Debug)]

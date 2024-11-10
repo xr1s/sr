@@ -1,8 +1,15 @@
+pub mod guide;
+
 use crate::po::{Element, Text, Value};
 use crate::vo;
 use crate::{GameData, ID, PO};
 use std::num::NonZero;
 use std::path::PathBuf;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum CampType {
+    Monster,
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -37,61 +44,6 @@ impl<'a> PO<'a> for Camp {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-/// 怪物稀有度
-/// - BigBoss 周本首领以及逐光捡金变种
-/// - LittleBoss 剧情敌人首领，如杰帕德、银枝等
-/// - Elite 精英怪，凝滞虚影（角色突破材料）
-/// - Minion 小怪
-/// - MinionV2 小怪
-pub enum Rank {
-    /// 周本 Boss
-    BigBoss,
-    /// 精英怪物
-    Elite,
-    /// 剧情 Boss
-    LittleBoss,
-    /// 普通怪物，目前总共就 21 种，不清楚和 MinionLv2 的区别
-    Minion,
-    /// 普通怪物，不清楚和 Minion 的区别
-    MinionLv2,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum BaseType {
-    #[serde(rename = "")]
-    None,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum StanceType {
-    Fire,
-    Ice,
-    Imaginary,
-    Quantum,
-    Wind,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum CampType {
-    Monster,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum CharacterType {
-    NPCMonster,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum SubType {
-    Monster,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum AttackType {
-    Normal,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum DebuffResistKey {
     #[serde(rename = "STAT_Confine")]
     Confine,
@@ -123,121 +75,27 @@ impl crate::Wiki for DebuffResistKey {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum SkillModifier {
-    #[serde(rename = "Monster_APShow_Infinite_NotCancel")]
-    InfiniteNotCancel,
-    #[serde(rename = "Monster_APShow_OneTurn")]
-    OneTurn,
-    #[serde(rename = "Monster_APShow_OneTurn_NotCancel")]
-    OneTurnNotCancel,
-    #[serde(rename = "Monster_APShow_SevenTurn")]
-    ShowSevenTurn,
-    #[serde(rename = "Monster_APShow_TwoTurn")]
-    TwoTurn,
-    #[serde(rename = "Monster_APShow_TwoTurn_NotCancel")]
-    TwoTurnNotCancel,
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-struct CustomValue {
-    #[serde(rename = "MFKLINKCPPA")]
-    pub key: String,
-    #[serde(rename = "HPPEILAONGE")]
-    pub value: i32,
+struct DebuffResist {
+    key: DebuffResistKey,
+    value: Value<f32>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-pub(crate) struct TemplateConfig {
-    #[serde(rename = "MonsterTemplateID")]
-    monster_template_id: u32,
-    #[serde(rename = "TemplateGroupID")]
-    pub(crate) template_group_id: Option<NonZero<u32>>,
-    #[serde(rename = "AtlasSortID")]
-    atlas_sort_id: Option<NonZero<u8>>,
-    monster_name: Text,
-    #[serde(rename = "MonsterCampID")]
-    monster_camp_id: Option<NonZero<u8>>,
-    monster_base_type: BaseType,
-    rank: Rank,
-    json_config: PathBuf,
-    icon_path: PathBuf,
-    round_icon_path: PathBuf,
-    image_path: PathBuf,
-    prefab_path: PathBuf,
-    manikin_prefab_path: PathBuf,
-    manikin_config_path: PathBuf,
-    manikin_image_path: PathBuf,
-    #[serde(rename = "NatureID")]
-    nature_id: u8, // 目前只有 1
-    attack_base: Value<u16>,
-    defence_base: Option<Value<NonZero<u16>>>,
-    #[serde(rename = "HPBase")]
-    hp_base: Value<f32>,
-    speed_base: Option<Value<NonZero<u16>>>,
-    stance_base: Option<Value<NonZero<u16>>>,
-    stance_type: Option<StanceType>,
-    critical_damage_base: Option<Value<f32>>,
-    status_resistance_base: Option<Value<f32>>,
-    minimum_fatigue_ratio: Value<f32>,
-    #[serde(rename = "AIPath")]
-    ai_path: PathBuf,
-    stance_count: Option<NonZero<u8>>,
-    initial_delay_ratio: Option<Value<f32>>,
-    #[serde(rename = "AISkillSequence")]
-    ai_skill_sequence: Vec<AISkillSequence>,
-    #[serde(rename = "NPCMonsterList")]
-    npc_monster_list: Vec<u32>,
+struct DamageTypeResistance {
+    damage_type: Element,
+    value: Value<f32>,
 }
 
-impl ID for TemplateConfig {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
-        self.monster_template_id
-    }
-}
-
-impl<'a> PO<'a> for TemplateConfig {
-    type VO = vo::monster::TemplateConfig<'a>;
-    fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        let camp = self
-            .monster_camp_id
-            .map(NonZero::get)
-            .map(|id| game.monster_camp(id))
-            .map(Option::unwrap);
-        Self::VO {
-            game,
-            id: self.monster_template_id,
-            group_id: self.template_group_id.map(NonZero::get).unwrap_or_default(),
-            name: game.text(self.monster_name),
-            camp_name: camp.map(|camp| camp.name).unwrap_or_default(),
-            rank: self.rank,
-            attack_base: self.attack_base.value,
-            defence_base: self.defence_base.map(|v| v.value.get()).unwrap_or_default(),
-            hp_base: self.hp_base.value,
-            speed_base: self.speed_base.map(|v| v.value.get()).unwrap_or_default(),
-            stance_base: self.stance_base.map(|v| v.value.get()).unwrap_or_default(),
-            critical_damage_base: self
-                .critical_damage_base
-                .map(|v| v.value)
-                .unwrap_or_default(),
-            status_resistance_base: self.status_resistance_base.unwrap_or_default().value,
-            minimum_fatigue_ratio: self.minimum_fatigue_ratio.value,
-            stance_count: self.stance_count.map(NonZero::get).unwrap_or_default(),
-            initial_delay_ratio: self.initial_delay_ratio.unwrap_or_default().value,
-            npc_monster_list: self
-                .npc_monster_list
-                .iter()
-                .filter(|&&id| id != 1005010 && id != 1012010 && id != 8022020) // TODO: 疑似缺数据
-                .map(|&id| game.npc_monster_data(id))
-                .map(Option::unwrap)
-                .collect(),
-            stance_type: self.stance_type,
-        }
-    }
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(deny_unknown_fields)]
+struct AISkillSequence {
+    #[serde(rename = "PGKKLADJKGK")]
+    id: u32,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -339,6 +197,16 @@ impl<'a> PO<'a> for Config {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum CharacterType {
+    NPCMonster,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum SubType {
+    Monster,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
@@ -389,6 +257,27 @@ impl<'a> PO<'a> for NPCMonsterData {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum SkillModifier {
+    #[serde(rename = "Monster_APShow_Infinite_NotCancel")]
+    InfiniteNotCancel,
+    #[serde(rename = "Monster_APShow_OneTurn")]
+    OneTurn,
+    #[serde(rename = "Monster_APShow_OneTurn_NotCancel")]
+    OneTurnNotCancel,
+    #[serde(rename = "Monster_APShow_SevenTurn")]
+    ShowSevenTurn,
+    #[serde(rename = "Monster_APShow_TwoTurn")]
+    TwoTurn,
+    #[serde(rename = "Monster_APShow_TwoTurn_NotCancel")]
+    TwoTurnNotCancel,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum AttackType {
+    Normal,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
@@ -426,6 +315,7 @@ impl ID for SkillConfig {
         self.skill_id
     }
 }
+
 impl<'a> PO<'a> for SkillConfig {
     type VO = vo::monster::SkillConfig<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
@@ -455,25 +345,138 @@ impl<'a> PO<'a> for SkillConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+/// 怪物稀有度
+/// - BigBoss 周本首领以及逐光捡金变种
+/// - LittleBoss 剧情敌人首领，如杰帕德、银枝等
+/// - Elite 精英怪，凝滞虚影（角色突破材料）
+/// - Minion 小怪
+/// - MinionV2 小怪
+pub enum Rank {
+    /// 周本 Boss
+    BigBoss,
+    /// 精英怪物
+    Elite,
+    /// 剧情 Boss
+    LittleBoss,
+    /// 普通怪物，目前总共就 21 种，不清楚和 MinionLv2 的区别
+    Minion,
+    /// 普通怪物，不清楚和 Minion 的区别
+    MinionLv2,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum BaseType {
+    #[serde(rename = "")]
+    None,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum StanceType {
+    Fire,
+    Ice,
+    Imaginary,
+    Quantum,
+    Wind,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
-struct AISkillSequence {
-    #[serde(rename = "PGKKLADJKGK")]
-    id: u32,
+struct CustomValue {
+    #[serde(rename = "MFKLINKCPPA")]
+    pub key: String,
+    #[serde(rename = "HPPEILAONGE")]
+    pub value: i32,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-struct DebuffResist {
-    key: DebuffResistKey,
-    value: Value<f32>,
+pub(crate) struct TemplateConfig {
+    #[serde(rename = "MonsterTemplateID")]
+    monster_template_id: u32,
+    #[serde(rename = "TemplateGroupID")]
+    pub(crate) template_group_id: Option<NonZero<u32>>,
+    #[serde(rename = "AtlasSortID")]
+    atlas_sort_id: Option<NonZero<u8>>,
+    monster_name: Text,
+    #[serde(rename = "MonsterCampID")]
+    monster_camp_id: Option<NonZero<u8>>,
+    monster_base_type: BaseType,
+    rank: Rank,
+    json_config: PathBuf,
+    icon_path: PathBuf,
+    round_icon_path: PathBuf,
+    image_path: PathBuf,
+    prefab_path: PathBuf,
+    manikin_prefab_path: PathBuf,
+    manikin_config_path: PathBuf,
+    manikin_image_path: PathBuf,
+    #[serde(rename = "NatureID")]
+    nature_id: u8, // 目前只有 1
+    attack_base: Value<u16>,
+    defence_base: Option<Value<NonZero<u16>>>,
+    #[serde(rename = "HPBase")]
+    hp_base: Value<f32>,
+    speed_base: Option<Value<NonZero<u16>>>,
+    stance_base: Option<Value<NonZero<u16>>>,
+    stance_type: Option<StanceType>,
+    critical_damage_base: Option<Value<f32>>,
+    status_resistance_base: Option<Value<f32>>,
+    minimum_fatigue_ratio: Value<f32>,
+    #[serde(rename = "AIPath")]
+    ai_path: PathBuf,
+    stance_count: Option<NonZero<u8>>,
+    initial_delay_ratio: Option<Value<f32>>,
+    #[serde(rename = "AISkillSequence")]
+    ai_skill_sequence: Vec<AISkillSequence>,
+    #[serde(rename = "NPCMonsterList")]
+    npc_monster_list: Vec<u32>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-struct DamageTypeResistance {
-    damage_type: Element,
-    value: Value<f32>,
+impl ID for TemplateConfig {
+    type ID = u32;
+    fn id(&self) -> Self::ID {
+        self.monster_template_id
+    }
+}
+
+impl<'a> PO<'a> for TemplateConfig {
+    type VO = vo::monster::TemplateConfig<'a>;
+    fn vo(&'a self, game: &'a GameData) -> Self::VO {
+        let camp = self
+            .monster_camp_id
+            .map(NonZero::get)
+            .map(|id| game.monster_camp(id))
+            .map(Option::unwrap);
+        Self::VO {
+            game,
+            id: self.monster_template_id,
+            group_id: self.template_group_id.map(NonZero::get).unwrap_or_default(),
+            name: game.text(self.monster_name),
+            camp_name: camp.map(|camp| camp.name).unwrap_or_default(),
+            rank: self.rank,
+            attack_base: self.attack_base.value,
+            defence_base: self.defence_base.map(|v| v.value.get()).unwrap_or_default(),
+            hp_base: self.hp_base.value,
+            speed_base: self.speed_base.map(|v| v.value.get()).unwrap_or_default(),
+            stance_base: self.stance_base.map(|v| v.value.get()).unwrap_or_default(),
+            critical_damage_base: self
+                .critical_damage_base
+                .map(|v| v.value)
+                .unwrap_or_default(),
+            status_resistance_base: self.status_resistance_base.unwrap_or_default().value,
+            minimum_fatigue_ratio: self.minimum_fatigue_ratio.value,
+            stance_count: self.stance_count.map(NonZero::get).unwrap_or_default(),
+            initial_delay_ratio: self.initial_delay_ratio.unwrap_or_default().value,
+            npc_monster_list: self
+                .npc_monster_list
+                .iter()
+                .filter(|&&id| id != 1005010 && id != 1012010 && id != 8022020) // TODO: 疑似缺数据
+                .map(|&id| game.npc_monster_data(id))
+                .map(Option::unwrap)
+                .collect(),
+            stance_type: self.stance_type,
+        }
+    }
 }

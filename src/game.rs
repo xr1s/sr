@@ -72,12 +72,19 @@ pub struct GameData {
     // monster
     _monster_camp: OnceLock<FnvIndexMap<u8, po::monster::Camp>>,
     _monster_config: OnceLock<FnvIndexMap<u32, po::monster::Config>>,
+    _monster_difficulty_guide: OnceLock<FnvIndexMap<u16, po::monster::guide::Difficulty>>,
+    _monster_guide_config: OnceLock<FnvIndexMap<u32, po::monster::guide::Config>>,
+    _monster_guide_phase: OnceLock<FnvIndexMap<u16, po::monster::guide::Phase>>,
+    _monster_guide_skill: OnceLock<FnvIndexMap<u32, po::monster::guide::Skill>>,
+    _monster_guide_skill_text: OnceLock<FnvIndexMap<u32, po::monster::guide::SkillText>>,
+    _monster_guide_tag: OnceLock<FnvIndexMap<u32, po::monster::guide::Tag>>,
     _monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::SkillConfig>>,
     _monster_skill_unique_config: OnceLock<FnvIndexMap<u32, po::monster::SkillConfig>>,
     _monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::TemplateConfig>>,
     _monster_template_unique_config: OnceLock<FnvIndexMap<u32, po::monster::TemplateConfig>>,
     /// 因为存在自引用, 所以只好储存 group_id 到 id 的映射;
     _monster_template_config_group: OnceLock<FnvMultiMap<u32, u32>>,
+    _monster_text_guide: OnceLock<FnvIndexMap<u16, po::monster::guide::Text>>,
     _monster_unique_config: OnceLock<FnvIndexMap<u32, po::monster::Config>>,
     _npc_monster_data: OnceLock<FnvIndexMap<u32, po::monster::NPCMonsterData>>,
 
@@ -177,11 +184,18 @@ impl GameData {
             // monster
             _monster_camp: OnceLock::new(),
             _monster_config: OnceLock::new(),
+            _monster_difficulty_guide: OnceLock::new(),
+            _monster_guide_config: OnceLock::new(),
+            _monster_guide_phase: OnceLock::new(),
+            _monster_guide_skill: OnceLock::new(),
+            _monster_guide_skill_text: OnceLock::new(),
+            _monster_guide_tag: OnceLock::new(),
             _monster_skill_config: OnceLock::new(),
             _monster_skill_unique_config: OnceLock::new(),
             _monster_template_config: OnceLock::new(),
             _monster_template_config_group: OnceLock::new(),
             _monster_template_unique_config: OnceLock::new(),
+            _monster_text_guide: OnceLock::new(),
             _monster_unique_config: OnceLock::new(),
             _npc_monster_data: OnceLock::new(),
             // rogue
@@ -256,7 +270,7 @@ impl GameData {
         )
     }
 
-    fn _challenge_group_maze(&self) -> &FnvMultiMap<u16, u16> {
+    fn _challenge_maze_group(&self) -> &FnvMultiMap<u16, u16> {
         self._challenge_group_maze.get_or_init(|| {
             std::iter::empty()
                 .chain(self.list_challenge_maze_config())
@@ -267,7 +281,7 @@ impl GameData {
         })
     }
 
-    pub fn challenge_group_maze(&self, id: u16) -> Vec<vo::challenge::MazeConfig> {
+    pub fn challenge_maze_group(&self, id: u16) -> Vec<vo::challenge::MazeConfig> {
         use po::challenge::GroupType;
         let is_memory = self._challenge_group_config().contains_key(&id) as u8;
         let is_story = self._challenge_story_group_config().contains_key(&id) as u8;
@@ -276,9 +290,10 @@ impl GameData {
             (1, 0, 0) => GroupType::Memory,
             (0, 1, 0) => GroupType::Story,
             (0, 0, 1) => GroupType::Boss,
-            _ => return Vec::new(),
+            (0, 0, 0) => return Vec::new(),
+            _ => unreachable!(),
         };
-        self._challenge_group_maze()
+        self._challenge_maze_group()
             .get_vec(&id)
             .map(Vec::as_slice)
             .unwrap_or_default()
@@ -290,6 +305,31 @@ impl GameData {
             })
             .map(Option::unwrap)
             .collect()
+    }
+
+    fn _current_challenge_group_config<F>(&self, lister: F) -> Option<vo::challenge::GroupConfig>
+    where
+        for<'a> F: Fn(&'a GameData) -> Vec<vo::challenge::GroupConfig<'a>>,
+    {
+        let now = chrono::Local::now();
+        lister(self).into_iter().find(|challenge| {
+            challenge
+                .schedule_data
+                .map(|sched| sched.begin_time <= now && now <= sched.end_time)
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn current_challenge_group_config(&self) -> Option<vo::challenge::GroupConfig> {
+        self._current_challenge_group_config(Self::list_challenge_group_config)
+    }
+
+    pub fn current_challenge_story_group_config(&self) -> Option<vo::challenge::GroupConfig> {
+        self._current_challenge_group_config(Self::list_challenge_story_group_config)
+    }
+
+    pub fn current_challenge_boss_group_config(&self) -> Option<vo::challenge::GroupConfig> {
+        self._current_challenge_group_config(Self::list_challenge_boss_group_config)
     }
 }
 
@@ -407,11 +447,18 @@ impl GameData {
     // monster
     field!(monster_camp, u8 => monster::Camp);
     field!(monster_config, u32 => monster::Config);
+    field!(monster_difficulty_guide, u16 => monster::guide::Difficulty);
+    field!(monster_guide_config, u32 => monster::guide::Config);
+    field!(monster_guide_phase, u16 => monster::guide::Phase);
+    field!(monster_guide_skill, u32 => monster::guide::Skill);
+    field!(monster_guide_skill_text, u32 => monster::guide::SkillText);
+    field!(monster_guide_tag, u32 => monster::guide::Tag);
     field!(monster_unique_config, u32 => monster::Config);
     field!(monster_skill_config, u32 => monster::SkillConfig);
     field!(monster_skill_unique_config, u32 => monster::SkillConfig);
     field!(monster_template_config, u32 => monster::TemplateConfig);
     field!(monster_template_unique_config, u32 => monster::TemplateConfig);
+    field!(monster_text_guide, u16 => monster::guide::Text);
     field!(npc_monster_data, u32 => monster::NPCMonsterData, "NPCMonsterData");
     // rogue
     field!(rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);

@@ -300,7 +300,7 @@ impl<'a> Formatter<'a> {
     /// 目前就碰到几种固定的 Tag，硬编码就完事儿了
     fn unity_to_wiki(&mut self) {
         self.result.push_str(&match self.tag_key.as_str() {
-            "u" => Cow::Borrowed("{{效果说明"),
+            "u" => Cow::Borrowed("{{效果说明|"),
             "i" | "/i" => Cow::Borrowed("''"),
             "color" => {
                 let mut color = String::from("{{颜色|");
