@@ -39,7 +39,7 @@ pub struct StageConfig<'a> {
     pub level: u8,
     pub elite_group: Option<EliteGroup>,
     pub stage_config_data: fnv::FnvHashMap<StageConfigType, &'a str>,
-    pub monster_list: Vec<Vec<vo::monster::MonsterConfig<'a>>>,
+    pub monster_list: Vec<Vec<vo::monster::Config<'a>>>,
     pub forbid_auto_battle: bool,
     pub release: bool,
     pub forbid_exit_battle: bool,
@@ -64,7 +64,7 @@ pub struct StageInfiniteGroup<'a> {
 #[derive(Clone, Debug)]
 pub struct StageInfiniteMonsterGroup<'a> {
     pub id: u32,
-    pub monster_list: Vec<vo::monster::MonsterConfig<'a>>,
+    pub monster_list: Vec<vo::monster::Config<'a>>,
     pub elite_group: Option<EliteGroup>,
 }
 

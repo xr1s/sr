@@ -70,15 +70,15 @@ pub struct GameData {
     _sub_mission: OnceLock<FnvIndexMap<u32, po::mission::SubMission>>,
 
     // monster
-    _monster_camp: OnceLock<FnvIndexMap<u8, po::monster::MonsterCamp>>,
-    _monster_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterConfig>>,
-    _monster_unique_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterConfig>>,
-    _monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterSkillConfig>>,
-    _monster_skill_unique_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterSkillConfig>>,
-    _monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
-    _monster_template_unique_config: OnceLock<FnvIndexMap<u32, po::monster::MonsterTemplateConfig>>,
+    _monster_camp: OnceLock<FnvIndexMap<u8, po::monster::Camp>>,
+    _monster_config: OnceLock<FnvIndexMap<u32, po::monster::Config>>,
+    _monster_skill_config: OnceLock<FnvIndexMap<u32, po::monster::SkillConfig>>,
+    _monster_skill_unique_config: OnceLock<FnvIndexMap<u32, po::monster::SkillConfig>>,
+    _monster_template_config: OnceLock<FnvIndexMap<u32, po::monster::TemplateConfig>>,
+    _monster_template_unique_config: OnceLock<FnvIndexMap<u32, po::monster::TemplateConfig>>,
     /// 因为存在自引用, 所以只好储存 group_id 到 id 的映射;
     _monster_template_config_group: OnceLock<FnvMultiMap<u32, u32>>,
+    _monster_unique_config: OnceLock<FnvIndexMap<u32, po::monster::Config>>,
     _npc_monster_data: OnceLock<FnvIndexMap<u32, po::monster::NPCMonsterData>>,
 
     // rogue
@@ -175,15 +175,15 @@ impl GameData {
             _item_config_equipment: OnceLock::new(),
             _item_use_data: OnceLock::new(),
             // monster
-            _monster_template_config: OnceLock::new(),
-            _monster_template_unique_config: OnceLock::new(),
-            _monster_template_config_group: OnceLock::new(),
+            _monster_camp: OnceLock::new(),
             _monster_config: OnceLock::new(),
-            _monster_unique_config: OnceLock::new(),
-            _npc_monster_data: OnceLock::new(),
             _monster_skill_config: OnceLock::new(),
             _monster_skill_unique_config: OnceLock::new(),
-            _monster_camp: OnceLock::new(),
+            _monster_template_config: OnceLock::new(),
+            _monster_template_config_group: OnceLock::new(),
+            _monster_template_unique_config: OnceLock::new(),
+            _monster_unique_config: OnceLock::new(),
+            _npc_monster_data: OnceLock::new(),
             // rogue
             _rogue_maze_buff: OnceLock::new(),
             _rogue_miracle: OnceLock::new(),
@@ -240,7 +240,7 @@ impl GameData {
     pub fn monster_template_config_group(
         &self,
         id: u32,
-    ) -> impl Iterator<Item = vo::monster::MonsterTemplateConfig> {
+    ) -> impl Iterator<Item = vo::monster::TemplateConfig> {
         if id == 0 {
             return either::Either::Left(std::iter::empty());
         }
@@ -305,7 +305,7 @@ macro_rules! reward_line {
                     po.into_iter().map(|po| (po.group_id, po)).collect()
                 })
             }
-            pub fn $field(&self, group_id: u16) -> Vec<vo::challenge::RewardLine<'_>> {
+            pub fn $field(&self, group_id: u16) -> Vec<vo::challenge::RewardLine> {
                 self.[<_$field>]().get_vec(&group_id).unwrap().into_iter().map(|po| po.vo(self)).collect()
             }
         }
@@ -405,13 +405,13 @@ impl GameData {
     field!(mission_chapter_config, u32 => mission::MissionChapterConfig);
     field!(sub_mission, u32 => mission::SubMission);
     // monster
-    field!(monster_camp, u8 => monster::MonsterCamp);
-    field!(monster_config, u32 => monster::MonsterConfig);
-    field!(monster_unique_config, u32 => monster::MonsterConfig);
-    field!(monster_skill_config, u32 => monster::MonsterSkillConfig);
-    field!(monster_skill_unique_config, u32 => monster::MonsterSkillConfig);
-    field!(monster_template_config, u32 => monster::MonsterTemplateConfig);
-    field!(monster_template_unique_config, u32 => monster::MonsterTemplateConfig);
+    field!(monster_camp, u8 => monster::Camp);
+    field!(monster_config, u32 => monster::Config);
+    field!(monster_unique_config, u32 => monster::Config);
+    field!(monster_skill_config, u32 => monster::SkillConfig);
+    field!(monster_skill_unique_config, u32 => monster::SkillConfig);
+    field!(monster_template_config, u32 => monster::TemplateConfig);
+    field!(monster_template_unique_config, u32 => monster::TemplateConfig);
     field!(npc_monster_data, u32 => monster::NPCMonsterData, "NPCMonsterData");
     // rogue
     field!(rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);

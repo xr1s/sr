@@ -41,10 +41,10 @@ pub struct RewardData<'a> {
 }
 
 impl std::fmt::Debug for RewardData<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use std::fmt::Write;
 
-        let write_flat_array = |fmt: &mut std::fmt::Formatter<'_>, values: &[u32; 6]| {
+        let write_flat_array = |fmt: &mut std::fmt::Formatter, values: &[u32; 6]| {
             fmt.write_char('[')?;
             if let Some(value) = values.first() {
                 fmt.write_str(&value.to_string())?;

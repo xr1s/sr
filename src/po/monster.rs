@@ -4,6 +4,38 @@ use crate::{GameData, ID, PO};
 use std::num::NonZero;
 use std::path::PathBuf;
 
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Camp {
+    #[serde(rename = "ID")]
+    id: u8,
+    #[serde(rename = "SortID")]
+    sort_id: u8,
+    name: Text,
+    icon_path: PathBuf,
+    camp_type: CampType,
+}
+
+impl ID for Camp {
+    type ID = u8;
+    fn id(&self) -> Self::ID {
+        self.id
+    }
+}
+
+impl<'a> PO<'a> for Camp {
+    type VO = vo::monster::Camp<'a>;
+    fn vo(&'a self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.id,
+            sort_id: self.sort_id,
+            name: game.text(self.name),
+            r#type: self.camp_type,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 /// 怪物稀有度
 /// - BigBoss 周本首领以及逐光捡金变种
@@ -107,7 +139,7 @@ pub enum SkillModifier {
     TwoTurnNotCancel,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct CustomValue {
     #[serde(rename = "MFKLINKCPPA")]
@@ -116,10 +148,10 @@ struct CustomValue {
     pub value: i32,
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-pub(crate) struct MonsterTemplateConfig {
+pub(crate) struct TemplateConfig {
     #[serde(rename = "MonsterTemplateID")]
     monster_template_id: u32,
     #[serde(rename = "TemplateGroupID")]
@@ -161,15 +193,15 @@ pub(crate) struct MonsterTemplateConfig {
     npc_monster_list: Vec<u32>,
 }
 
-impl ID for MonsterTemplateConfig {
+impl ID for TemplateConfig {
     type ID = u32;
     fn id(&self) -> Self::ID {
         self.monster_template_id
     }
 }
 
-impl<'a> PO<'a> for MonsterTemplateConfig {
-    type VO = vo::monster::MonsterTemplateConfig<'a>;
+impl<'a> PO<'a> for TemplateConfig {
+    type VO = vo::monster::TemplateConfig<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         let camp = self
             .monster_camp_id
@@ -208,10 +240,10 @@ impl<'a> PO<'a> for MonsterTemplateConfig {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-pub(crate) struct MonsterConfig {
+pub(crate) struct Config {
     #[serde(rename = "MonsterID")]
     monster_id: u32,
     #[serde(rename = "MonsterTemplateID")]
@@ -243,15 +275,15 @@ pub(crate) struct MonsterConfig {
     override_ai_skill_sequence: Vec<AISkillSequence>,
 }
 
-impl ID for MonsterConfig {
+impl ID for Config {
     type ID = u32;
     fn id(&self) -> Self::ID {
         self.monster_id
     }
 }
 
-impl<'a> PO<'a> for MonsterConfig {
-    type VO = vo::monster::MonsterConfig<'a>;
+impl<'a> PO<'a> for Config {
+    type VO = vo::monster::Config<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             game,
@@ -307,7 +339,7 @@ impl<'a> PO<'a> for MonsterConfig {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct NPCMonsterData {
@@ -357,10 +389,10 @@ impl<'a> PO<'a> for NPCMonsterData {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-pub(crate) struct MonsterSkillConfig {
+pub(crate) struct SkillConfig {
     #[serde(rename = "SkillID")]
     skill_id: u32,
     skill_name: Text,
@@ -388,14 +420,14 @@ pub(crate) struct MonsterSkillConfig {
     modifier_list: Vec<SkillModifier>,
 }
 
-impl ID for MonsterSkillConfig {
+impl ID for SkillConfig {
     type ID = u32;
     fn id(&self) -> Self::ID {
         self.skill_id
     }
 }
-impl<'a> PO<'a> for MonsterSkillConfig {
-    type VO = vo::monster::MonsterSkillConfig<'a>;
+impl<'a> PO<'a> for SkillConfig {
+    type VO = vo::monster::SkillConfig<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         let params = self
             .param_list
@@ -423,46 +455,14 @@ impl<'a> PO<'a> for MonsterSkillConfig {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub(crate) struct MonsterCamp {
-    #[serde(rename = "ID")]
-    id: u8,
-    #[serde(rename = "SortID")]
-    sort_id: u8,
-    name: Text,
-    icon_path: PathBuf,
-    camp_type: CampType,
-}
-
-impl ID for MonsterCamp {
-    type ID = u8;
-    fn id(&self) -> Self::ID {
-        self.id
-    }
-}
-
-impl<'a> PO<'a> for MonsterCamp {
-    type VO = vo::monster::MonsterCamp<'a>;
-    fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        Self::VO {
-            id: self.id,
-            sort_id: self.sort_id,
-            name: game.text(self.name),
-            r#type: self.camp_type,
-        }
-    }
-}
-
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct AISkillSequence {
     #[serde(rename = "PGKKLADJKGK")]
     id: u32,
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 struct DebuffResist {
@@ -470,7 +470,7 @@ struct DebuffResist {
     value: Value<f32>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 struct DamageTypeResistance {

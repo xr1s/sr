@@ -84,7 +84,7 @@ impl GroupConfig<'_> {
 
     fn special_monster_wiki(
         &self,
-        specials: &indexmap::IndexMap<u32, vo::monster::MonsterConfig>,
+        specials: &indexmap::IndexMap<u32, vo::monster::Config>,
         special_floors: &mut HashMap<u32, Vec<u8>>,
     ) -> Cow<'static, str> {
         let mut wiki = String::new();
@@ -124,7 +124,7 @@ impl GroupConfig<'_> {
                 wiki.push_str("波=");
                 let monster_names: String = wave
                     .iter()
-                    .map(vo::monster::MonsterConfig::wiki_name)
+                    .map(vo::monster::Config::wiki_name)
                     .intersperse(Cow::Borrowed("、"))
                     .collect();
                 wiki.push_str(&monster_names);
@@ -187,7 +187,7 @@ impl GroupConfig<'_> {
 
 // 虚构叙事相关方法
 impl GroupConfig<'_> {
-    fn monster_score(&self, monster: &vo::monster::MonsterConfig) -> u16 {
+    fn monster_score(&self, monster: &vo::monster::Config) -> u16 {
         if self.issue() < 9 {
             if monster.name() == "王下一桶" || monster.name() == "序列扑满" {
                 return 2000;
@@ -209,17 +209,17 @@ impl GroupConfig<'_> {
     }
 
     fn aggregate_monster<F>(
-        monster: &[vo::monster::MonsterConfig],
+        monster: &[vo::monster::Config],
         monster_counts: &HashMap<Cow<'_, str>, usize>,
         is_elite: F,
     ) -> String
     where
-        F: Fn(&vo::monster::MonsterConfig) -> bool,
+        F: Fn(&vo::monster::Config) -> bool,
     {
         monster
             .iter()
             .filter(|&monster| is_elite(monster))
-            .map(vo::monster::MonsterConfig::wiki_name)
+            .map(vo::monster::Config::wiki_name)
             .collect::<indexmap::IndexSet<_, fnv::FnvBuildHasher>>()
             .into_iter()
             .map(|name| format!("{name}:{}", monster_counts[&name]))
@@ -251,7 +251,7 @@ impl GroupConfig<'_> {
                 for group in &wave.monster_group_list {
                     let monster_counts = itertools::Itertools::counts_by(
                         group.monster_list.iter(),
-                        vo::monster::MonsterConfig::wiki_name,
+                        vo::monster::Config::wiki_name,
                     );
                     // 计算每一种弱点在每一波中能拿到的分数
                     // 就是假如只将含有某种弱点的怪物全部击败，所能获得的总分
@@ -419,7 +419,7 @@ impl GroupConfig<'_> {
                         let reinforces: String = group
                             .monster_list
                             .iter()
-                            .map(vo::monster::MonsterConfig::wiki_name)
+                            .map(vo::monster::Config::wiki_name)
                             .intersperse(Cow::Borrowed("、"))
                             .collect();
                         wiki.push_str("\n|其");
@@ -556,8 +556,8 @@ pub struct MazeConfig<'a> {
     pub damage_type_2: &'a [Element],
     pub target: [TargetConfig; 3],
     pub stage_num: u8,
-    pub monster_id_1: Vec<vo::monster::MonsterConfig<'a>>,
-    pub monster_id_2: Vec<vo::monster::MonsterConfig<'a>>,
+    pub monster_id_1: Vec<vo::monster::Config<'a>>,
+    pub monster_id_2: Vec<vo::monster::Config<'a>>,
     /// 回合数内打倒敌人，仅出现在混沌回忆中
     pub challenge_count_down: u8,
     pub npc_monster_id_list_1: Vec<vo::monster::NPCMonsterData<'a>>,
@@ -571,8 +571,8 @@ pub struct MazeConfig<'a> {
 pub struct MazeExtra<'a> {
     pub id: u16,
     pub turn_limit: u8,
-    pub monster_1: Option<vo::monster::MonsterConfig<'a>>,
-    pub monster_2: Option<vo::monster::MonsterConfig<'a>>,
+    pub monster_1: Option<vo::monster::Config<'a>>,
+    pub monster_2: Option<vo::monster::Config<'a>>,
 }
 
 #[derive(Clone, Debug)]

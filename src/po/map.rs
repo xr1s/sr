@@ -460,7 +460,7 @@ impl serde::Serialize for Color {
 }
 
 impl std::fmt::Display for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_fmt(format_args!("#{:02x}{:02x}{:02x}", self.0, self.1, self.2))?;
         if self.3 != 0 {
             f.write_fmt(format_args!("{:02x}", self.3))?;
@@ -470,7 +470,7 @@ impl std::fmt::Display for Color {
 }
 
 impl std::fmt::Debug for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_fmt(format_args!("#{:02x}{:02x}{:02x}", self.0, self.1, self.2))?;
         if self.3 != 0 {
             f.write_fmt(format_args!("{:02x}", self.3))?;

@@ -4,86 +4,12 @@ use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, StanceT
 use crate::po::Element;
 use crate::{FnvIndexMap, GameData, Name, Wiki};
 
-#[derive(derivative::Derivative)]
-#[derivative(Clone, Debug)]
-/// 对应一种怪物类型，不同的怪物类型可能是同一个种族（建模头像相同），但是一般数值上会有差异
-pub struct MonsterTemplateConfig<'a> {
-    #[derivative(Debug = "ignore")]
-    pub(crate) game: &'a GameData,
-    pub id: u32,
-    /// 怪物种族，一般同一个 group 中的怪物的建模、头像是一样的
-    /// 举例来说错误、完整是两个 Template，但是它们 TemplateGroupID 是相等的
-    /// 无 TemplateGroupID 的大多是召唤物，但也有一系列模拟宇宙扑满（存护扑满、毁灭扑满）
-    pub group_id: u32,
+#[derive(Clone, Debug)]
+pub struct Camp<'a> {
+    pub id: u8,
+    pub sort_id: u8,
     pub name: &'a str,
-    /// 阵营名字，如果不存在阵营名，可以将 id 保留到十位查询 group 的阵营
-    pub camp_name: &'a str,
-    // 怪物稀有度（周本Boss、Boss、精英怪、小怪）
-    pub rank: Rank,
-    /// 基础攻击值
-    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
-    /// 也会随着等级提升成长
-    pub attack_base: u16,
-    /// 基础防御值
-    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
-    /// 也会随着等级提升成长
-    pub defence_base: u16,
-    /// 基础生命值
-    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
-    /// 也会随着剧情中敌方的等级成长
-    pub hp_base: f32,
-    /// 基础速度值
-    /// 在具体的 MonsterConfig 中会按对应 modify_value 增长
-    /// 也会随着剧情中敌方的等级成长
-    pub speed_base: u16,
-    /// 基础韧性值
-    /// 在具体的 MonsterConfig 中会按对应 modify_value 增长
-    pub stance_base: u16,
-    /// 基础暴击伤害值
-    pub critical_damage_base: f32,
-    /// 基础效果抗性值
-    pub status_resistance_base: f32,
-    /// 不明
-    pub minimum_fatigue_ratio: f32,
-    /// 不明
-    pub stance_count: u8,
-    /// 首动提前多少（绝大部分怪物该数值小于 1）
-    /// 如等于 0 表示进入战斗后立即行动
-    /// 如等于 0.2 表示提前 80%，以此类推
-    pub initial_delay_ratio: f32,
-    /// 不明，目前所有怪物中该值缺少物理和雷两种属性
-    pub stance_type: Option<StanceType>,
-    /// 不明
-    pub npc_monster_list: Vec<NPCMonsterData<'a>>,
-}
-
-impl MonsterTemplateConfig<'_> {
-    /// 同种族敌人（头像、建模相同的敌人）
-    /// 在 BWIKI 上被称为「系列」
-    fn group(&self) -> impl Iterator<Item = MonsterTemplateConfig> {
-        self.game.monster_template_config_group(self.group_id)
-    }
-
-    /// 找到 group 的原型，原型上会多一些信息，比如 camp_name 不是空的
-    pub fn prototype(&self) -> MonsterTemplateConfig {
-        // 必须要有，因为 self 就是一个满足条件的结果
-        self.group()
-            // 这里有一个假设, 就是原型的 ID 等于 GroupID
-            .find(|monster| monster.id == self.group_id)
-            .unwrap_or_else(|| self.clone())
-    }
-
-    /// 游戏图鉴中的阵营，如「反物质军团」、「惊梦剧团」等
-    pub fn camp(&self) -> &str {
-        if !self.camp_name.is_empty() {
-            return self.camp_name;
-        }
-        // 一个坑，有些怪物的 camp_name 不在原型上, 因此还是只能把所有的都找过去
-        self.group()
-            .find(|monster| !monster.camp_name.is_empty())
-            .map(|monster| monster.camp_name)
-            .unwrap_or_default()
-    }
+    pub r#type: CampType,
 }
 
 #[derive(Clone, Debug)]
@@ -99,33 +25,37 @@ pub struct NPCMonsterData<'a> {
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Debug)]
 /// 对应游戏中的每种怪物
-pub struct MonsterConfig<'a> {
+/// 和 Template 的差别是会随着环境修改具体的属性数值
+/// 比如在深渊里的会适当调高降低属性等
+pub struct Config<'a> {
     #[derivative(Debug = "ignore")]
     pub(crate) game: &'a GameData,
     pub id: u32,
-    pub template: MonsterTemplateConfig<'a>,
+    pub template: TemplateConfig<'a>,
     pub name: &'a str,
     pub introduction: &'a str,
     pub battle_introduction: &'a str,
     pub attack_modify_ratio: f32,
     pub defence_modify_ratio: f32,
     pub hp_modify_ratio: f32,
+    /// 目前该值只有 1
     pub speed_modify_ratio: f32,
+    /// 目前该值只有 1
     pub stance_modify_ratio: f32,
     pub speed_modify_value: i16,
     pub stance_modify_value: i16,
-    pub skill_list: Vec<MonsterSkillConfig<'a>>,
+    pub skill_list: Vec<SkillConfig<'a>>,
     pub custom_values: FnvIndexMap<&'a str, i32>,
     pub debuff_resist: FnvIndexMap<DebuffResistKey, f32>,
     pub custom_value_tags: Vec<&'a str>,
     pub stance_weak_list: &'a [Element],
     pub damage_type_resistance: fnv::FnvHashMap<Element, f32>,
     pub ability_name_list: Vec<&'a str>,
-    pub override_ai_skill_sequence: Vec<MonsterSkillConfig<'a>>,
+    pub override_ai_skill_sequence: Vec<SkillConfig<'a>>,
 }
 
-impl MonsterConfig<'_> {
-    pub fn prototype(&self) -> MonsterConfig<'_> {
+impl Config<'_> {
+    pub fn prototype(&self) -> Config {
         // 不确定 unwrap 会不会挂，总之先试试
         self.game.monster_config(self.template.id).unwrap()
     }
@@ -140,7 +70,7 @@ impl MonsterConfig<'_> {
     }
 
     /// 列出某一阶段的技能
-    pub fn phase_skill(&self, phase: u8) -> Vec<&MonsterSkillConfig> {
+    pub fn phase_skill(&self, phase: u8) -> Vec<&SkillConfig> {
         let mut skills = self
             .skill_list
             .iter()
@@ -168,7 +98,7 @@ impl MonsterConfig<'_> {
         self.speed() as f32 * 1.32
     }
 
-    /// 基础抗性
+    /// 韧性
     pub fn stance(&self) -> f32 {
         (self.template.stance_base as f32 * self.stance_modify_ratio
             + self.stance_modify_value as f32)
@@ -186,7 +116,7 @@ impl MonsterConfig<'_> {
     }
 
     /// 召唤物，不过这大概不完整，目前没找到能完整列出召唤物的手段
-    pub fn summons(&self) -> Vec<MonsterConfig> {
+    pub fn summons(&self) -> Vec<Config> {
         self.custom_values
             .iter()
             .filter_map(|(_, &id)| self.game.monster_config(id as _))
@@ -194,7 +124,8 @@ impl MonsterConfig<'_> {
     }
 }
 
-impl MonsterConfig<'_> {
+// {{特殊敌方}} 模板，出现在混沌回忆和虚构叙事的一览页面
+impl Config<'_> {
     pub fn is_special(&self) -> bool {
         let mut is_attr_change = false;
         is_attr_change |= self.attack_modify_ratio != 1.;
@@ -335,7 +266,7 @@ impl MonsterConfig<'_> {
     }
 }
 
-impl Name for MonsterConfig<'_> {
+impl Name for Config<'_> {
     fn name(&self) -> &str {
         self.name
     }
@@ -347,15 +278,19 @@ impl Name for MonsterConfig<'_> {
         if NPC_COLLIDE_NAME.contains(&name.borrow()) {
             name = Cow::Owned(name.to_string() + "（敌方）");
         }
+        // 不知为何 WIKI 上自动机兵都使用「•」做分隔符而非保留原来的
         if let Some(strip_name) = name.strip_prefix("自动机兵「") {
             let lend = strip_name.find('」').unwrap();
             let rbeg = lend + "」".len();
             let (l, r) = (&strip_name[..lend], &strip_name[rbeg..]);
             name = Cow::Owned("自动机兵•".to_string() + l + r);
         }
+        // 仅出现在「入魔机巧」系列魔物中
         if name.contains('\u{a0}') {
             name = Cow::Owned(self.name().replace('\u{a0}', ""));
         }
+        // WIKI 中大量使用「、」作为分隔符，因此当怪物名称中出现「、」时需要额外转义
+        // 仅出现在「昔在、今在、永在的剧目」系列魔物中
         if name.contains('、') {
             name = Cow::Owned(self.name().replace('、', "&#x3001;"));
         }
@@ -363,7 +298,7 @@ impl Name for MonsterConfig<'_> {
     }
 }
 
-impl crate::Wiki for MonsterConfig<'_> {
+impl crate::Wiki for Config<'_> {
     fn wiki(&self) -> Cow<'static, str> {
         let mut wiki = String::new();
         // 名称
@@ -445,11 +380,11 @@ impl crate::Wiki for MonsterConfig<'_> {
         wiki.push_str("\n|召唤物=");
         let summon_names = summons
             .iter()
-            .map(MonsterConfig::wiki_name)
+            .map(Config::wiki_name)
             .intersperse(Cow::Borrowed("、"))
             .collect::<String>();
         wiki.push_str(&summon_names);
-        // 需要去看下 wiki 模板这几个参数是干什么的
+        // 不明，需要去看下 wiki 模板这几个参数是干什么的
         wiki.push_str("\n|血量档位=");
         wiki.push_str("\n|血量比例总=");
         wiki.push_str("\n|血量1名字=");
@@ -562,15 +497,13 @@ impl crate::Wiki for MonsterConfig<'_> {
 }
 
 #[derive(Clone, Debug)]
-pub struct MonsterSkillConfig<'a> {
+pub struct SkillConfig<'a> {
     pub id: u32,
     pub name: &'a str,
     pub desc: String,
     /// 目前只有两种 天赋、技能
-    // TODO: 改为 enum
     pub type_desc: &'a str,
     /// 技能分类，单攻、群攻、扩散等
-    // TODO: 改为 enum
     pub tag: &'a str,
     /// 技能在角色的哪个阶段会出现
     pub phase_list: &'a [u8],
@@ -585,10 +518,84 @@ pub struct MonsterSkillConfig<'a> {
     pub sp_hit_base: u16,
 }
 
-#[derive(Clone, Debug)]
-pub struct MonsterCamp<'a> {
-    pub id: u8,
-    pub sort_id: u8,
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Debug)]
+/// 对应一种怪物类型，不同的怪物类型可能是同一个种族（建模头像相同），但是一般数值上会有差异
+pub struct TemplateConfig<'a> {
+    #[derivative(Debug = "ignore")]
+    pub(crate) game: &'a GameData,
+    pub id: u32,
+    /// 怪物种族，一般同一个 group 中的怪物的建模、头像是一样的
+    /// 举例来说错误、完整是两个 Template，但是它们 TemplateGroupID 是相等的
+    /// 无 TemplateGroupID 的大多是召唤物，但也有一系列模拟宇宙扑满（存护扑满、毁灭扑满）
+    pub group_id: u32,
     pub name: &'a str,
-    pub r#type: CampType,
+    /// 阵营名字，如果不存在阵营名，可以将 id 保留到十位查询 group 的阵营
+    pub camp_name: &'a str,
+    // 怪物稀有度（周本Boss、Boss、精英怪、小怪）
+    pub rank: Rank,
+    /// 基础攻击值
+    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
+    /// 也会随着等级提升成长
+    pub attack_base: u16,
+    /// 基础防御值
+    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
+    /// 也会随着等级提升成长
+    pub defence_base: u16,
+    /// 基础生命值
+    /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
+    /// 也会随着剧情中敌方的等级成长
+    pub hp_base: f32,
+    /// 基础速度值
+    /// 在具体的 MonsterConfig 中会按对应 modify_value 增长
+    /// 也会随着剧情中敌方的等级成长
+    pub speed_base: u16,
+    /// 基础韧性值
+    /// 在具体的 MonsterConfig 中会按对应 modify_value 增长
+    pub stance_base: u16,
+    /// 基础暴击伤害值
+    pub critical_damage_base: f32,
+    /// 基础效果抗性值
+    pub status_resistance_base: f32,
+    /// 不明
+    pub minimum_fatigue_ratio: f32,
+    /// 不明
+    pub stance_count: u8,
+    /// 首动提前多少（绝大部分怪物该数值小于 1）
+    /// 如等于 0 表示进入战斗后立即行动
+    /// 如等于 0.2 表示提前 80%，以此类推
+    pub initial_delay_ratio: f32,
+    /// 不明，目前所有怪物中该值缺少物理和雷两种属性
+    pub stance_type: Option<StanceType>,
+    /// 不明
+    pub npc_monster_list: Vec<NPCMonsterData<'a>>,
+}
+
+impl TemplateConfig<'_> {
+    /// 同种族敌人（头像、建模相同的敌人）
+    /// 在 WIKI 上被称为「系列」
+    fn group(&self) -> impl Iterator<Item = TemplateConfig> {
+        self.game.monster_template_config_group(self.group_id)
+    }
+
+    /// 找到 group 的原型，原型上会多一些信息
+    pub fn prototype(&self) -> TemplateConfig {
+        // 必须要有，因为 self 就是一个满足条件的结果
+        self.group()
+            // 这里有一个假设, 就是原型的 ID 等于 GroupID
+            .find(|monster| monster.id == self.group_id)
+            .unwrap_or_else(|| self.clone())
+    }
+
+    /// 游戏图鉴中的阵营，如「反物质军团」、「惊梦剧团」等
+    pub fn camp(&self) -> &str {
+        if !self.camp_name.is_empty() {
+            return self.camp_name;
+        }
+        // 一个坑，有些怪物的 camp_name 不在原型上, 因此还是只能把所有的都找过去
+        self.group()
+            .find(|monster| !monster.camp_name.is_empty())
+            .map(|monster| monster.camp_name)
+            .unwrap_or_default()
+    }
 }

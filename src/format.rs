@@ -5,22 +5,22 @@ mod sealed {
 
     pub(super) trait Formattable {
         /// #1% 形式
-        fn write_raw(&self, f: &mut Formatter<'_>, percent: bool);
+        fn write_raw(&self, f: &mut Formatter, percent: bool);
         /// #1[i]% 形式
-        fn write_int(&self, f: &mut Formatter<'_>, percent: bool);
+        fn write_int(&self, f: &mut Formatter, percent: bool);
         /// #1[f1]% 形式
-        fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool);
+        fn write_float(&self, f: &mut Formatter, prec: usize, percent: bool);
     }
 
     impl Formattable for &'_ str {
-        fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_raw(&self, f: &mut Formatter, percent: bool) {
             f.result.push_str(self);
             if percent {
                 f.result.push('%');
             }
         }
 
-        fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_int(&self, f: &mut Formatter, percent: bool) {
             f.result.push_str(self);
             f.result.push_str("[i]");
             if percent {
@@ -28,7 +28,7 @@ mod sealed {
             }
         }
 
-        fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        fn write_float(&self, f: &mut Formatter, prec: usize, percent: bool) {
             f.result.push_str(self);
             f.result.push_str("[f");
             if prec != 0 {
@@ -42,11 +42,11 @@ mod sealed {
     }
 
     impl Formattable for u32 {
-        fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_raw(&self, f: &mut Formatter, percent: bool) {
             self.write_int(f, percent);
         }
 
-        fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_int(&self, f: &mut Formatter, percent: bool) {
             use thousands::Separable;
             let value = if percent { *self * 100 } else { *self };
             f.result.push_str(&value.separate_with_commas());
@@ -55,19 +55,19 @@ mod sealed {
             }
         }
 
-        fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        fn write_float(&self, f: &mut Formatter, prec: usize, percent: bool) {
             let value = *self as f32;
             Formattable::write_float(&value, f, prec, percent);
         }
     }
 
     impl Formattable for f32 {
-        fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_raw(&self, f: &mut Formatter, percent: bool) {
             let value = if percent { *self * 100. } else { *self };
             f.result.push_str(&format!("{}", value));
         }
 
-        fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_int(&self, f: &mut Formatter, percent: bool) {
             let value = if percent { *self * 100. } else { *self } as u32;
             Formattable::write_int(&value, f, false);
             if percent {
@@ -75,7 +75,7 @@ mod sealed {
             }
         }
 
-        fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        fn write_float(&self, f: &mut Formatter, prec: usize, percent: bool) {
             let value = if percent { *self * 100. } else { *self };
             f.result.push_str(&format!("{value:.0$}", prec));
             if percent {
@@ -85,13 +85,13 @@ mod sealed {
     }
 
     impl Formattable for u16 {
-        fn write_raw(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_raw(&self, f: &mut Formatter, percent: bool) {
             <u32 as Formattable>::write_raw(&(*self as u32), f, percent);
         }
-        fn write_int(&self, f: &mut Formatter<'_>, percent: bool) {
+        fn write_int(&self, f: &mut Formatter, percent: bool) {
             <u32 as Formattable>::write_int(&(*self as u32), f, percent);
         }
-        fn write_float(&self, f: &mut Formatter<'_>, prec: usize, percent: bool) {
+        fn write_float(&self, f: &mut Formatter, prec: usize, percent: bool) {
             <u32 as Formattable>::write_float(&(*self as u32), f, prec, percent);
         }
     }

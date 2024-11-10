@@ -31,7 +31,7 @@ pub struct MappingInfo<'a> {
     pub initial_enable: bool,
     pub name: &'a str,
     pub desc: &'a str,
-    pub show_monster_list: Vec<vo::monster::MonsterConfig<'a>>,
+    pub show_monster_list: Vec<vo::monster::Config<'a>>,
     pub display_item_list: Vec<vo::item::ItemList<'a>>,
     pub entrance: Option<MapEntrance<'a>>,
 }
