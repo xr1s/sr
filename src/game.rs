@@ -9,24 +9,33 @@ pub struct GameData {
     base: PathBuf,
     text_map: std::collections::HashMap<i32, String, fnv::FnvBuildHasher>,
 
+    // battle
+    // 战斗配置
+    _battle_event_config: OnceLock<FnvIndexMap<u32, po::battle::BattleEventConfig>>,
+    _elite_group: OnceLock<FnvIndexMap<u16, po::battle::EliteGroup>>,
+    _stage_config: OnceLock<FnvIndexMap<u32, po::battle::StageConfig>>,
+    _stage_infinite_group: OnceLock<FnvIndexMap<u32, po::battle::StageInfiniteGroup>>,
+    _stage_infinite_monster_group:
+        OnceLock<FnvIndexMap<u32, po::battle::StageInfiniteMonsterGroup>>,
+    _stage_infinite_wave_config: OnceLock<FnvIndexMap<u32, po::battle::StageInfiniteWaveConfig>>,
     // challenge
     // 逐光捡金
     _challenge_boss_group_config: OnceLock<FnvIndexMap<u16, po::challenge::GroupConfig>>,
+    _challenge_boss_group_extra: OnceLock<FnvIndexMap<u16, po::challenge::GroupExtra>>,
     _challenge_boss_maze_config: OnceLock<FnvIndexMap<u16, po::challenge::MazeConfig>>,
     _challenge_boss_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_boss_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
     _challenge_group_config: OnceLock<FnvIndexMap<u16, po::challenge::GroupConfig>>,
     _challenge_maze_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
+    _challenge_maze_group_extra: OnceLock<FnvIndexMap<u16, po::challenge::GroupExtra>>,
     _challenge_maze_config: OnceLock<FnvIndexMap<u16, po::challenge::MazeConfig>>,
     _challenge_story_group_config: OnceLock<FnvIndexMap<u16, po::challenge::GroupConfig>>,
+    _challenge_story_group_extra: OnceLock<FnvIndexMap<u16, po::challenge::GroupExtra>>,
     _challenge_story_maze_config: OnceLock<FnvIndexMap<u16, po::challenge::MazeConfig>>,
+    _challenge_story_maze_extra: OnceLock<FnvIndexMap<u16, po::challenge::MazeExtra>>,
     _challenge_story_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_story_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
     _challenge_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
-    _stage_infinite_group: OnceLock<FnvIndexMap<u32, po::challenge::StageInfiniteGroup>>,
-    _stage_infinite_monster_group:
-        OnceLock<FnvIndexMap<u32, po::challenge::StageInfiniteMonsterGroup>>,
-    _stage_infinite_wave_config: OnceLock<FnvIndexMap<u32, po::challenge::StageInfiniteWaveConfig>>,
 
     // item
     /// 道具
@@ -53,7 +62,6 @@ pub struct GameData {
     _schedule_data_challenge_maze: OnceLock<FnvIndexMap<u32, po::misc::ScheduleData>>,
     _schedule_data_challenge_story: OnceLock<FnvIndexMap<u32, po::misc::ScheduleData>>,
     _schedule_data_global: OnceLock<FnvIndexMap<u32, po::misc::ScheduleDataGlobal>>,
-    _stage_config: OnceLock<FnvIndexMap<u32, po::misc::StageConfig>>,
 
     // mission
     _main_mission: OnceLock<FnvIndexMap<u32, po::mission::MainMission>>,
@@ -119,14 +127,18 @@ impl GameData {
             text_map: serde_json::from_reader(text_map_reader).unwrap(),
             // challenge
             _challenge_boss_group_config: OnceLock::new(),
+            _challenge_boss_group_extra: OnceLock::new(),
             _challenge_boss_maze_config: OnceLock::new(),
             _challenge_boss_reward_line: OnceLock::new(),
             _challenge_boss_target_config: OnceLock::new(),
             _challenge_group_config: OnceLock::new(),
             _challenge_maze_config: OnceLock::new(),
+            _challenge_maze_group_extra: OnceLock::new(),
             _challenge_maze_reward_line: OnceLock::new(),
             _challenge_story_group_config: OnceLock::new(),
+            _challenge_story_group_extra: OnceLock::new(),
             _challenge_story_maze_config: OnceLock::new(),
+            _challenge_story_maze_extra: OnceLock::new(),
             _challenge_story_reward_line: OnceLock::new(),
             _challenge_story_target_config: OnceLock::new(),
             _challenge_target_config: OnceLock::new(),
@@ -141,6 +153,8 @@ impl GameData {
             _maze_prop: OnceLock::new(),
             _world_data_config: OnceLock::new(),
             // misc
+            _battle_event_config: OnceLock::new(),
+            _elite_group: OnceLock::new(),
             _extra_effect_config: OnceLock::new(),
             _maze_buff: OnceLock::new(),
             _reward_data: OnceLock::new(),
@@ -307,19 +321,27 @@ impl GameData {
      *  }
      */
 
+    // battle
+    field!(battle_event_config, u32 => battle::BattleEventConfig);
+    field!(elite_group, u16 => battle::EliteGroup);
+    field!(stage_infinite_group, u32 => battle::StageInfiniteGroup);
+    field!(stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup);
+    field!(stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig);
+    field!(stage_config, u32 => battle::StageConfig);
     // challenge
     field!(challenge_boss_group_config, u16 => challenge::GroupConfig);
+    field!(challenge_boss_group_extra, u16 => challenge::GroupExtra);
     field!(challenge_boss_maze_config, u16 => challenge::MazeConfig);
     field!(challenge_boss_target_config, u16 => challenge::TargetConfig);
     field!(challenge_group_config, u16 => challenge::GroupConfig);
     field!(challenge_maze_config, u16 => challenge::MazeConfig);
+    field!(challenge_maze_group_extra, u16 => challenge::GroupExtra);
     field!(challenge_story_group_config, u16 => challenge::GroupConfig);
+    field!(challenge_story_group_extra, u16 => challenge::GroupExtra);
     field!(challenge_story_maze_config, u16 => challenge::MazeConfig);
+    field!(challenge_story_maze_extra, u16 => challenge::MazeExtra);
     field!(challenge_story_target_config, u16 => challenge::TargetConfig);
     field!(challenge_target_config, u16 => challenge::TargetConfig);
-    field!(stage_infinite_group, u32 => challenge::StageInfiniteGroup);
-    field!(stage_infinite_monster_group, u32 => challenge::StageInfiniteMonsterGroup);
-    field!(stage_infinite_wave_config, u32 => challenge::StageInfiniteWaveConfig);
     // item
     field!(item_config, u32 => item::ItemConfig);
     field!(item_config_avatar_rank, u32 => item::ItemConfig);
@@ -340,7 +362,6 @@ impl GameData {
     field!(schedule_data_challenge_maze, u32 => misc::ScheduleData);
     field!(schedule_data_challenge_story, u32 => misc::ScheduleData);
     field!(schedule_data_global, u32 => misc::ScheduleDataGlobal);
-    field!(stage_config, u32 => misc::StageConfig);
     // mission
     field!(main_mission, u32 => mission::MainMission);
     field!(mission_chapter_config, u32 => mission::MissionChapterConfig);

@@ -268,10 +268,11 @@ impl serde::Serialize for RewardData {
 }
 
 mod sched {
-    use chrono::{DateTime, FixedOffset, NaiveDateTime};
+    use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeDelta};
     use serde::{self, de::Error, Deserialize, Deserializer, Serializer};
 
     const ASIA_SHANGHAI: FixedOffset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
+    const ASIA_SHANGHAI_OFFSET: TimeDelta = TimeDelta::hours(8);
     const FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
     pub fn serialize<S>(date: &DateTime<FixedOffset>, serializer: S) -> Result<S::Ok, S::Error>
@@ -285,13 +286,10 @@ mod sched {
     where
         D: Deserializer<'de>,
     {
-        let s = String::deserialize(deserializer)?;
-        let datetime = NaiveDateTime::parse_from_str(&s, FORMAT).map_err(Error::custom)?;
-
-        Ok(DateTime::<FixedOffset>::from_naive_utc_and_offset(
-            datetime,
-            ASIA_SHANGHAI,
-        ))
+        String::deserialize(deserializer)
+            .and_then(|s| NaiveDateTime::parse_from_str(&s, FORMAT).map_err(Error::custom))
+            .map(|datetime| DateTime::from_naive_utc_and_offset(datetime, ASIA_SHANGHAI))
+            .map(|datetime| datetime - ASIA_SHANGHAI_OFFSET)
     }
 }
 
@@ -350,145 +348,6 @@ impl PO<'_> for ScheduleDataGlobal {
             begin_time: self.schedule.begin_time,
             end_time: self.schedule.end_time,
             global_end_time: self.global_end_time,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum StageType {
-    AetherDivide,
-    BattleCollege,
-    BoxingClub,
-    Challenge,
-    ClockParkActivity,
-    Cocoon,
-    EvolveBuildActivity,
-    FantasticStory,
-    FarmElement,
-    FeverTimeActivity,
-    FightActivity,
-    FightFest,
-    Heliobus,
-    Mainline,
-    PunkLord,
-    RogueChallengeActivity,
-    RogueEndlessActivity,
-    RogueRelic,
-    StarFightActivity,
-    StrongChallengeActivity,
-    SummonActivity,
-    SwordTraining,
-    TelevisionActivity,
-    TreasureDungeon,
-    Trial,
-    VerseSimulation,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum StageConfigType {
-    _BattleCondition,
-    _BattleTarget,
-    _BGM,
-    _BindingMazeBuff,
-    _CloseBattleStartDialog,
-    _CreateBattleActionEvent,
-    _CreateBattleEvent,
-    _DeferCreateTrialPlayer,
-    _EnsureTeamAliveKey,
-    _IsEliteBattle,
-    _MainMonster,
-    _SpecialBattleStartCamera,
-    _StageBannedAvatarID,
-    _StageInfiniteGroup,
-    _Wave,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-#[allow(non_snake_case)]
-pub(crate) struct StageConfigData {
-    #[serde(rename = "MFKLINKCPPA")]
-    r#type: StageConfigType,
-    #[serde(rename = "HPPEILAONGE")]
-    value: String,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub(crate) struct StageConfig {
-    #[serde(rename = "StageID")]
-    stage_id: u32,
-    stage_type: StageType,
-    stage_name: Text,
-    hard_level_group: u16,
-    level: u8,
-    elite_group: Option<NonZero<u16>>,
-    level_graph_path: PathBuf,
-    stage_ability_config: Vec<String>,
-    battle_scoring_group: Option<NonZero<u16>>,
-    // 各种配置文件, Key 也没解密，
-    // Key 是这几个 EICGHHJHOEE FBAHMFEDNNB KCOLEICPMAD MFKLINKCPPA
-    sub_level_graphs: Vec<fnv::FnvHashMap<String, String>>,
-    stage_config_data: Vec<StageConfigData>,
-    monster_list: Vec<fnv::FnvHashMap<String, u32>>,
-    level_lose_condition: Vec<String>,
-    level_win_condition: Vec<String>,
-    #[serde(default)]
-    forbid_auto_battle: bool,
-    #[serde(default)]
-    forbid_view_mode: bool,
-    #[serde(default)]
-    release: bool,
-    #[serde(default)]
-    forbid_exit_battle: bool,
-    monster_warning_ratio: Option<f32>,
-    #[serde(default)]
-    reset_battle_speed: bool,
-    trial_avatar_list: Vec<u32>,
-}
-
-impl ID for StageConfig {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
-        self.stage_id
-    }
-}
-
-impl<'a> PO<'a> for StageConfig {
-    type VO = vo::misc::StageConfig<'a>;
-    fn vo(&'a self, game: &'a GameData) -> Self::VO {
-        let monster_id_to_object = |id: &u32| {
-            None.or_else(|| game.monster_config(*id))
-                .or_else(|| game.monster_unique_config(*id))
-        };
-        let monster_hm_to_vec = |monster_list: &fnv::FnvHashMap<String, u32>| {
-            monster_list
-                .values()
-                .map(monster_id_to_object)
-                .map(Option::unwrap)
-                .collect::<Vec<_>>()
-        };
-        Self::VO {
-            id: self.stage_id,
-            r#type: self.stage_type,
-            name: game.text(self.stage_name),
-            hard_level_group: self.hard_level_group,
-            level: self.level,
-            stage_config_data: self
-                .stage_config_data
-                .iter()
-                .map(|data| (data.r#type, data.value.as_str()))
-                .collect(),
-            monster_list: self
-                .monster_list
-                .iter()
-                .map(monster_hm_to_vec)
-                .collect::<Vec<_>>(),
-            forbid_auto_battle: self.forbid_auto_battle,
-            release: self.release,
-            forbid_exit_battle: self.forbid_exit_battle,
         }
     }
 }

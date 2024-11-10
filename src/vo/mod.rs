@@ -1,3 +1,4 @@
+pub mod battle;
 pub mod challenge;
 pub mod item;
 pub mod map;

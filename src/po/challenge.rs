@@ -8,17 +8,17 @@ use std::{num::NonZero, path::PathBuf};
 
 use crate::{vo, GameData, ID, PO};
 
-use super::{Element, Text, Value};
+use super::{Element, Text};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 /// 逐光捡金类型
 pub enum GroupType {
     /// 混沌回忆
-    Boss,
-    /// 混沌回忆
     Memory,
     /// 虚构叙事
     Story,
+    /// 末日幻影
+    Boss,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -63,12 +63,13 @@ impl<'a> PO<'a> for GroupConfig {
     type VO = vo::challenge::GroupConfig<'a>;
     fn vo(&self, game: &'a GameData) -> Self::VO {
         Self::VO {
+            game,
             id: self.group_id,
             name: game.text(self.group_name),
             reward_line_group: match self.challenge_group_type {
-                GroupType::Boss => game.challenge_boss_reward_line(self.reward_line_group_id),
                 GroupType::Memory => game.challenge_maze_reward_line(self.reward_line_group_id),
                 GroupType::Story => game.challenge_story_reward_line(self.reward_line_group_id),
+                GroupType::Boss => game.challenge_boss_reward_line(self.reward_line_group_id),
             },
             pre_mission: game.main_mission(self.pre_mission_id).unwrap(),
             global_schedule: self
@@ -80,9 +81,9 @@ impl<'a> PO<'a> for GroupConfig {
                 .schedule_data_id
                 .map(NonZero::get)
                 .map(|id| match self.challenge_group_type {
-                    GroupType::Boss => game.schedule_data_challenge_boss(id),
                     GroupType::Memory => game.schedule_data_challenge_maze(id),
                     GroupType::Story => game.schedule_data_challenge_story(id),
+                    GroupType::Boss => game.schedule_data_challenge_boss(id),
                 })
                 .map(Option::unwrap),
             maze_buff: self
@@ -107,6 +108,53 @@ impl<'a> PO<'a> for GroupConfig {
                 .map(|id| game.world_data_config(id))
                 .map(Option::unwrap),
             r#type: self.challenge_group_type,
+        }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+/// 单期配置
+pub(crate) struct GroupExtra {
+    #[serde(rename = "GroupID")]
+    group_id: u16,
+    theme_poster_bg_pic_path: PathBuf,
+    // 以下 4 个只在虚构叙事和末日幻影中出现
+    theme_toast_pic_path: Option<PathBuf>,
+    theme_icon_pic_path: Option<PathBuf>,
+    theme_poster_effect_prefab_path: Option<PathBuf>,
+    theme_poster_tab_pic_path: Option<PathBuf>,
+    // 以下 2 个只在虚构叙事中出现
+    buff_list: Option<[u32; 3]>,
+    #[serde(rename = "ThemeID")]
+    theme_id: Option<NonZero<u8>>,
+    // 以下 5 个只在末日幻影中出现
+    buff_list_1: Option<[u32; 3]>,
+    buff_list_2: Option<[u32; 3]>,
+    boss_pattern_prefab_path: Option<PathBuf>,
+    boss_position_prefab_path_1: Option<PathBuf>,
+    boss_position_prefab_path_2: Option<PathBuf>,
+}
+
+impl ID for GroupExtra {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.group_id
+    }
+}
+
+impl<'a> PO<'a> for GroupExtra {
+    type VO = vo::challenge::GroupExtra<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        let buff_ids_to_objects = |buff_list: [u32; 3]| {
+            std::array::from_fn(|index| game.maze_buff(buff_list[index]).unwrap())
+        };
+        Self::VO {
+            id: self.group_id,
+            buff_list: self.buff_list.map(buff_ids_to_objects),
+            buff_list_1: self.buff_list_1.map(buff_ids_to_objects),
+            buff_list_2: self.buff_list_2.map(buff_ids_to_objects),
         }
     }
 }
@@ -194,9 +242,9 @@ impl<'a> PO<'a> for MazeConfig {
             damage_type_2: &self.damage_type_2,
             target: std::array::from_fn(|index| {
                 (match group_type {
-                    GroupType::Boss => GameData::challenge_boss_target_config,
                     GroupType::Memory => GameData::challenge_target_config,
                     GroupType::Story => GameData::challenge_story_target_config,
+                    GroupType::Boss => GameData::challenge_boss_target_config,
                 })(game, self.challenge_target_id[index])
                 .unwrap()
             }),
@@ -223,7 +271,7 @@ impl<'a> PO<'a> for MazeConfig {
                 .map(|&id| game.npc_monster_data(id))
                 .map(Option::unwrap)
                 .collect(),
-            event_id_list_1: self
+            event_list_1: self
                 .event_id_list_1
                 .iter()
                 .map(|&id| game.stage_config(id))
@@ -235,13 +283,58 @@ impl<'a> PO<'a> for MazeConfig {
                 .map(|&id| game.npc_monster_data(id))
                 .map(Option::unwrap)
                 .collect(),
-            event_id_list_2: self
+            event_list_2: self
                 .event_id_list_2
                 .iter()
                 .map(|&id| game.stage_config(id))
                 .map(Option::unwrap)
                 .collect(),
             maze_buff: game.maze_buff(self.maze_buff_id).unwrap(),
+        }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct MazeExtra {
+    #[serde(rename = "ID")]
+    id: u16,
+    // 虚构叙事
+    turn_limit: Option<NonZero<u8>>,
+    #[serde(rename = "BattleTargetID")]
+    battle_target_id: Option<Vec<u16>>, // TODO: BattleTargetConfig.json
+    clear_score: Option<NonZero<u16>>,
+    // 末日幻影
+    #[serde(rename = "MonsterID1")]
+    monster_id_1: Option<NonZero<u32>>,
+    #[serde(rename = "MonsterID2")]
+    monster_id_2: Option<NonZero<u32>>,
+}
+
+impl ID for MazeExtra {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.id
+    }
+}
+
+impl<'a> PO<'a> for MazeExtra {
+    type VO = vo::challenge::MazeExtra<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.id,
+            turn_limit: self.turn_limit.map(NonZero::get).unwrap_or_default(),
+            monster_1: self
+                .monster_id_1
+                .map(NonZero::get)
+                .map(|id| game.monster_config(id))
+                .map(Option::unwrap),
+            monster_2: self
+                .monster_id_2
+                .map(NonZero::get)
+                .map(|id| game.monster_config(id))
+                .map(Option::unwrap),
         }
     }
 }
@@ -272,113 +365,6 @@ impl<'a> PO<'a> for RewardLine {
             group_id: self.group_id,
             star_count: self.star_count,
             reward: game.reward_data(self.reward_id).unwrap(),
-        }
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub(crate) struct StageInfiniteGroup {
-    #[serde(rename = "WaveGroupID")]
-    wave_group_id: u32,
-    #[serde(rename = "WaveIDList")]
-    wave_id_list: Vec<u32>,
-}
-
-impl ID for StageInfiniteGroup {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
-        self.wave_group_id
-    }
-}
-
-impl<'a> PO<'a> for StageInfiniteGroup {
-    type VO = vo::challenge::StageInfiniteGroup<'a>;
-    fn vo(&self, game: &'a GameData) -> Self::VO {
-        Self::VO {
-            id: self.wave_group_id,
-            wave_list: self
-                .wave_id_list
-                .iter()
-                .map(|&id| game.stage_infinite_wave_config(id))
-                .map(Option::unwrap)
-                .collect(),
-        }
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub(crate) struct StageInfiniteMonsterGroup {
-    #[serde(rename = "InfiniteMonsterGroupID")]
-    infinite_monster_group_id: u32,
-    monster_list: Vec<u32>,
-    elite_group: Option<NonZero<u16>>,
-}
-
-impl ID for StageInfiniteMonsterGroup {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
-        self.infinite_monster_group_id
-    }
-}
-
-impl<'a> PO<'a> for StageInfiniteMonsterGroup {
-    type VO = vo::challenge::StageInfiniteMonsterGroup<'a>;
-    fn vo(&self, game: &'a GameData) -> Self::VO {
-        Self::VO {
-            id: self.infinite_monster_group_id,
-            monster_list: self
-                .monster_list
-                .iter()
-                .filter(|&&id| id != 0 && id != 300205001) // TODO: 疑似缺数据
-                // 应该是王下一桶
-                .map(|&id| game.monster_config(id))
-                .map(Option::unwrap)
-                .collect(),
-            elite_group: self.elite_group.map(NonZero::get).unwrap_or_default(),
-        }
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub(crate) struct StageInfiniteWaveConfig {
-    #[serde(rename = "InfiniteWaveID")]
-    infinite_wave_id: u32,
-    #[serde(rename = "MonsterGroupIDList")]
-    monster_group_id_list: Vec<u32>,
-    max_monster_count: u16,
-    max_teammate_count: u8,
-    ability: String,
-    param_list: Vec<Value<f32>>,
-    clear_previous_ability: bool,
-}
-
-impl ID for StageInfiniteWaveConfig {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
-        self.infinite_wave_id
-    }
-}
-
-impl<'a> PO<'a> for StageInfiniteWaveConfig {
-    type VO = vo::challenge::StageInfiniteWaveConfig<'a>;
-    fn vo(&self, game: &'a GameData) -> Self::VO {
-        Self::VO {
-            id: self.infinite_wave_id,
-            monster_group_list: self
-                .monster_group_id_list
-                .iter()
-                .map(|&id| game.stage_infinite_monster_group(id))
-                .map(Option::unwrap)
-                .collect(),
-            max_monster_count: self.max_monster_count,
-            max_teammate_count: self.max_teammate_count,
-            clear_previous_ability: self.clear_previous_ability,
         }
     }
 }

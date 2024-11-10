@@ -1,8 +1,3 @@
-use crate::{
-    po::misc::{StageConfigType, StageType},
-    vo,
-};
-
 #[derive(Clone, Debug)]
 /// 游戏中的备注文案，一般来说是在一大段文案中的下划线，点一下会有介绍遮罩
 /// 如 【反震】 的介绍是：由特定「存护」命途祝福造成的附加伤害。
@@ -84,18 +79,4 @@ pub struct ScheduleDataGlobal {
     pub begin_time: chrono::DateTime<chrono::FixedOffset>,
     pub end_time: chrono::DateTime<chrono::FixedOffset>,
     pub global_end_time: chrono::DateTime<chrono::FixedOffset>,
-}
-
-#[derive(Clone, Debug)]
-pub struct StageConfig<'a> {
-    pub id: u32,
-    pub r#type: StageType,
-    pub name: &'a str,
-    pub hard_level_group: u16,
-    pub level: u8,
-    pub stage_config_data: fnv::FnvHashMap<StageConfigType, &'a str>,
-    pub monster_list: Vec<Vec<vo::monster::MonsterConfig<'a>>>,
-    pub forbid_auto_battle: bool,
-    pub release: bool,
-    pub forbid_exit_battle: bool,
 }

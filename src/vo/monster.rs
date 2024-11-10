@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, StanceType, SubType};
 use crate::po::Element;
-use crate::{FnvIndexMap, GameData, Name};
+use crate::{FnvIndexMap, GameData, Name, Wiki};
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Debug)]
@@ -65,7 +65,7 @@ impl MonsterTemplateConfig<'_> {
     }
 
     /// 找到 group 的原型，原型上会多一些信息，比如 camp_name 不是空的
-    pub fn group_prototype(&self) -> MonsterTemplateConfig {
+    pub fn prototype(&self) -> MonsterTemplateConfig {
         // 必须要有，因为 self 就是一个满足条件的结果
         self.group()
             // 这里有一个假设, 就是原型的 ID 等于 GroupID
@@ -110,6 +110,8 @@ pub struct MonsterConfig<'a> {
     pub attack_modify_ratio: f32,
     pub defence_modify_ratio: f32,
     pub hp_modify_ratio: f32,
+    pub speed_modify_ratio: f32,
+    pub stance_modify_ratio: f32,
     pub speed_modify_value: i16,
     pub stance_modify_value: i16,
     pub skill_list: Vec<MonsterSkillConfig<'a>>,
@@ -123,6 +125,11 @@ pub struct MonsterConfig<'a> {
 }
 
 impl MonsterConfig<'_> {
+    pub fn prototype(&self) -> MonsterConfig<'_> {
+        // 不确定 unwrap 会不会挂，总之先试试
+        self.game.monster_config(self.template.id).unwrap()
+    }
+
     pub fn phase(&self) -> u8 {
         self.skill_list
             .iter()
@@ -152,8 +159,8 @@ impl MonsterConfig<'_> {
     /// 65 级开始，速度 = 基础速度 * 1.10
     /// 78 级开始，速度 = 基础速度 * 1.20
     /// 86 级开始，速度 = 基础速度 * 1.32
-    pub fn speed(&self) -> u16 {
-        self.template.speed_base + self.speed_modify_value as u16
+    pub fn speed(&self) -> f32 {
+        self.template.speed_base as f32 * self.speed_modify_ratio + self.speed_modify_value as f32
     }
 
     /// 满级速度（指 `speed` 函数的 86 级版本）
@@ -162,8 +169,10 @@ impl MonsterConfig<'_> {
     }
 
     /// 基础抗性
-    pub fn stance(&self) -> u16 {
-        (self.template.stance_base + self.stance_modify_value as u16) / 3
+    pub fn stance(&self) -> f32 {
+        (self.template.stance_base as f32 * self.stance_modify_ratio
+            + self.stance_modify_value as f32)
+            / 3.
     }
 
     /// 敌人所有技能的伤害属性
@@ -185,12 +194,167 @@ impl MonsterConfig<'_> {
     }
 }
 
+impl MonsterConfig<'_> {
+    pub fn is_special(&self) -> bool {
+        let mut is_attr_change = false;
+        is_attr_change |= self.attack_modify_ratio != 1.;
+        is_attr_change |= self.defence_modify_ratio != 1.;
+        is_attr_change |= self.hp_modify_ratio != 1.;
+        is_attr_change |= self.speed_modify_ratio != 1.;
+        is_attr_change |= self.stance_modify_ratio != 1.;
+        is_attr_change |= self.speed_modify_value != 0;
+        is_attr_change |= self.stance_modify_value != 0;
+        if is_attr_change {
+            return true;
+        }
+        let proto = self.prototype();
+        self.damage_type_resistance != proto.damage_type_resistance
+    }
+
+    pub fn special_wiki(&self, abyss_name: &str, floors: &[u8]) -> String {
+        let mut is_attr_change = false;
+        is_attr_change |= self.attack_modify_ratio != 1.;
+        is_attr_change |= self.defence_modify_ratio != 1.;
+        is_attr_change |= self.hp_modify_ratio != 1.;
+        is_attr_change |= self.speed_modify_ratio != 1.;
+        is_attr_change |= self.stance_modify_ratio != 1.;
+        is_attr_change |= self.speed_modify_value != 0;
+        is_attr_change |= self.stance_modify_value != 0;
+        if !is_attr_change {
+            return String::new();
+        }
+        let proto = self.prototype();
+        let is_resist_change = self.damage_type_resistance != proto.damage_type_resistance;
+        if !is_attr_change && !is_resist_change {
+            return String::new();
+        }
+        let mut wiki = String::from("{{特殊敌方");
+        wiki.push_str("\n|深渊名=");
+        wiki.push_str(abyss_name);
+        wiki.push_str("\n|层数=");
+        let floors: String = floors
+            .iter()
+            .map(u8::to_string)
+            .map(Cow::Owned)
+            .intersperse(Cow::Borrowed("、"))
+            .collect();
+        wiki.push_str(&floors);
+        wiki.push_str("\n|敌方名称=");
+        wiki.push_str(&self.wiki_name());
+        if is_attr_change {
+            let mut attr_change = Vec::with_capacity(5);
+            if self.attack_modify_ratio != 1. {
+                let ratio = f32::round(self.attack_modify_ratio * 10000.) / 100.;
+                attr_change.push(format!("攻击：{}", ratio));
+            }
+            if self.defence_modify_ratio != 1. {
+                let ratio = f32::round(self.defence_modify_ratio * 10000.) / 100.;
+                attr_change.push(format!("防御：{}", ratio));
+            }
+            if self.hp_modify_ratio != 1. {
+                let ratio = f32::round(self.hp_modify_ratio * 10000.) / 100.;
+                attr_change.push(format!("生命：{}", ratio));
+            }
+            if self.speed_modify_ratio != 1. || self.speed_modify_value != 0 {
+                let ratio = self.speed() / self.template.speed_base as f32;
+                let ratio = f32::round(ratio * 10000.) / 100.;
+                attr_change.push(format!("速度：{}", ratio));
+            }
+            if self.stance_modify_ratio != 1. || self.stance_modify_value != 0 {
+                let ratio = self.stance() * 3. / self.template.stance_base as f32;
+                let ratio = f32::round(ratio * 10000.) / 100.;
+                attr_change.push(format!("韧性：{}", ratio));
+            }
+            wiki.push_str("\n|是否属性变化=是\n|属性变化=");
+            wiki.push_str(&attr_change.join("、"));
+        }
+        if is_resist_change {
+            let mut resist_upper = Vec::with_capacity(7);
+            let mut resist_lower = Vec::with_capacity(7);
+            for (element, &resist) in &self.damage_type_resistance {
+                let proto_resist = proto
+                    .damage_type_resistance
+                    .get(element)
+                    .copied()
+                    .unwrap_or_default();
+                if resist == proto_resist {
+                    continue;
+                }
+                let resist_change = format!(
+                    "{}：{}",
+                    element.wiki(),
+                    f32::abs(resist - proto_resist) * 100.
+                );
+                match resist.total_cmp(&proto_resist) {
+                    std::cmp::Ordering::Less => resist_lower.push(resist_change),
+                    std::cmp::Ordering::Equal => unreachable!(),
+                    std::cmp::Ordering::Greater => resist_upper.push(resist_change),
+                }
+            }
+            for (element, resist) in &proto.damage_type_resistance {
+                if !self.damage_type_resistance.contains_key(element) {
+                    resist_lower.push(format!("{}：{}", element.wiki(), resist * 100.));
+                }
+            }
+            wiki.push_str("\n|是否弱点或抗性变化=是");
+            if !resist_upper.is_empty() {
+                wiki.push_str("\n|抗性提高=");
+                wiki.push_str(&resist_upper.join("、"));
+            }
+            if !resist_lower.is_empty() {
+                wiki.push_str("\n|抗性降低=");
+                wiki.push_str(&resist_lower.join("、"));
+            }
+            let self_weakness: indexmap::IndexSet<Element> =
+                self.stance_weak_list.iter().copied().collect();
+            let proto_weakness: indexmap::IndexSet<Element> =
+                proto.stance_weak_list.iter().copied().collect();
+            let more_weakness = &self_weakness - &proto_weakness;
+            let less_weakness = &proto_weakness - &self_weakness;
+            if !more_weakness.is_empty() {
+                let weaknesses: String = more_weakness
+                    .iter()
+                    .map(Element::wiki)
+                    .intersperse(Cow::Borrowed("、"))
+                    .collect();
+                wiki.push_str("\n增加弱点=");
+                wiki.push_str(&weaknesses);
+            }
+            if !less_weakness.is_empty() {
+                let weaknesses: String = less_weakness
+                    .iter()
+                    .map(Element::wiki)
+                    .intersperse(Cow::Borrowed("、"))
+                    .collect();
+                wiki.push_str("\n减少弱点=");
+                wiki.push_str(&weaknesses)
+            }
+        }
+        wiki.push_str("\n}}");
+        wiki
+    }
+}
+
 impl Name for MonsterConfig<'_> {
     fn name(&self) -> &str {
         self.name
     }
-    fn wiki_name(&self) -> std::borrow::Cow<'_, str> {
-        Cow::Borrowed(self.name)
+    fn wiki_name(&self) -> Cow<'_, str> {
+        // 和 NPC 或者自机角色同名的敌方
+        const NPC_COLLIDE_NAME: &[&str] = &["可可利亚", "杰帕德", "布洛妮娅", "史瓦罗", "银枝"];
+        if NPC_COLLIDE_NAME.contains(&self.name) {
+            return Cow::Owned(self.name.to_string() + "（敌方）");
+        }
+        if let Some(name) = self.name().strip_prefix("自动机兵「") {
+            let lend = name.find('」').unwrap();
+            let rbeg = lend + "」".len();
+            let (l, r) = (&name[..lend], &name[rbeg..]);
+            return Cow::Owned("自动机兵•".to_string() + l + r);
+        }
+        if self.name().contains('\u{a0}') {
+            return Cow::Owned(self.name().replace('\u{a0}', ""));
+        }
+        Cow::Borrowed(self.name())
     }
 }
 
@@ -262,7 +426,7 @@ impl crate::Wiki for MonsterConfig<'_> {
         }
         wiki.push_str(&tags.join("、"));
         wiki.push_str("\n|速度=");
-        let speed = self.speed();
+        let speed = f32::ceil(self.speed()) as u16;
         wiki.push_str(&speed.to_string());
         if speed != 0 {
             wiki.push('~');
@@ -270,7 +434,8 @@ impl crate::Wiki for MonsterConfig<'_> {
             wiki.push_str(&max_speed.to_string());
         }
         wiki.push_str("\n|韧性=");
-        wiki.push_str(&self.stance().to_string());
+        let stance = f32::round(self.stance()) as u16;
+        wiki.push_str(&stance.to_string());
         // 召唤物
         wiki.push_str("\n|召唤物=");
         let summon_names = summons
@@ -322,7 +487,8 @@ impl crate::Wiki for MonsterConfig<'_> {
             .iter()
             .filter(|(_, &resistance)| resistance > 0.2)
             .map(|(element, _)| format!("{}属性抗性", element.wiki()))
-            .intersperse("、".to_string())
+            .map(Cow::Owned)
+            .intersperse(Cow::Borrowed("、"))
             .collect::<String>();
         wiki.push_str(&element_resistance);
         // 状态抵抗

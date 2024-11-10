@@ -97,6 +97,7 @@ mod sealed {
     }
 }
 
+// TODO: 试着改造成抛弃所有权的版本
 pub struct Argument<'a>(&'a dyn sealed::Formattable);
 
 impl<'a> From<&'a f32> for Argument<'a> {

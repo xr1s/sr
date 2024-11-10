@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use crate::Wiki;
 
+pub mod battle;
 pub mod challenge;
 pub mod item;
 pub mod map;

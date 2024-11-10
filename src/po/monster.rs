@@ -225,8 +225,8 @@ pub(crate) struct MonsterConfig {
     defence_modify_ratio: Value<f32>,
     #[serde(rename = "HPModifyRatio")]
     hp_modify_ratio: Value<f32>,
-    speed_modify_ratio: Value<u8>,  // 目前只有 1
-    stance_modify_ratio: Value<u8>, // 目前只有 1
+    speed_modify_ratio: Value<f32>,  // 目前只有 1
+    stance_modify_ratio: Value<f32>, // 目前只有 1
     speed_modify_value: Option<Value<i16>>,
     stance_modify_value: Option<Value<i16>>,
     skill_list: Vec<u32>,
@@ -266,6 +266,8 @@ impl<'a> PO<'a> for MonsterConfig {
             attack_modify_ratio: self.attack_modify_ratio.value,
             defence_modify_ratio: self.defence_modify_ratio.value,
             hp_modify_ratio: self.hp_modify_ratio.value,
+            speed_modify_ratio: self.speed_modify_ratio.value,
+            stance_modify_ratio: self.stance_modify_ratio.value,
             speed_modify_value: self.speed_modify_value.unwrap_or_default().value,
             stance_modify_value: self.stance_modify_value.unwrap_or_default().value,
             skill_list: self
