@@ -38,25 +38,156 @@ impl GroupConfig<'_> {
         Element::Thunder,
         Element::Wind,
     ];
-    const CHNUM: [char; 4] = ['一', '二', '三', '四'];
+    const CHNUM: [&'static str; 12] = [
+        "一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二",
+    ];
 
     // 第几期，混沌回忆特殊一些
     pub fn issue(&self) -> u16 {
         match self.r#type {
             GroupType::Memory => match self.id {
                 // 100 是常驻「永屹之城的遗秘」
-                // 101 ~ 119 是未开服内测阶段的混沌回忆
-                100..200 => self.id - 100,
+                // 101 ~ 119 是开服前和开服后 1.x 版本的
+                100..200 => 0,
                 900 => 0, // 900 是常驻「天艟求仙迷航录」
-                // 开服迄今的混沌回忆
-                _ => self.id - 1000,
+                // 上述都懒得计算了
+                // 1.3 迄今的混沌回忆
+                _ => self.id - 991,
             },
             GroupType::Story => self.id - 2000,
             GroupType::Boss => self.id - 3000,
         }
     }
 
-    fn monster_score(&self, monster: &vo::monster::MonsterConfig<'_>) -> u16 {
+    pub fn mazes(&self) -> Vec<MazeConfig> {
+        self.game.challenge_group_maze(self.id)
+    }
+
+    fn wiki_write_sched(&self, wiki: &mut String) {
+        if let Some(sched) = &self.schedule_data {
+            wiki.push_str("\n|开始时间=");
+            wiki.push_str(&sched.begin_time.format("%Y/%m/%d %H:%M").to_string());
+            wiki.push_str("\n|结束时间=");
+            let end_time = sched.end_time - chrono::TimeDelta::nanoseconds(1);
+            wiki.push_str(&end_time.format("%Y/%m/%d %H:%M").to_string());
+        }
+    }
+
+    fn wiki_write_buff(&self, wiki: &mut String, title: &str, buff: Option<&vo::misc::MazeBuff>) {
+        if let Some(buff) = buff {
+            wiki.push_str("\n|");
+            wiki.push_str(title);
+            wiki.push('=');
+            wiki.push_str(&crate::format::format_wiki(&buff.desc));
+        }
+    }
+
+    fn special_monster_wiki(
+        &self,
+        specials: &indexmap::IndexMap<u32, vo::monster::MonsterConfig>,
+        special_floors: &mut HashMap<u32, Vec<u8>>,
+    ) -> Cow<'static, str> {
+        let mut wiki = String::new();
+        for floors in special_floors.values_mut() {
+            floors.dedup();
+        }
+        if !specials.is_empty() {
+            wiki.push_str("\n{{折叠面板（特殊敌方）|tsdf");
+            wiki.push_str(&format!("{:03}", self.issue()));
+            wiki.push('|');
+            for (id, monster) in specials {
+                let special_wiki = monster.special_wiki(self.name, &special_floors[id]);
+                wiki.push_str(&special_wiki);
+                wiki.push('\n');
+            }
+            wiki.push_str("}}");
+        }
+        Cow::Owned(wiki)
+    }
+}
+
+// 混沌回忆相关方法
+impl GroupConfig<'_> {
+    fn memory_wiki_write_event(
+        &self,
+        wiki: &mut String,
+        floor: u8,
+        team: u8,
+        events: &[vo::battle::StageConfig],
+        weaknesses: &[Element],
+    ) {
+        let floor_team = format!("\n|其{}{}队", Self::CHNUM[floor as usize - 1], team);
+        for event in events {
+            for (wave_no, wave) in event.monster_list.iter().enumerate() {
+                wiki.push_str(&floor_team);
+                wiki.push_str(&(wave_no + 1).to_string());
+                wiki.push_str("波=");
+                let monster_names: String = wave
+                    .iter()
+                    .map(vo::monster::MonsterConfig::wiki_name)
+                    .intersperse(Cow::Borrowed("、"))
+                    .collect();
+                wiki.push_str(&monster_names);
+            }
+            let weakness: String = weaknesses
+                .iter()
+                .map(Element::wiki)
+                .intersperse(Cow::Borrowed("、"))
+                .collect();
+            wiki.push_str(&floor_team);
+            wiki.push_str("建议属性=");
+            wiki.push_str(&weakness);
+        }
+    }
+
+    fn memory_wiki(&self) -> Cow<'static, str> {
+        let mut wiki = String::from("{{混沌回忆单期3");
+        wiki.push_str("\n|期数=");
+        wiki.push_str(&format!("{:03}", self.issue()));
+        wiki.push_str("\n|名称=");
+        wiki.push_str(self.name);
+        self.wiki_write_sched(&mut wiki);
+        self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
+        let mazes = self.mazes();
+        let mut specials = indexmap::IndexMap::new();
+        let mut special_floors = HashMap::<_, Vec<u8>>::new();
+        for maze in mazes {
+            self.memory_wiki_write_event(
+                &mut wiki,
+                maze.floor,
+                1,
+                &maze.event_list_1,
+                maze.damage_type_1,
+            );
+            self.memory_wiki_write_event(
+                &mut wiki,
+                maze.floor,
+                2,
+                &maze.event_list_2,
+                maze.damage_type_2,
+            );
+            for event in maze.event_list_1 {
+                for monster in event.monster_list.into_iter().flatten() {
+                    if !monster.is_special() {
+                        continue;
+                    }
+                    special_floors
+                        .entry(monster.id)
+                        .or_default()
+                        .push(maze.floor);
+                    specials.insert(monster.id, monster);
+                }
+            }
+        }
+        wiki.push_str("\n}}");
+        wiki.push_str(&self.special_monster_wiki(&specials, &mut special_floors));
+        Cow::Owned(wiki)
+    }
+}
+
+// 虚构叙事相关方法
+impl GroupConfig<'_> {
+    fn monster_score(&self, monster: &vo::monster::MonsterConfig) -> u16 {
         if self.issue() < 9 {
             if monster.name() == "王下一桶" || monster.name() == "序列扑满" {
                 return 2000;
@@ -78,12 +209,12 @@ impl GroupConfig<'_> {
     }
 
     fn aggregate_monster<F>(
-        monster: &[vo::monster::MonsterConfig<'_>],
+        monster: &[vo::monster::MonsterConfig],
         monster_counts: &HashMap<Cow<'_, str>, usize>,
         is_elite: F,
     ) -> String
     where
-        F: Fn(&vo::monster::MonsterConfig<'_>) -> bool,
+        F: Fn(&vo::monster::MonsterConfig) -> bool,
     {
         monster
             .iter()
@@ -99,12 +230,12 @@ impl GroupConfig<'_> {
 
     /// story_write_event 解析一层中每一波次的敌人的信息
     /// 如第四层下半第 3 波的信息，会往 wiki 中写入 "|其四2队3波敌人=......"
-    fn story_write_event(
+    fn story_wiki_write_event(
         &self,
         wiki: &mut String,
         floor: u8,
         team: u8,
-        events: &[vo::battle::StageConfig<'_>],
+        events: &[vo::battle::StageConfig],
         weakness: &[Element],
     ) {
         let floor_team = format!("\n|其{}{}队", Self::CHNUM[floor as usize - 1], team);
@@ -210,11 +341,11 @@ impl GroupConfig<'_> {
         }
     }
 
-    fn story_wave_ability(
+    fn story_wiki_write_wave_ability(
         wiki: &mut String,
         floor: u8,
         team: u8,
-        events: &[vo::battle::StageConfig<'_>],
+        events: &[vo::battle::StageConfig],
     ) {
         let floor_team = format!("\n|其{}{}队", Self::CHNUM[floor as usize - 1], team);
         // 虚构叙事定制的 Ability，目前只有给怪物增幅攻击和生命。
@@ -246,9 +377,9 @@ impl GroupConfig<'_> {
         }
     }
 
-    fn story_special_monster(&self, wiki: &mut String, mazes: &[MazeConfig<'_>]) {
+    fn story_special_monster_wiki(&self, mazes: &[MazeConfig]) -> Cow<'static, str> {
         let mut specials = indexmap::IndexMap::new();
-        let mut special_floors = std::collections::HashMap::<_, Vec<u8>>::new();
+        let mut special_floors = HashMap::<_, Vec<u8>>::new();
         for maze in mazes {
             macro_rules! handle {
                 ($events:expr) => {
@@ -264,7 +395,7 @@ impl GroupConfig<'_> {
                                         .entry(monster.id)
                                         .or_default()
                                         .push(maze.floor);
-                                    specials.entry(monster.id).or_insert(monster);
+                                    specials.insert(monster.id, monster);
                                 }
                             }
                         }
@@ -274,25 +405,12 @@ impl GroupConfig<'_> {
             handle!(&maze.event_list_1);
             handle!(&maze.event_list_2);
         }
-        for floors in special_floors.values_mut() {
-            floors.dedup();
-        }
-        if !specials.is_empty() {
-            wiki.push_str("\n{{折叠面板（特殊敌方）|tsdf");
-            wiki.push_str(&format!("{:03}", self.issue()));
-            wiki.push('|');
-            for (id, monster) in &specials {
-                let special_wiki = monster.special_wiki(self.name, &special_floors[id]);
-                wiki.push_str(&special_wiki);
-                wiki.push('\n');
-            }
-            wiki.push_str("}}");
-        }
+        self.special_monster_wiki(&specials, &mut special_floors)
     }
 
-    fn story_reinforce(&self, mazes: &[MazeConfig<'_>]) -> String {
+    fn story_reinforce(&self, mazes: &[MazeConfig]) -> String {
         let mut wiki = String::from("{{虚构叙事增援序列");
-        fn handle(wiki: &mut String, events: &[vo::battle::StageConfig<'_>], floor: u8, team: u8) {
+        fn handle(wiki: &mut String, events: &[vo::battle::StageConfig], floor: u8, team: u8) {
             for event in events {
                 let infinite_group = event.infinite_group().unwrap();
                 for (wave_no, wave) in infinite_group.wave_list.into_iter().enumerate() {
@@ -305,7 +423,7 @@ impl GroupConfig<'_> {
                             .intersperse(Cow::Borrowed("、"))
                             .collect();
                         wiki.push_str("\n|其");
-                        wiki.push(GroupConfig::CHNUM[floor as usize - 1]);
+                        wiki.push_str(GroupConfig::CHNUM[floor as usize - 1]);
                         wiki.push_str(if team == 1 { "上半" } else { "下半" });
                         wiki.push('第');
                         wiki.push_str(&wave_no);
@@ -325,7 +443,7 @@ impl GroupConfig<'_> {
 
     /// 用来确保 monster_score 返回的值是正确的
     /// monster_score 的值每个版本都有可能不同，但是没法从数据集中提取出来，都是自己试出来的
-    fn story_assert_score(&self, mazes: &[MazeConfig<'_>]) {
+    fn story_assert_score(&self, mazes: &[MazeConfig]) {
         macro_rules! handle {
             ($events:expr) => {{
                 let mut score = 0u16;
@@ -359,17 +477,8 @@ impl GroupConfig<'_> {
         wiki.push_str(&format!("{:03}", self.issue()));
         wiki.push_str("\n|名称=");
         wiki.push_str(self.name);
-        if let Some(sched) = &self.schedule_data {
-            wiki.push_str("\n|开始时间=");
-            wiki.push_str(&sched.begin_time.format("%Y/%m/%d %H:%M").to_string());
-            wiki.push_str("\n|结束时间=");
-            let end_time = sched.end_time - chrono::TimeDelta::nanoseconds(1);
-            wiki.push_str(&end_time.format("%Y/%m/%d %H:%M").to_string());
-        }
-        if let Some(buff) = &self.maze_buff {
-            wiki.push_str("\n|怪诞逸闻=");
-            wiki.push_str(&format_wiki(&buff.desc));
-        }
+        self.wiki_write_sched(&mut wiki);
+        self.wiki_write_buff(&mut wiki, "记忆紊流", self.maze_buff.as_ref());
         let extra = self.game.challenge_story_group_extra(self.id).unwrap();
         if let Some(buff_list) = extra.buff_list {
             for (index, buff) in buff_list.iter().enumerate() {
@@ -378,27 +487,22 @@ impl GroupConfig<'_> {
                 wiki.push('=');
                 wiki.push_str(buff.name);
                 wiki.push_str("\n|荒腔走板其");
-                wiki.push(Self::CHNUM[index]);
+                wiki.push_str(Self::CHNUM[index]);
                 wiki.push('=');
                 wiki.push_str(&format_wiki(&buff.desc));
             }
         }
-        let mut mazes = self
-            .game
-            .list_challenge_story_maze_config()
-            .into_iter()
-            .filter(|story| story.group.id == self.id)
-            .collect::<Vec<_>>();
+        let mut mazes = self.mazes();
         mazes.sort_by_key(|maze| maze.floor);
         for maze in &mazes {
-            self.story_write_event(
+            self.story_wiki_write_event(
                 &mut wiki,
                 maze.floor,
                 1,
                 &maze.event_list_1,
                 maze.damage_type_1,
             );
-            self.story_write_event(
+            self.story_wiki_write_event(
                 &mut wiki,
                 maze.floor,
                 2,
@@ -407,11 +511,11 @@ impl GroupConfig<'_> {
             );
         }
         for maze in &mazes {
-            Self::story_wave_ability(&mut wiki, maze.floor, 1, &maze.event_list_1);
-            Self::story_wave_ability(&mut wiki, maze.floor, 2, &maze.event_list_2);
+            Self::story_wiki_write_wave_ability(&mut wiki, maze.floor, 1, &maze.event_list_1);
+            Self::story_wiki_write_wave_ability(&mut wiki, maze.floor, 2, &maze.event_list_2);
         }
         wiki.push_str("\n}}");
-        self.story_special_monster(&mut wiki, &mazes);
+        wiki.push_str(&self.story_special_monster_wiki(&mazes));
         wiki.push_str("\n<br />\n<br />\n----\n\n");
         self.story_assert_score(&mazes);
         wiki.push_str(&self.story_reinforce(&mazes));
@@ -422,8 +526,9 @@ impl GroupConfig<'_> {
 impl Wiki for GroupConfig<'_> {
     fn wiki(&self) -> Cow<'static, str> {
         match self.r#type {
+            GroupType::Memory => self.memory_wiki(),
             GroupType::Story => self.story_wiki(),
-            _ => Cow::Borrowed(""),
+            GroupType::Boss => Cow::Borrowed(""),
         }
     }
 }

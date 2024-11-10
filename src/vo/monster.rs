@@ -340,21 +340,26 @@ impl Name for MonsterConfig<'_> {
         self.name
     }
     fn wiki_name(&self) -> Cow<'_, str> {
+        use std::borrow::Borrow;
         // 和 NPC 或者自机角色同名的敌方
         const NPC_COLLIDE_NAME: &[&str] = &["可可利亚", "杰帕德", "布洛妮娅", "史瓦罗", "银枝"];
-        if NPC_COLLIDE_NAME.contains(&self.name) {
-            return Cow::Owned(self.name.to_string() + "（敌方）");
+        let mut name = Cow::Borrowed(self.name());
+        if NPC_COLLIDE_NAME.contains(&name.borrow()) {
+            name = Cow::Owned(name.to_string() + "（敌方）");
         }
-        if let Some(name) = self.name().strip_prefix("自动机兵「") {
-            let lend = name.find('」').unwrap();
+        if let Some(strip_name) = name.strip_prefix("自动机兵「") {
+            let lend = strip_name.find('」').unwrap();
             let rbeg = lend + "」".len();
-            let (l, r) = (&name[..lend], &name[rbeg..]);
-            return Cow::Owned("自动机兵•".to_string() + l + r);
+            let (l, r) = (&strip_name[..lend], &strip_name[rbeg..]);
+            name = Cow::Owned("自动机兵•".to_string() + l + r);
         }
-        if self.name().contains('\u{a0}') {
-            return Cow::Owned(self.name().replace('\u{a0}', ""));
+        if name.contains('\u{a0}') {
+            name = Cow::Owned(self.name().replace('\u{a0}', ""));
         }
-        Cow::Borrowed(self.name())
+        if name.contains('、') {
+            name = Cow::Owned(self.name().replace('、', "&#x3001;"));
+        }
+        name
     }
 }
 

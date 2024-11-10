@@ -26,6 +26,7 @@ pub struct GameData {
     _challenge_boss_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_boss_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
     _challenge_group_config: OnceLock<FnvIndexMap<u16, po::challenge::GroupConfig>>,
+    _challenge_group_maze: OnceLock<FnvMultiMap<u16, u16>>,
     _challenge_maze_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_maze_group_extra: OnceLock<FnvIndexMap<u16, po::challenge::GroupExtra>>,
     _challenge_maze_config: OnceLock<FnvIndexMap<u16, po::challenge::MazeConfig>>,
@@ -132,6 +133,7 @@ impl GameData {
             _challenge_boss_reward_line: OnceLock::new(),
             _challenge_boss_target_config: OnceLock::new(),
             _challenge_group_config: OnceLock::new(),
+            _challenge_group_maze: OnceLock::new(),
             _challenge_maze_config: OnceLock::new(),
             _challenge_maze_group_extra: OnceLock::new(),
             _challenge_maze_reward_line: OnceLock::new(),
@@ -252,6 +254,42 @@ impl GameData {
                 .map(Option::unwrap), // map 的值就是从 monster_template_config 生成的
                                       // 所以这里不会 panic
         )
+    }
+
+    fn _challenge_group_maze(&self) -> &FnvMultiMap<u16, u16> {
+        self._challenge_group_maze.get_or_init(|| {
+            std::iter::empty()
+                .chain(self.list_challenge_maze_config())
+                .chain(self.list_challenge_story_maze_config())
+                .chain(self.list_challenge_boss_maze_config())
+                .map(|maze| (maze.group.id, maze.id))
+                .collect()
+        })
+    }
+
+    pub fn challenge_group_maze(&self, id: u16) -> Vec<vo::challenge::MazeConfig> {
+        use po::challenge::GroupType;
+        let is_memory = self._challenge_group_config().contains_key(&id) as u8;
+        let is_story = self._challenge_story_group_config().contains_key(&id) as u8;
+        let is_boss = self._challenge_boss_group_config().contains_key(&id) as u8;
+        let group_type = match (is_memory, is_story, is_boss) {
+            (1, 0, 0) => GroupType::Memory,
+            (0, 1, 0) => GroupType::Story,
+            (0, 0, 1) => GroupType::Boss,
+            _ => return Vec::new(),
+        };
+        self._challenge_group_maze()
+            .get_vec(&id)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .map(move |&id| match group_type {
+                GroupType::Memory => self.challenge_maze_config(id),
+                GroupType::Story => self.challenge_story_maze_config(id),
+                GroupType::Boss => self.challenge_boss_maze_config(id),
+            })
+            .map(Option::unwrap)
+            .collect()
     }
 }
 

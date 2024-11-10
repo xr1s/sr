@@ -183,7 +183,7 @@ impl<'a> Formatter<'a> {
                     self.state = FormatState::UnityTagKey;
                     return;
                 }
-                if char == '\\' {
+                if char == '\\' && self.wiki {
                     self.state = FormatState::UnityEscape;
                     return;
                 }
