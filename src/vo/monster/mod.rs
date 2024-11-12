@@ -143,9 +143,6 @@ impl Config<'_> {
         is_attr_change |= self.stance_modify_ratio != 1.;
         is_attr_change |= self.speed_modify_value != 0;
         is_attr_change |= self.stance_modify_value != 0;
-        if !is_attr_change {
-            return String::new();
-        }
         let proto = self.prototype();
         let is_resist_change = self.damage_type_resistance != proto.damage_type_resistance;
         if !is_attr_change && !is_resist_change {
@@ -214,6 +211,7 @@ impl Config<'_> {
                     std::cmp::Ordering::Greater => resist_upper.push(resist_change),
                 }
             }
+            // 出现在原型怪物元素抗性中而不出现在当前怪物元素抗性中，作为降为零处理
             for (element, resist) in &proto.damage_type_resistance {
                 if !self.damage_type_resistance.contains_key(element) {
                     resist_lower.push(format!("{}：{}", element.wiki(), resist * 100.));

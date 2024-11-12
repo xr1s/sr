@@ -85,11 +85,11 @@ impl GroupConfig<'_> {
 
     fn special_monster_wiki(
         &self,
-        specials: &indexmap::IndexMap<u32, vo::monster::Config>,
-        special_floors: &mut HashMap<u32, Vec<u8>>,
+        specials: indexmap::IndexMap<u32, &vo::monster::Config>,
+        mut floors: HashMap<u32, Vec<u8>>,
     ) -> Cow<'static, str> {
         let mut wiki = String::new();
-        for floors in special_floors.values_mut() {
+        for floors in floors.values_mut() {
             floors.dedup();
         }
         if !specials.is_empty() {
@@ -97,7 +97,7 @@ impl GroupConfig<'_> {
             wiki.push_str(&format!("{:03}", self.issue()));
             wiki.push('|');
             for (id, monster) in specials {
-                let special_wiki = monster.special_wiki(self.name, &special_floors[id]);
+                let special_wiki = monster.special_wiki(self.name, &floors[&id]);
                 wiki.push_str(&special_wiki);
                 wiki.push('\n');
             }
@@ -178,11 +178,8 @@ impl GroupConfig<'_> {
             );
             [&maze.event_list_1[0], &maze.event_list_2[0]]
                 .into_iter()
-                .map(vo::battle::StageConfig::infinite_group)
-                .map(Option::unwrap)
-                .flat_map(|group| group.wave_list)
-                .flat_map(|wave| wave.monster_group_list)
-                .flat_map(|group| group.monster_list)
+                .flat_map(|event| &event.monster_list)
+                .flatten()
                 .filter(|monster| monster.is_special())
                 .for_each(|monster| {
                     floors.entry(monster.id).or_default().push(maze.floor);
@@ -190,7 +187,7 @@ impl GroupConfig<'_> {
                 });
         }
         wiki.push_str("\n}}");
-        wiki.push_str(&self.special_monster_wiki(&specials, &mut floors));
+        wiki.push_str(&self.special_monster_wiki(specials, floors));
         Cow::Owned(wiki)
     }
 }
@@ -384,7 +381,7 @@ impl GroupConfig<'_> {
                         wiki.push('%');
                     }
                 }
-                "" => (), // 旧版虚构叙事，不知道为什么是空
+                "" => unreachable!(), // 旧版虚构叙事，不知道为什么是空
                 // 虚构叙事定制的 Ability，目前只有给怪物增幅攻击和生命。
                 // 具体配置文件见 Config/ConfigAbility/BattleEvent/FantasticStory_Wave_Ability.json
                 // assert 的 ability 的效果是按 param_list 分别增幅攻击和生命上限
@@ -394,24 +391,26 @@ impl GroupConfig<'_> {
         }
     }
 
-    fn story_special_monster_wiki(&self, mazes: &[MazeConfig]) -> Cow<'static, str> {
+    fn story_special_monster_wiki(
+        &self,
+        mazes: &[MazeConfig],
+        infinite_groups: &[vo::battle::StageInfiniteGroup],
+    ) -> Cow<'static, str> {
         let mut specials = indexmap::IndexMap::new();
         let mut floors = HashMap::<_, Vec<u8>>::new();
         for maze in mazes {
-            [&maze.event_list_1[0], &maze.event_list_2[0]]
-                .into_iter()
-                .map(vo::battle::StageConfig::infinite_group)
-                .map(Option::unwrap)
-                .flat_map(|group| group.wave_list)
-                .flat_map(|wave| wave.monster_group_list)
-                .flat_map(|group| group.monster_list)
+            infinite_groups
+                .iter()
+                .flat_map(|group| &group.wave_list)
+                .flat_map(|wave| &wave.monster_group_list)
+                .flat_map(|group| &group.monster_list)
                 .filter(|monster| monster.is_special())
                 .for_each(|monster| {
                     floors.entry(monster.id).or_default().push(maze.floor);
                     specials.insert(monster.id, monster);
                 });
         }
-        self.special_monster_wiki(&specials, &mut floors)
+        self.special_monster_wiki(specials, floors)
     }
 
     fn story_reinforce_wiki(&self, mazes: &[MazeConfig]) -> String {
@@ -568,7 +567,13 @@ impl GroupConfig<'_> {
             Self::story_wiki_write_wave_ability(&mut wiki, maze.floor, 2, &maze.event_list_2[0]);
         }
         wiki.push_str("\n}}");
-        wiki.push_str(&self.story_special_monster_wiki(&mazes));
+        let infinite_groups = mazes
+            .iter()
+            .flat_map(|maze| [&maze.event_list_1[0], &maze.event_list_2[0]])
+            .map(vo::battle::StageConfig::infinite_group)
+            .map(Option::unwrap)
+            .collect::<Vec<_>>();
+        wiki.push_str(&self.story_special_monster_wiki(&mazes, &infinite_groups));
         wiki.push_str("\n<br />\n<br />\n----\n\n");
         wiki.push_str(&self.story_reinforce_wiki(&mazes));
         wiki.push_str("\n\n");
