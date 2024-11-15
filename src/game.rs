@@ -5,6 +5,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+#[derive(Default)]
 pub struct GameData {
     base: PathBuf,
     text_map: std::collections::HashMap<i32, String, fnv::FnvBuildHasher>,
@@ -130,93 +131,11 @@ impl GameData {
         let base = base.into();
         let text_map_reader =
             BufReader::new(File::open(base.join("TextMap/TextMapCHS.json")).unwrap());
+        let text_map = serde_json::from_reader(text_map_reader).unwrap();
         GameData {
             base,
-            text_map: serde_json::from_reader(text_map_reader).unwrap(),
-            // challenge
-            _challenge_boss_group_config: OnceLock::new(),
-            _challenge_boss_group_extra: OnceLock::new(),
-            _challenge_boss_maze_config: OnceLock::new(),
-            _challenge_boss_reward_line: OnceLock::new(),
-            _challenge_boss_target_config: OnceLock::new(),
-            _challenge_group_config: OnceLock::new(),
-            _challenge_group_maze: OnceLock::new(),
-            _challenge_maze_config: OnceLock::new(),
-            _challenge_maze_group_extra: OnceLock::new(),
-            _challenge_maze_reward_line: OnceLock::new(),
-            _challenge_story_group_config: OnceLock::new(),
-            _challenge_story_group_extra: OnceLock::new(),
-            _challenge_story_maze_config: OnceLock::new(),
-            _challenge_story_maze_extra: OnceLock::new(),
-            _challenge_story_reward_line: OnceLock::new(),
-            _challenge_story_target_config: OnceLock::new(),
-            _challenge_target_config: OnceLock::new(),
-            _stage_infinite_group: OnceLock::new(),
-            _stage_infinite_monster_group: OnceLock::new(),
-            _stage_infinite_wave_config: OnceLock::new(),
-            // map
-            _map_entrance: OnceLock::new(),
-            _mapping_info: OnceLock::new(),
-            _maze_floor: OnceLock::new(),
-            _maze_plane: OnceLock::new(),
-            _maze_prop: OnceLock::new(),
-            _world_data_config: OnceLock::new(),
-            // misc
-            _battle_event_config: OnceLock::new(),
-            _elite_group: OnceLock::new(),
-            _extra_effect_config: OnceLock::new(),
-            _maze_buff: OnceLock::new(),
-            _reward_data: OnceLock::new(),
-            _schedule_data_challenge_boss: OnceLock::new(),
-            _schedule_data_challenge_maze: OnceLock::new(),
-            _schedule_data_challenge_story: OnceLock::new(),
-            _schedule_data_global: OnceLock::new(),
-            _stage_config: OnceLock::new(),
-            // mission
-            _main_mission: OnceLock::new(),
-            _mission_chapter_config: OnceLock::new(),
-            _sub_mission: OnceLock::new(),
-            // item
-            _item_config: OnceLock::new(),
-            _item_config_avatar_rank: OnceLock::new(),
-            _item_config_equipment: OnceLock::new(),
-            _item_use_data: OnceLock::new(),
-            // monster
-            _monster_camp: OnceLock::new(),
-            _monster_config: OnceLock::new(),
-            _monster_difficulty_guide: OnceLock::new(),
-            _monster_guide_config: OnceLock::new(),
-            _monster_guide_phase: OnceLock::new(),
-            _monster_guide_skill: OnceLock::new(),
-            _monster_guide_skill_text: OnceLock::new(),
-            _monster_guide_tag: OnceLock::new(),
-            _monster_skill_config: OnceLock::new(),
-            _monster_skill_unique_config: OnceLock::new(),
-            _monster_template_config: OnceLock::new(),
-            _monster_template_config_group: OnceLock::new(),
-            _monster_template_unique_config: OnceLock::new(),
-            _monster_text_guide: OnceLock::new(),
-            _monster_unique_config: OnceLock::new(),
-            _npc_monster_data: OnceLock::new(),
-            // rogue
-            _rogue_maze_buff: OnceLock::new(),
-            _rogue_miracle: OnceLock::new(),
-            _rogue_miracle_display: OnceLock::new(),
-            _rogue_handbook_miracle: OnceLock::new(),
-            _rogue_handbook_miracle_type: OnceLock::new(),
-            _rogue_monster_group: OnceLock::new(),
-            _rogue_monster: OnceLock::new(),
-            // rogue_magic_miracle
-            _rogue_magic_miracle: OnceLock::new(),
-            // rogue_tourn
-            _rogue_tourn_content_display: OnceLock::new(),
-            _rogue_tourn_weekly_challenge: OnceLock::new(),
-            _rogue_tourn_weekly_display: OnceLock::new(),
-            _rogue_tourn_miracle: OnceLock::new(),
-            _rogue_tourn_miracle_display: OnceLock::new(),
-            _rogue_tourn_handbook_miracle: OnceLock::new(),
-            _rogue_tourn_formula: OnceLock::new(),
-            _rogue_tourn_formula_display: OnceLock::new(),
+            text_map,
+            ..GameData::default()
         }
     }
 
