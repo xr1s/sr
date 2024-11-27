@@ -744,8 +744,8 @@ pub struct MazeConfig<'a> {
     pub damage_type_2: &'a [Element],
     pub target: [TargetConfig; 3],
     pub stage_num: u8,
-    pub monster_id_1: Vec<vo::monster::Config<'a>>,
-    pub monster_id_2: Vec<vo::monster::Config<'a>>,
+    pub monster_1: Vec<vo::monster::Config<'a>>,
+    pub monster_2: Vec<vo::monster::Config<'a>>,
     /// 回合数内打倒敌人，仅出现在混沌回忆中
     pub challenge_count_down: u8,
     pub npc_monster_id_list_1: Vec<vo::monster::NPCMonsterData<'a>>,

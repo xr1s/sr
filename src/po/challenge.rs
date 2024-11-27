@@ -249,13 +249,13 @@ impl<'a> PO<'a> for MazeConfig {
                 .unwrap()
             }),
             stage_num: self.stage_num,
-            monster_id_1: self
+            monster_1: self
                 .monster_id_1
                 .iter()
                 .map(|&id| game.monster_config(id))
                 .map(Option::unwrap)
                 .collect(),
-            monster_id_2: self
+            monster_2: self
                 .monster_id_2
                 .iter()
                 .map(|&id| game.monster_config(id))
