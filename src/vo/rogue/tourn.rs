@@ -56,7 +56,9 @@ impl RogueTournWeeklyChallenge<'_> {
 
 impl Wiki for RogueTournWeeklyChallenge<'_> {
     fn wiki(&self) -> Cow<'static, str> {
-        let mut wiki = String::from("{{周期演算|");
+        let mut wiki = String::from("{{#subobject:");
+        wiki.push_str(self.name);
+        wiki.push_str("|名称=");
         wiki.push_str(self.name);
         wiki.push_str("|开始时间=");
         wiki.push_str(&self.begin_time().format("%Y/%m/%d").to_string());
@@ -83,36 +85,35 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
             wiki.push_str("|起始方程=");
             wiki.push_str(&formulas);
         }
-        macro_rules! boss {
-            ($plane:ident, $number:literal) => {
-                for (level, group) in &self.$plane {
-                    wiki.push_str("|第");
-                    wiki.push($number);
-                    wiki.push_str("位面首领");
-                    if *level != 0 {
-                        wiki.push('V');
-                        wiki.push_str(&level.to_string())
-                    }
-                    wiki.push('=');
-                    let monsters = group
-                        .list_and_weight
-                        .iter()
-                        .map(|(monster, _)| monster.wiki_name())
-                        .intersperse(Cow::Borrowed(", "))
-                        .collect::<String>();
-                    wiki.push_str(&monsters);
+        fn boss(wiki: &mut String, plane: char, groups: &[(u8, vo::rogue::RogueMonsterGroup)]) {
+            for (level, group) in groups {
+                wiki.push_str("|第");
+                wiki.push(plane);
+                wiki.push_str("位面首领");
+                if *level != 0 {
+                    wiki.push('V');
+                    wiki.push_str(&level.to_string())
                 }
-            };
+                wiki.push('=');
+                let monsters = group
+                    .list_and_weight
+                    .iter()
+                    .map(|(monster, _)| monster.wiki_name())
+                    .intersperse(Cow::Borrowed(", "))
+                    .collect::<String>();
+                wiki.push_str(&monsters);
+            }
         }
-        boss!(monster_group_1, '一');
-        boss!(monster_group_2, '二');
-        boss!(monster_group_3, '三');
+        boss(&mut wiki, '一', &self.monster_group_1);
+        boss(&mut wiki, '二', &self.monster_group_2);
+        boss(&mut wiki, '三', &self.monster_group_3);
         let contents = self
             .content_detail
             .iter()
             .map(String::as_str)
             .map(|s| s.strip_prefix("●").unwrap_or(s))
             .intersperse(", ")
+            .map(crate::format::format_wiki)
             .collect::<String>();
         wiki.push_str("|规则=");
         wiki.push_str(&contents);
