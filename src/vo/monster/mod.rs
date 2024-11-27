@@ -256,35 +256,39 @@ impl Config<'_> {
     }
 }
 
+pub(crate) fn wiki_name(name: &str) -> Cow<'_, str> {
+    use std::borrow::Borrow;
+    // 和 NPC 或者自机角色同名的敌方
+    const NPC_COLLIDE_NAME: &[&str] = &["可可利亚", "杰帕德", "布洛妮娅", "史瓦罗", "银枝"];
+    let mut name = Cow::Borrowed(name);
+    if NPC_COLLIDE_NAME.contains(&name.borrow()) {
+        name = Cow::Owned(name.to_string() + "（敌方）");
+    }
+    // 不知为何 WIKI 上自动机兵都使用「•」做分隔符而非保留原来的
+    if let Some(strip_name) = name.strip_prefix("自动机兵「") {
+        let lend = strip_name.find('」').unwrap();
+        let rbeg = lend + "」".len();
+        let (l, r) = (&strip_name[..lend], &strip_name[rbeg..]);
+        name = Cow::Owned("自动机兵•".to_string() + l + r);
+    }
+    // 仅出现在「入魔机巧」系列魔物中
+    if name.contains('\u{a0}') {
+        name = Cow::Owned(name.replace('\u{a0}', ""));
+    }
+    // WIKI 中大量使用「、」作为分隔符，因此当怪物名称中出现「、」时需要额外转义
+    // 仅出现在「昔在、今在、永在的剧目」系列魔物中
+    if name.contains('、') {
+        name = Cow::Owned(name.replace('、', "&#x3001;"));
+    }
+    name
+}
+
 impl Name for Config<'_> {
     fn name(&self) -> &str {
         self.name
     }
     fn wiki_name(&self) -> Cow<'_, str> {
-        use std::borrow::Borrow;
-        // 和 NPC 或者自机角色同名的敌方
-        const NPC_COLLIDE_NAME: &[&str] = &["可可利亚", "杰帕德", "布洛妮娅", "史瓦罗", "银枝"];
-        let mut name = Cow::Borrowed(self.name());
-        if NPC_COLLIDE_NAME.contains(&name.borrow()) {
-            name = Cow::Owned(name.to_string() + "（敌方）");
-        }
-        // 不知为何 WIKI 上自动机兵都使用「•」做分隔符而非保留原来的
-        if let Some(strip_name) = name.strip_prefix("自动机兵「") {
-            let lend = strip_name.find('」').unwrap();
-            let rbeg = lend + "」".len();
-            let (l, r) = (&strip_name[..lend], &strip_name[rbeg..]);
-            name = Cow::Owned("自动机兵•".to_string() + l + r);
-        }
-        // 仅出现在「入魔机巧」系列魔物中
-        if name.contains('\u{a0}') {
-            name = Cow::Owned(self.name().replace('\u{a0}', ""));
-        }
-        // WIKI 中大量使用「、」作为分隔符，因此当怪物名称中出现「、」时需要额外转义
-        // 仅出现在「昔在、今在、永在的剧目」系列魔物中
-        if name.contains('、') {
-            name = Cow::Owned(self.name().replace('、', "&#x3001;"));
-        }
-        name
+        wiki_name(self.name)
     }
 }
 

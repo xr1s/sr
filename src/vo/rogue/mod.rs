@@ -75,13 +75,6 @@ impl Name for RogueMonster<'_> {
         self.npc_monster.name
     }
     fn wiki_name(&self) -> Cow<'_, str> {
-        if let Some(name) = self.name().strip_prefix("自动机兵「") {
-            let lend = name.find('」').unwrap();
-            let rbeg = lend + "」".len();
-            let (l, r) = (&name[..lend], &name[rbeg..]);
-            Cow::Owned("自动机兵•".to_string() + l + r)
-        } else {
-            Cow::Borrowed(self.name())
-        }
+        vo::monster::wiki_name(self.name())
     }
 }
