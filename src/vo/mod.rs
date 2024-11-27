@@ -6,3 +6,4 @@ pub mod misc;
 pub mod mission;
 pub mod monster;
 pub mod rogue;
+pub mod talk;

@@ -124,6 +124,10 @@ pub struct GameData {
         OnceLock<FnvIndexMap<u8, po::rogue::tourn::RogueTournWeeklyChallenge>>,
     _rogue_tourn_weekly_display:
         OnceLock<FnvIndexMap<u16, po::rogue::tourn::RogueTournWeeklyDisplay>>,
+
+    // talk
+    _talk_sentence_config: OnceLock<FnvIndexMap<u32, po::talk::TalkSentenceConfig>>,
+    _voice_config: OnceLock<FnvIndexMap<u32, po::talk::VoiceConfig>>,
 }
 
 impl GameData {
@@ -279,19 +283,17 @@ impl GameData {
 
 macro_rules! field {
     ($field:ident, $id:ty => $typ:ty) => {
-        paste::paste! {
-            field!($field, $id => $typ, stringify!([<$field:camel>]));
-        }
+        field!($field, $id => $typ, paste::paste!(stringify!([<$field:camel>])));
     };
 
     ($field:ident, $id:ty => $typ:ty, $json:expr) => {
         paste::paste! {
             fn [<_$field>](&self) -> &FnvIndexMap<<po::$typ as ID>::ID, po::$typ> {
-                self.[<_ $field>].get_or_init(|| {
+                self.[<_$field>].get_or_init(|| {
                     self.load_to_map(concat!("ExcelOutput/", $json, ".json"))
                 })
             }
-            pub fn [<$field>](&self, id: $id) -> Option<vo::$typ> {
+            pub fn $field(&self, id: $id) -> Option<vo::$typ> {
                 self.[<_$field>]().get(&id).map(|po| po.vo(self))
             }
             pub fn [<list_$field>](&self) -> Vec<vo::$typ> {
@@ -398,4 +400,7 @@ impl GameData {
     field!(rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
     field!(rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge);
     field!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay);
+    // talk
+    field!(talk_sentence_config, u32 => talk::TalkSentenceConfig);
+    field!(voice_config, u32 => talk::VoiceConfig);
 }
