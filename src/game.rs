@@ -19,6 +19,7 @@ pub struct GameData {
     _stage_infinite_monster_group:
         OnceLock<FnvIndexMap<u32, po::battle::StageInfiniteMonsterGroup>>,
     _stage_infinite_wave_config: OnceLock<FnvIndexMap<u32, po::battle::StageInfiniteWaveConfig>>,
+
     // challenge
     // 逐光捡金
     _challenge_boss_group_config: OnceLock<FnvIndexMap<u16, po::challenge::GroupConfig>>,
@@ -54,6 +55,17 @@ pub struct GameData {
     _maze_plane: OnceLock<FnvIndexMap<u32, po::map::MazePlane>>,
     _maze_prop: OnceLock<FnvIndexMap<u32, po::map::MazeProp>>,
     _world_data_config: OnceLock<FnvIndexMap<u16, po::map::WorldDataConfig>>,
+
+    // message
+    _emoji_config: OnceLock<FnvIndexMap<u32, po::message::EmojiConfig>>,
+    _emoji_group: OnceLock<FnvIndexMap<u8, po::message::EmojiGroup>>,
+    _message_contacts_camp: OnceLock<FnvIndexMap<u8, po::message::MessageContactsCamp>>,
+    _message_contacts_config: OnceLock<FnvIndexMap<u16, po::message::MessageContactsConfig>>,
+    _message_contacts_type: OnceLock<FnvIndexMap<u8, po::message::MessageContactsType>>,
+    _message_group_config: OnceLock<FnvIndexMap<u16, po::message::MessageGroupConfig>>,
+    _message_item_config: OnceLock<FnvIndexMap<u32, po::message::MessageItemConfig>>,
+    _message_item_image: OnceLock<FnvIndexMap<u32, po::message::MessageItemImage>>,
+    _message_section_config: OnceLock<FnvIndexMap<u32, po::message::MessageSectionConfig>>,
 
     // misc
     /// 效果说明，比如模拟宇宙中
@@ -353,6 +365,16 @@ impl GameData {
     field!(maze_plane, u32 => map::MazePlane);
     field!(maze_prop, u32 => map::MazeProp);
     field!(world_data_config, u16 => map::WorldDataConfig);
+    // message
+    field!(emoji_config, u32 => message::EmojiConfig);
+    field!(emoji_group, u8 => message::EmojiGroup);
+    field!(message_contacts_camp, u8 => message::MessageContactsCamp);
+    field!(message_contacts_config, u16 => message::MessageContactsConfig);
+    field!(message_contacts_type, u8 => message::MessageContactsType);
+    field!(message_group_config, u16 => message::MessageGroupConfig);
+    field!(message_item_config, u32 => message::MessageItemConfig);
+    field!(message_item_image, u32 => message::MessageItemImage);
+    field!(message_section_config, u32 => message::MessageSectionConfig);
     // misc
     field!(extra_effect_config, u32 => misc::ExtraEffectConfig);
     field!(maze_buff, u32 => misc::MazeBuff);

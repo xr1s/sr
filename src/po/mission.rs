@@ -1,6 +1,6 @@
-use std::{num::NonZero, path::PathBuf};
+use std::{borrow::Cow, num::NonZero, path::PathBuf};
 
-use crate::{vo, GameData, ID, PO};
+use crate::{vo, GameData, Wiki, ID, PO};
 
 use super::Text;
 
@@ -50,6 +50,18 @@ pub enum Type {
     Daily,
     Gap,
     Main,
+}
+
+impl Wiki for Type {
+    fn wiki(&self) -> Cow<'static, str> {
+        Cow::Borrowed(match self {
+            Type::Branch => "冒险任务",
+            Type::Companion => "同行任务",
+            Type::Daily => "日常任务",
+            Type::Gap => "间章任务",
+            Type::Main => "主线任务",
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]

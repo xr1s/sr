@@ -129,6 +129,8 @@ enum FormatState {
     UnityEscape,
     UnityTagKey,
     UnityTagVal,
+    UnityVarKey,
+    UnityVarVal,
 }
 
 pub struct Formatter<'a> {
@@ -144,6 +146,13 @@ pub struct Formatter<'a> {
     fmt_arg: String,
     tag_key: String,
     tag_val: String,
+    var_key: String,
+    var_val: String,
+    // 性别内容，出现于 {F#她}{M#他} 形式中
+    f_content: String,
+    m_content: String,
+    // 注音内容，出现于 {RUBY_B#顶部文字}底部文字{RUBY_E#}
+    ruby: String,
 }
 
 impl<'a> Formatter<'a> {
@@ -159,6 +168,11 @@ impl<'a> Formatter<'a> {
             fmt_arg: String::new(),
             tag_key: String::new(),
             tag_val: String::new(),
+            var_key: String::new(),
+            var_val: String::new(),
+            f_content: String::new(),
+            m_content: String::new(),
+            ruby: String::new(),
         }
     }
 
@@ -185,6 +199,10 @@ impl<'a> Formatter<'a> {
                 }
                 if char == '\\' && self.wiki {
                     self.state = FormatState::UnityEscape;
+                    return;
+                }
+                if char == '{' {
+                    self.state = FormatState::UnityVarKey;
                     return;
                 }
                 self.result.push(char);
@@ -247,17 +265,35 @@ impl<'a> Formatter<'a> {
                     return;
                 }
                 if char == '>' {
-                    self.unity_to_wiki();
+                    self.unity_tag_to_wiki();
                     return;
                 }
                 self.tag_key.push(char);
             }
             FormatState::UnityTagVal => {
                 if char == '>' {
-                    self.unity_to_wiki();
+                    self.unity_tag_to_wiki();
                     return;
                 }
                 self.tag_val.push(char);
+            }
+            FormatState::UnityVarKey => {
+                if char == '}' {
+                    self.unity_var_to_wiki();
+                    return;
+                }
+                if char == '#' {
+                    self.state = FormatState::UnityVarVal;
+                    return;
+                }
+                self.var_key.push(char);
+            }
+            FormatState::UnityVarVal => {
+                if char == '}' {
+                    self.unity_var_to_wiki();
+                    return;
+                }
+                self.var_val.push(char);
             }
         }
     }
@@ -298,7 +334,7 @@ impl<'a> Formatter<'a> {
 
     /// 将 Unity XML 格式转为 MediaWiki 需要的格式
     /// 目前就碰到几种固定的 Tag，硬编码就完事儿了
-    fn unity_to_wiki(&mut self) {
+    fn unity_tag_to_wiki(&mut self) {
         self.result.push_str(&match self.tag_key.as_str() {
             "u" => Cow::Borrowed("{{效果说明|"),
             "i" | "/i" => Cow::Borrowed("''"),
@@ -319,6 +355,54 @@ impl<'a> Formatter<'a> {
         self.state = FormatState::Literal;
         self.tag_key = String::new();
         self.tag_val = String::new();
+    }
+
+    fn unity_var_to_wiki(&mut self) {
+        match self.var_key.as_str() {
+            "NICKNAME" => self.result.push_str("开拓者"),
+            "F" => {
+                if !self.m_content.is_empty() {
+                    self.result.push_str(&self.var_val);
+                    self.result.push('/');
+                    self.result.push_str(&self.m_content);
+                    self.m_content = String::new();
+                } else {
+                    self.f_content = std::mem::take(&mut self.var_val);
+                }
+            }
+            "M" => {
+                if !self.f_content.is_empty() {
+                    self.result.push_str(&self.f_content);
+                    self.result.push('/');
+                    self.result.push_str(&self.var_val);
+                    self.f_content = String::new();
+                } else {
+                    self.m_content = std::mem::take(&mut self.var_val);
+                }
+            }
+            "RUBY_B" => {
+                self.result.push_str("{{注音|");
+                self.ruby = std::mem::take(&mut self.var_val);
+            }
+            "RUBY_E" => {
+                self.result.push('|');
+                self.result.push_str(&self.ruby);
+                self.result.push_str("}}");
+                self.ruby = String::new();
+            }
+            _ => {
+                self.result.push('{');
+                self.result.push_str(&self.var_key);
+                if !self.var_val.is_empty() {
+                    self.result.push('#');
+                    self.result.push_str(&self.var_val);
+                }
+                self.result.push('}');
+            }
+        }
+        self.state = FormatState::Literal;
+        self.var_key = String::new();
+        self.var_val = String::new();
     }
 
     pub fn format(&mut self) -> String {
