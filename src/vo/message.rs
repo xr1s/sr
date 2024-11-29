@@ -468,10 +468,11 @@ impl MessageSectionConfig<'_> {
     }
 
     fn wiki_message_content(&self, wiki: &mut String, prefix: &mut String) {
+        use crate::format::format_wiki;
         prefix.push_str(Self::INDENT);
         wiki.push_str(prefix);
         wiki.push_str("{{角色对话|模板开始|");
-        wiki.push_str(self.contacts().name);
+        wiki.push_str(&format_wiki(self.contacts().name));
         wiki.push_str("}}");
         prefix.push_str(Self::INDENT);
         if self.start_message_item_list.len() == 1 {
@@ -503,14 +504,18 @@ impl MessageSectionConfig<'_> {
 
 impl Wiki for MessageSectionConfig<'_> {
     fn wiki(&self) -> std::borrow::Cow<'static, str> {
-        let mut wiki = String::from("{{#subobject:");
-        wiki.push_str(self.contacts().name);
-        wiki.push('-');
-        wiki.push_str("<!-- 填入标题 -->");
-        wiki.push_str("\n|@category=短信内容");
+        use crate::format::format_wiki;
         let contacts = self.contacts();
+        let contacts_name = format_wiki(contacts.name);
+        let mut wiki = String::from("{{#subobject:");
+        wiki.push_str(&contacts_name);
+        wiki.push('-');
+        wiki.push_str("<!-- 填入标题 ");
+        wiki.push_str(&self.id.to_string());
+        wiki.push_str(" -->");
+        wiki.push_str("\n|@category=短信内容");
         wiki.push_str("\n|人物=");
-        wiki.push_str(contacts.name);
+        wiki.push_str(&contacts_name);
         wiki.push_str("\n|短信标题=<!-- 填入相关事件或任务 -->");
         wiki.push_str("\n|版本=<!-- 填入版本 -->");
         wiki.push_str("\n|内容=");
