@@ -299,11 +299,18 @@ impl<'a> Formatter<'a> {
     }
 
     fn format_single(&mut self) {
-        if self.state == FormatState::Literal {
+        if !std::matches!(
+            self.state,
+            FormatState::Hashbang
+                | FormatState::ArgNum
+                | FormatState::FormatArg
+                | FormatState::FmtArgEnd
+                | FormatState::Percent
+        ) {
             return;
         }
         let percent = self.state == FormatState::Percent;
-        if self.arg_num > self.arguments.len() {
+        if self.arg_num > self.arguments.len() || self.arguments.is_empty() {
             self.state = FormatState::Literal;
             self.result.push('#');
             self.result.push_str(&self.arg_num.to_string());
@@ -335,29 +342,51 @@ impl<'a> Formatter<'a> {
     /// 将 Unity XML 格式转为 MediaWiki 需要的格式
     /// 目前就碰到几种固定的 Tag，硬编码就完事儿了
     fn unity_tag_to_wiki(&mut self) {
-        self.result.push_str(&match self.tag_key.as_str() {
-            "u" => Cow::Borrowed("{{效果说明|"),
-            "i" | "/i" => Cow::Borrowed("''"),
+        if !std::matches!(
+            self.state,
+            FormatState::UnityTagKey | FormatState::UnityTagVal
+        ) {
+            return;
+        }
+        match self.tag_key.as_str() {
+            "u" => self.result.push_str("{{效果说明|"),
+            "i" | "/i" => self.result.push_str("''"),
             "color" => {
-                let mut color = String::from("{{颜色|");
-                color += match &self.tag_val.to_lowercase()[1..] {
-                    "e47d00" | "e47d00ff" => "描述",
-                    "88785a" | "88785aff" => "描述1",
-                    "f29e38" | "f29e38ff" => "描述2",
-                    _ => &self.tag_val[1..],
-                };
-                Cow::Owned(color + "|")
+                self.result.push_str("{{颜色|");
+                self.result
+                    .push_str(match &self.tag_val.to_lowercase()[1..] {
+                        "e47d00" | "e47d00ff" => "描述",
+                        "88785a" | "88785aff" => "描述1",
+                        "f29e38" | "f29e38ff" => "描述2",
+                        _ => &self.tag_val[1..],
+                    });
+                self.result.push('|');
             }
             // 闭合标签
-            "/u" | "/color" => Cow::Borrowed("}}"),
-            _ => Cow::Borrowed(""),
-        });
+            "/u" | "/color" => self.result.push_str("}}"),
+            "unbreak" | "/unbreak" => (),
+            _ => {
+                self.result.push('<');
+                self.result.push_str(&self.tag_key);
+                if !self.tag_val.is_empty() {
+                    self.result.push('=');
+                    self.result.push_str(&self.tag_val);
+                }
+                self.result.push('>');
+            }
+        }
         self.state = FormatState::Literal;
         self.tag_key = String::new();
         self.tag_val = String::new();
     }
 
     fn unity_var_to_wiki(&mut self) {
+        if !std::matches!(
+            self.state,
+            FormatState::UnityVarKey | FormatState::UnityVarVal
+        ) {
+            return;
+        }
         match self.var_key.as_str() {
             "NICKNAME" => self.result.push_str("开拓者"),
             "F" => {
@@ -410,6 +439,24 @@ impl<'a> Formatter<'a> {
             self.feed(char);
         }
         self.format_single();
+        if !self.tag_key.is_empty() {
+            self.result.push('<');
+            self.result.push_str(&self.tag_key);
+            if !self.tag_val.is_empty() {
+                self.result.push('=');
+                self.result.push_str(&self.tag_val);
+            }
+            // 特地不闭合 >
+        }
+        if !self.var_key.is_empty() {
+            self.result.push('{');
+            self.result.push_str(&self.var_key);
+            if !self.var_val.is_empty() {
+                self.result.push('#');
+                self.result.push_str(&self.var_val);
+            }
+            // 特地不闭合 }
+        }
         std::mem::take(&mut self.result)
     }
 }
