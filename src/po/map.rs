@@ -3,16 +3,17 @@ use std::{num::NonZero, path::PathBuf, str::FromStr};
 use crate::{
     po,
     vo::{self},
-    GameData, ID, PO,
+    GameData, GroupID, ID, PO,
 };
 
 use super::{Element, Text};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Serialize)]
 pub enum EntranceType {
     Explore,
     Mission,
     Town,
+    Four, // 1.0 及之前，怎么还有数字的我真是服了
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -21,7 +22,16 @@ pub enum EntranceType {
 pub(crate) struct MapEntrance {
     #[serde(rename = "ID")]
     id: u32,
-    entrance_type: EntranceType,
+    #[serde(default)]
+    is_show_in_map_menu: bool, // 1.2 及之前
+    #[serde(rename = "MapMenuSortID")]
+    map_menu_sort_id: Option<NonZero<u16>>, // 1.2 及之前
+    entrance_type: serde_json::Value,         // TODO: 数字字符串混杂
+    name: Option<Text>,                       // 1.2 及之前
+    desc: Option<Text>,                       // 1.2 及之前
+    entrance_list_icon: Option<String>,       // 1.2 及之前
+    image_path: Option<String>,               // 1.2 及之前
+    mini_map_icon_hint_list: Option<Vec<u8>>, // 1.2 及之前
     #[serde(rename = "PlaneID")]
     plane_id: u32,
     #[serde(rename = "FloorID")]
@@ -30,10 +40,12 @@ pub(crate) struct MapEntrance {
     start_group_id: Option<NonZero<u16>>,
     #[serde(rename = "StartAnchorID")]
     start_anchor_id: Option<NonZero<u8>>,
-    begin_main_mission_list: Vec<u32>, // 只有空 []
+    target_main_mission_list: Option<Vec<u32>>, // 1.2 及之前
+    begin_main_mission_list: Vec<u32>,          // 只有空 []
     finish_main_mission_list: Vec<u32>,
     finish_sub_mission_list: Vec<u32>,
-    condition_expression: String, // 稍微复杂的逻辑表达式，这里就不编译了
+    finish_quest_list: Option<Vec<u32>>,  // 1.2 及之前
+    condition_expression: Option<String>, // 2.4 及之后。稍微复杂的逻辑表达式，这里就不编译了
 }
 
 impl ID for MapEntrance {
@@ -48,7 +60,13 @@ impl<'a> PO<'a> for MapEntrance {
     fn vo(&self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.id,
-            r#type: self.entrance_type,
+            r#type: match self.entrance_type.to_string().as_str() {
+                "\"Explore\"" => EntranceType::Explore,
+                "\"Mission\"" => EntranceType::Mission,
+                "\"Town\"" => EntranceType::Town,
+                "4" => EntranceType::Four,
+                _ => unreachable!(),
+            },
             plane: game.maze_plane(self.plane_id).unwrap(),
             floor: game.maze_floor(self.floor_id).unwrap(),
             begin_main_mission_list: self
@@ -113,7 +131,9 @@ pub enum MappingInfoFarmType {
 pub(crate) struct MappingInfo {
     #[serde(rename = "ID")]
     id: u32,
-    world_level: Option<NonZero<u8>>,
+    #[serde(default)]
+    /// 2.3 及以前是副字段，空为 0
+    world_level: u8,
     r#type: Option<MappingInfoType>,
     farm_type: Option<MappingInfoFarmType>,
     #[serde(default)]
@@ -138,10 +158,14 @@ pub(crate) struct MappingInfo {
     entrance_id: Option<NonZero<u32>>,
 }
 
-impl ID for MappingInfo {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
+impl GroupID for MappingInfo {
+    type GroupID = u32;
+    type InnerID = u8;
+    fn group_id(&self) -> Self::GroupID {
         self.id
+    }
+    fn inner_id(&self) -> Self::InnerID {
+        self.world_level
     }
 }
 
@@ -150,7 +174,7 @@ impl<'a> PO<'a> for MappingInfo {
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
             id: self.id,
-            world_level: self.world_level.map(NonZero::get).unwrap_or_default(),
+            world_level: self.world_level,
             r#type: self.r#type,
             farm_type: self.farm_type,
             is_teleport: self.is_teleport,
@@ -206,7 +230,11 @@ pub enum BGM {
     HertaSpaceStation,
     #[serde(alias = "State_Spaceship", alias = "StateGroup_Spaceship")]
     Spaceship,
-    #[serde(alias = "State_City_MBelobog", alias = "StateGroup_MCity_Belobog")]
+    #[serde(
+        alias = "State_City_MBelobog",
+        alias = "State_City_Mbelobog",
+        alias = "StateGroup_MCity_Belobog"
+    )]
     Belobog,
     #[serde(
         alias = "State_City_MXianzhou_Alliance",
@@ -232,7 +260,7 @@ pub(crate) struct MazeFloor {
     floor_name: String,
     #[serde(rename = "BaseFloorID")]
     base_floor_id: u32,
-    floor_tag: Vec<FloorTag>,
+    floor_tag: Option<Vec<FloorTag>>,
     #[serde(rename = "BGMWorldState")]
     bgm_world_state: BGM,
     #[serde(rename = "FloorBGMGroupName")]
@@ -268,7 +296,7 @@ impl<'a> PO<'a> for MazeFloor {
         Self::VO {
             id: self.floor_id,
             base_floor_id: self.base_floor_id,
-            floor_tag: &self.floor_tag,
+            floor_tag: self.floor_tag.as_deref().unwrap_or_default(),
             floor_type: self.floor_type,
             map_layer_name_list: self
                 .map_layer_name_list
@@ -565,19 +593,21 @@ pub(crate) struct WorldDataConfig {
     #[serde(default)]
     is_show: bool,
     world_name: Text,
-    world_language_name: Text,
+    world_desc: Option<Text>, // 仅在 1.6 及之前出现
+    // 后面的字段都仅在 2.0 及之后出现
+    world_language_name: Option<Text>,
     #[serde_as(as = "serde_with::DisplayFromStr")]
     dynamic_optional_block: u16,
     train_space_type: Option<SpaceType>,
-    map_space_type_list: Vec<SpaceType>,
-    chapter_icon_big_path: PathBuf,
-    chronicle_world_bg_path: PathBuf,
-    chronicle_world_sub_bg_path: PathBuf,
-    chronicle_world_predict_path: PathBuf,
-    chronicle_world_processing_path: PathBuf,
-    camera_width: u8,
-    camera_height: u8,
-    small_world_icon_path: PathBuf,
+    map_space_type_list: Option<Vec<SpaceType>>,
+    chapter_icon_big_path: Option<String>,
+    chronicle_world_bg_path: Option<String>,
+    chronicle_world_sub_bg_path: Option<String>,
+    chronicle_world_predict_path: Option<String>,
+    chronicle_world_processing_path: Option<String>,
+    camera_width: Option<NonZero<u8>>,
+    camera_height: Option<NonZero<u8>>,
+    small_world_icon_path: Option<String>,
 }
 
 impl ID for WorldDataConfig {
@@ -595,11 +625,14 @@ impl<'a> PO<'a> for WorldDataConfig {
             is_real_world: self.is_real_world,
             is_show: self.is_show,
             name: game.text(self.world_name),
-            language_name: game.text(self.world_language_name),
+            language_name: self
+                .world_language_name
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             dynamic_optional_block: self.dynamic_optional_block,
-            map_space_type_list: &self.map_space_type_list,
-            camera_width: self.camera_width,
-            camera_height: self.camera_height,
+            map_space_type_list: self.map_space_type_list.as_deref().unwrap_or_default(),
+            camera_width: self.camera_width.map(NonZero::get).unwrap_or_default(),
+            camera_height: self.camera_height.map(NonZero::get).unwrap_or_default(),
         }
     }
 }

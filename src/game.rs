@@ -1,4 +1,4 @@
-use crate::{po, vo, FnvIndexMap, FnvMultiMap, ID, PO};
+use crate::{po, vo, FnvIndexMap, FnvMultiMap, GroupID, ID, PO};
 
 use std::fs::File;
 use std::io::BufReader;
@@ -50,7 +50,7 @@ pub struct GameData {
 
     // map
     _map_entrance: OnceLock<FnvIndexMap<u32, po::map::MapEntrance>>,
-    _mapping_info: OnceLock<FnvIndexMap<u32, po::map::MappingInfo>>,
+    _mapping_info: OnceLock<FnvMultiMap<u32, po::map::MappingInfo>>,
     _maze_floor: OnceLock<FnvIndexMap<u32, po::map::MazeFloor>>,
     _maze_plane: OnceLock<FnvIndexMap<u32, po::map::MazePlane>>,
     _maze_prop: OnceLock<FnvIndexMap<u32, po::map::MazeProp>>,
@@ -70,7 +70,7 @@ pub struct GameData {
     // misc
     /// 效果说明，比如模拟宇宙中
     _extra_effect_config: OnceLock<FnvIndexMap<u32, po::misc::ExtraEffectConfig>>,
-    _maze_buff: OnceLock<FnvIndexMap<u32, po::misc::MazeBuff>>,
+    _maze_buff: OnceLock<FnvMultiMap<u32, po::misc::MazeBuff>>,
     _reward_data: OnceLock<FnvIndexMap<u32, po::misc::RewardData>>,
     _schedule_data_challenge_boss: OnceLock<FnvIndexMap<u32, po::misc::ScheduleData>>,
     _schedule_data_challenge_maze: OnceLock<FnvIndexMap<u32, po::misc::ScheduleData>>,
@@ -106,7 +106,7 @@ pub struct GameData {
     _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracle>>,
     _rogue_handbook_miracle_type: OnceLock<FnvIndexMap<u16, po::rogue::RogueHandbookMiracleType>>,
     /// 模拟宇宙祝福
-    _rogue_maze_buff: OnceLock<FnvIndexMap<u32, po::misc::MazeBuff>>,
+    _rogue_maze_buff: OnceLock<FnvMultiMap<u32, po::misc::MazeBuff>>,
     /// 模拟宇宙奇物
     _rogue_miracle: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracle>>,
     _rogue_miracle_display: OnceLock<FnvIndexMap<u16, po::rogue::RogueMiracleDisplay>>,
@@ -145,8 +145,10 @@ pub struct GameData {
 impl GameData {
     pub fn new(base: impl Into<PathBuf>) -> Self {
         let base = base.into();
-        let text_map_reader =
-            BufReader::new(File::open(base.join("TextMap/TextMapCHS.json")).unwrap());
+        let file = File::open(base.join("TextMap/TextMapCHS.json"))
+            .or_else(|_| File::open(base.join("TextMap/TextMapCN.json")))
+            .unwrap();
+        let text_map_reader = BufReader::new(file);
         let text_map = serde_json::from_reader(text_map_reader).unwrap();
         GameData {
             base,
@@ -162,16 +164,64 @@ impl GameData {
             .unwrap_or_default()
     }
 
-    fn load_to_map<K, V>(&self, dir: impl Into<std::path::PathBuf>) -> FnvIndexMap<K, V>
+    fn load_to_map<K, V>(
+        &self,
+        dir: impl Into<std::path::PathBuf>,
+    ) -> std::io::Result<FnvIndexMap<K, V>>
     where
         K: std::cmp::Eq + std::hash::Hash,
-        for<'a> V: serde::Deserialize<'a> + crate::ID<ID = K>,
+        V: ID<ID = K>,
+        for<'a> K: serde::Deserialize<'a>,
+        for<'a> V: serde::Deserialize<'a>,
+    {
+        let path = self.base.join(dir.into());
+        let file = File::open(&path)?;
+        let file_size = file.metadata().unwrap().len();
+        let mut reader = BufReader::new(file);
+        let mut bytes = Vec::with_capacity(file_size as _);
+        std::io::Read::read_to_end(&mut reader, &mut bytes).unwrap();
+        Ok(serde_json::from_slice(&bytes)
+            // 仅应在处理 2.3 版本及以下的数据集时输出错误
+            .inspect_err(|e| log::warn!("疑似 2.3 之前的老数据格式: {:?}", e))
+            .map_or_else(
+                // 2.3 版本及以下, 采用的数据结构是 {"123": {"ID": 123, ...} } 形式
+                |_| serde_json::from_slice::<FnvIndexMap<K, V>>(&bytes).unwrap(),
+                // 2.4 版本及以上, 采用的数据结构是 [ {"ID": 123, ...} ] 形式
+                |po: Vec<V>| po.into_iter().map(|po| (po.id(), po)).collect(), // >= 2.4
+            ))
+    }
+
+    fn load_to_group<G, I, V>(&self, dir: impl Into<std::path::PathBuf>) -> FnvMultiMap<G, V>
+    where
+        G: std::cmp::Eq + std::hash::Hash,
+        I: std::cmp::Eq + std::hash::Hash,
+        V: GroupID<GroupID = G, InnerID = I>,
+        for<'a> G: serde::Deserialize<'a>,
+        for<'a> I: serde::Deserialize<'a>,
+        for<'a> V: serde::Deserialize<'a>,
     {
         let path = self.base.join(dir.into());
         let file = File::open(path).unwrap();
-        let reader = BufReader::new(file);
-        let po: Vec<V> = serde_json::from_reader(reader).unwrap();
-        po.into_iter().map(|po| (po.id(), po)).collect()
+        let file_size = file.metadata().unwrap().len();
+        let mut reader = BufReader::new(file);
+        let mut bytes = Vec::with_capacity(file_size as _);
+        std::io::Read::read_to_end(&mut reader, &mut bytes).unwrap();
+        serde_json::from_slice(&bytes)
+            // 仅应在处理 2.3 版本及以下的数据集时输出错误
+            .inspect_err(|e| log::warn!("疑似 2.3 之前的老数据格式: {:?}", e))
+            .map_or_else(
+                // 2.3 版本及以下, 采用的数据结构是 {"123": { "4": { "GroupID": 123, "InnerID": 4, ... } } } 形式
+                |_| {
+                    serde_json::from_slice::<FnvIndexMap<G, FnvIndexMap<I, V>>>(&bytes)
+                        .unwrap()
+                        .into_values()
+                        .flat_map(FnvIndexMap::into_values)
+                        .map(|po| (po.group_id(), po))
+                        .collect()
+                },
+                // 2.4 版本及以上, 采用的数据结构是 [{"GroupID": 123, "InnerID": 4, ...} ] 形式
+                |po: Vec<V>| po.into_iter().map(|po| (po.group_id(), po)).collect(),
+            )
     }
 }
 
@@ -242,12 +292,16 @@ impl GameData {
             .collect()
     }
 
-    fn _current_challenge_group_config<F>(&self, lister: F) -> Option<vo::challenge::GroupConfig>
+    fn _current_challenge_group_config<'a, F, I>(
+        &'a self,
+        lister: F,
+    ) -> Option<vo::challenge::GroupConfig<'a>>
     where
-        for<'a> F: Fn(&'a GameData) -> Vec<vo::challenge::GroupConfig<'a>>,
+        F: Fn(&'a GameData) -> I,
+        I: Iterator<Item = vo::challenge::GroupConfig<'a>>,
     {
         let now = chrono::Local::now();
-        lister(self).into_iter().find(|challenge| {
+        lister(self).find(|challenge| {
             challenge
                 .schedule_data
                 .map(|sched| sched.begin_time <= now && now <= sched.end_time)
@@ -268,29 +322,37 @@ impl GameData {
     }
 }
 
-macro_rules! reward_line {
-    ($field:ident) => {
+macro_rules! group_field {
+    ($field:ident, $group_id:ty => $typ:ty) => {
+        group_field!($field, $group_id => $typ, paste::paste!(stringify!([<$field:camel>])));
+    };
+    ($field:ident, $group_id:ty => $typ:ty, $json:expr) => {
         paste::paste! {
-            fn [<_$field>](&self) -> &FnvMultiMap<u16, po::challenge::RewardLine> {
+            fn [<_$field>](&self) -> &FnvMultiMap<$group_id, po::$typ> {
                 self.[<_$field>].get_or_init(|| {
-                    let path = self.base.join(concat!("ExcelOutput/", stringify!([<$field:camel>]), ".json"));
-                    let file = std::fs::File::open(path).unwrap();
-                    let reader = std::io::BufReader::new(file);
-                    let po: Vec<po::challenge::RewardLine> = serde_json::from_reader(reader).unwrap();
-                    po.into_iter().map(|po| (po.group_id, po)).collect()
+                    self.load_to_group(concat!("ExcelOutput/", $json, ".json"))
                 })
             }
-            pub fn $field(&self, group_id: u16) -> Vec<vo::challenge::RewardLine> {
-                self.[<_$field>]().get_vec(&group_id).unwrap().into_iter().map(|po| po.vo(self)).collect()
+            pub fn $field(&self, group_id: $group_id) -> Vec<vo::$typ> {
+                self.[<_$field>]()
+                    .get_vec(&group_id)
+                    .map(Vec::as_slice)
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|po| po.vo(self))
+                    .collect()
             }
         }
     };
 }
 
 impl GameData {
-    reward_line!(challenge_boss_reward_line);
-    reward_line!(challenge_maze_reward_line);
-    reward_line!(challenge_story_reward_line);
+    group_field!(challenge_boss_reward_line, u16 => challenge::RewardLine);
+    group_field!(challenge_maze_reward_line, u16 => challenge::RewardLine);
+    group_field!(challenge_story_reward_line, u16 => challenge::RewardLine);
+    group_field!(maze_buff, u32 => misc::MazeBuff);
+    group_field!(rogue_maze_buff, u32 => misc::MazeBuff);
+    group_field!(mapping_info, u32 => map::MappingInfo);
 }
 
 macro_rules! field {
@@ -298,18 +360,27 @@ macro_rules! field {
         field!($field, $id => $typ, paste::paste!(stringify!([<$field:camel>])));
     };
 
-    ($field:ident, $id:ty => $typ:ty, $json:expr) => {
+    ($field:ident, $id:ty => $typ:ty, $json:expr $(, $candidates:expr)* ) => {
         paste::paste! {
-            fn [<_$field>](&self) -> &FnvIndexMap<<po::$typ as ID>::ID, po::$typ> {
+            fn [<_$field>](&self) -> &FnvIndexMap<$id, po::$typ> {
                 self.[<_$field>].get_or_init(|| {
-                    self.load_to_map(concat!("ExcelOutput/", $json, ".json"))
+                    let map = self.load_to_map(concat!("ExcelOutput/", $json, ".json"))
+                    $(
+                        .or_else(|_| self.load_to_map(concat!("ExcelOutput/", $candidates, ".json")))
+                    )*;
+                    if let Err(err) = &map {
+                        if err.kind() == std::io::ErrorKind::NotFound {
+                            return FnvIndexMap::default();
+                        }
+                    }
+                    map.unwrap()
                 })
             }
             pub fn $field(&self, id: $id) -> Option<vo::$typ> {
                 self.[<_$field>]().get(&id).map(|po| po.vo(self))
             }
-            pub fn [<list_$field>](&self) -> Vec<vo::$typ> {
-                self.[<_$field>]().values().map(|po| po.vo(self)).collect()
+            pub fn [<list_$field>](&self) -> impl Iterator<Item = vo::$typ> + use<'_> {
+                self.[<_$field>]().values().map(|po| po.vo(self))
             }
         }
     };
@@ -360,11 +431,10 @@ impl GameData {
     field!(item_use_data, u32 => item::ItemUseData);
     // map
     field!(map_entrance, u32 => map::MapEntrance);
-    field!(mapping_info, u32 => map::MappingInfo);
     field!(maze_floor, u32 => map::MazeFloor);
     field!(maze_plane, u32 => map::MazePlane);
     field!(maze_prop, u32 => map::MazeProp);
-    field!(world_data_config, u16 => map::WorldDataConfig);
+    field!(world_data_config, u16 => map::WorldDataConfig, "WorldDataConfig", "WorldConfig");
     // message
     field!(emoji_config, u32 => message::EmojiConfig);
     field!(emoji_group, u8 => message::EmojiGroup);
@@ -377,7 +447,6 @@ impl GameData {
     field!(message_section_config, u32 => message::MessageSectionConfig);
     // misc
     field!(extra_effect_config, u32 => misc::ExtraEffectConfig);
-    field!(maze_buff, u32 => misc::MazeBuff);
     field!(reward_data, u32 => misc::RewardData);
     field!(schedule_data_challenge_boss, u32 => misc::ScheduleData);
     field!(schedule_data_challenge_maze, u32 => misc::ScheduleData);
@@ -406,7 +475,6 @@ impl GameData {
     // rogue
     field!(rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);
     field!(rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
-    field!(rogue_maze_buff, u32 => misc::MazeBuff);
     field!(rogue_miracle, u16 => rogue::RogueMiracle);
     field!(rogue_miracle_display, u16 => rogue::RogueMiracleDisplay);
     field!(rogue_monster, u32 => rogue::RogueMonster);

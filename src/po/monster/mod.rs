@@ -21,7 +21,7 @@ pub(crate) struct Camp {
     sort_id: u8,
     name: Text,
     icon_path: PathBuf,
-    camp_type: CampType,
+    camp_type: Option<CampType>, // 1.5 及之后
 }
 
 impl ID for Camp {
@@ -92,9 +92,23 @@ struct DamageTypeResistance {
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 struct AISkillSequence {
-    #[serde(rename = "PGKKLADJKGK")]
+    #[serde(alias = "KIFGIAMDGPI")] // 1.0
+    #[serde(alias = "JEKCKJBHBKN")] // 1.1
+    #[serde(alias = "MNMACAIHJCE")] // 1.2
+    #[serde(alias = "CKFOCMJDLGG")] // 1.3
+    #[serde(alias = "HMBDFGFHFAI")] // 1.4
+    #[serde(alias = "OBBNCDOAKEF")] // 1.5
+    #[serde(alias = "CMFIFDAHNOG")] // 1.6
+    #[serde(alias = "DOHIPPHAGLG")] // 2.0
+    #[serde(alias = "DGBJNJFOGHN")] // 2.1
+    #[serde(alias = "ILOCKGFGCIF")] // 2.2
+    #[serde(alias = "IPIGPCKIEMA")] // 2.3
+    #[serde(alias = "IDNGFMLCGHB")] // 2.4
+    #[serde(alias = "GKBBPHMLLNG")] // 2.5
+    #[serde(alias = "PGKKLADJKGK")] // 2.6
     id: u32,
 }
 
@@ -108,8 +122,8 @@ pub(crate) struct Config {
     monster_template_id: u32,
     monster_name: Text,
     monster_introduction: Text,
-    monster_battle_introduction: Text,
-    hard_level_group: u8, // 目前只有 1
+    monster_battle_introduction: Option<Text>, // 1.0 及之前
+    hard_level_group: u8,                      // 目前只有 1
     elite_group: u16,
     attack_modify_ratio: Value<f32>,
     defence_modify_ratio: Value<f32>,
@@ -146,13 +160,15 @@ impl<'a> PO<'a> for Config {
         Self::VO {
             game,
             id: self.monster_id,
-            template: None
+            template: None // 1.0~1.3, 2.0 存在几个数据，会导致 panic
                 .or_else(|| game.monster_template_config(self.monster_template_id))
-                .or_else(|| game.monster_template_unique_config(self.monster_template_id))
-                .unwrap(),
+                .or_else(|| game.monster_template_unique_config(self.monster_template_id)),
             name: game.text(self.monster_name),
             introduction: game.text(self.monster_introduction),
-            battle_introduction: game.text(self.monster_battle_introduction),
+            battle_introduction: self
+                .monster_battle_introduction
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             attack_modify_ratio: self.attack_modify_ratio.value,
             defence_modify_ratio: self.defence_modify_ratio.value,
             hp_modify_ratio: self.hp_modify_ratio.value,
@@ -215,6 +231,7 @@ pub(crate) struct NPCMonsterData {
     id: u32,
     #[serde(rename = "NPCName")]
     npc_name: Text,
+    prefab_path: Option<String>, // 1.1 及之前
     config_entity_path: PathBuf,
     #[serde(rename = "NPCIconPath")]
     npc_icon_path: PathBuf,
@@ -288,7 +305,7 @@ pub(crate) struct SkillConfig {
     icon_path: PathBuf,
     skill_desc: Text,
     skill_type_desc: Text,
-    skill_tag: Text,
+    skill_tag: Option<Text>,
     phase_list: Vec<u8>,
     #[serde(default)]
     is_threat: bool,
@@ -306,7 +323,7 @@ pub(crate) struct SkillConfig {
     ai_cd: u8, // 只有 1
     #[serde(rename = "AI_ICD")]
     ai_icd: u8, // 只有 1
-    modifier_list: Vec<SkillModifier>,
+    modifier_list: Option<Vec<SkillModifier>>, // 2.0 无该字段
 }
 
 impl ID for SkillConfig {
@@ -329,7 +346,10 @@ impl<'a> PO<'a> for SkillConfig {
             name: game.text(self.skill_name),
             desc: crate::format::format(game.text(self.skill_desc), &params),
             type_desc: game.text(self.skill_type_desc),
-            tag: game.text(self.skill_tag),
+            tag: self
+                .skill_tag
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             phase_list: &self.phase_list,
             is_threat: self.is_threat,
             extra_effect_list: self
@@ -381,11 +401,38 @@ pub enum StanceType {
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 struct CustomValue {
-    #[serde(rename = "MFKLINKCPPA")]
+    #[serde(alias = "JOAHDHLLMDK")] // 1.0
+    #[serde(alias = "OEOPENFDEML")] // 1.1
+    #[serde(alias = "LFCIILHABDO")] // 1.2
+    #[serde(alias = "COJNNIIOEAK")] // 1.3
+    #[serde(alias = "JDKAMOANICM")] // 1.4
+    #[serde(alias = "CFNMGGCLFHN")] // 1.5
+    #[serde(alias = "JJNBOIODCCF")] // 1.6
+    #[serde(alias = "DJBGPLLGOEF")] // 2.0
+    #[serde(alias = "CEDKLKIHFEK")] // 2.1
+    #[serde(alias = "MLMLDHKBPLM")] // 2.2
+    #[serde(alias = "LFKFFCJNFKN")] // 2.3
+    #[serde(alias = "MBBNDDLBEPE")] // 2.4
+    #[serde(alias = "PFMLCKGCKOB")] // 2.5
+    #[serde(alias = "MFKLINKCPPA")] // 2.6
     pub key: String,
-    #[serde(rename = "HPPEILAONGE")]
+    #[serde(alias = "LKJLPJMIGNJ")] // 1.0
+    #[serde(alias = "BHLILFMLNEE")] // 1.1
+    #[serde(alias = "LGKGOMNMBAH")] // 1.2
+    #[serde(alias = "MBOHKHKHFPD")] // 1.3
+    #[serde(alias = "MOJJBFBKBNC")] // 1.4
+    #[serde(alias = "JCFBPDLNMLH")] // 1.5
+    #[serde(alias = "AMMAAKPAKAA")] // 1.6
+    #[serde(alias = "BOANKOCFAIM")] // 2.0
+    #[serde(alias = "IEDALJJJBCE")] // 2.1
+    #[serde(alias = "PKPGBCJMDEK")] // 2.2
+    #[serde(alias = "EPBOOFFCKPJ")] // 2.3
+    #[serde(alias = "DIBKEHHCPAP")] // 2.4
+    #[serde(alias = "NLABNDMDIKM")] // 2.5
+    #[serde(alias = "HPPEILAONGE")] // 2.6
     pub value: i32,
 }
 
@@ -397,6 +444,8 @@ pub(crate) struct TemplateConfig {
     monster_template_id: u32,
     #[serde(rename = "TemplateGroupID")]
     pub(crate) template_group_id: Option<NonZero<u32>>,
+    #[serde(default)]
+    release_in_atlas: bool, // 1.0 及之前
     #[serde(rename = "AtlasSortID")]
     atlas_sort_id: Option<NonZero<u8>>,
     monster_name: Text,
@@ -411,7 +460,7 @@ pub(crate) struct TemplateConfig {
     prefab_path: PathBuf,
     manikin_prefab_path: PathBuf,
     manikin_config_path: PathBuf,
-    manikin_image_path: PathBuf,
+    manikin_image_path: Option<String>, // 1.2 及之后
     #[serde(rename = "NatureID")]
     nature_id: u8, // 目前只有 1
     attack_base: Value<u16>,
@@ -444,6 +493,12 @@ impl ID for TemplateConfig {
 impl<'a> PO<'a> for TemplateConfig {
     type VO = vo::monster::TemplateConfig<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
+        #[rustfmt::skip]
+        const MISSING_NPC_MONSTER: &[u32] = &[
+            1005010, 1012010, 3024012, 8022020,
+            // 1.2 缺漏数据
+            2013011,
+        ];
         let camp = self
             .monster_camp_id
             .map(NonZero::get)
@@ -472,7 +527,7 @@ impl<'a> PO<'a> for TemplateConfig {
             npc_monster_list: self
                 .npc_monster_list
                 .iter()
-                .filter(|&&id| id != 1005010 && id != 1012010 && id != 8022020) // TODO: 疑似缺数据
+                .filter(|&id| !MISSING_NPC_MONSTER.contains(id)) // TODO: 疑似缺数据
                 .map(|&id| game.npc_monster_data(id))
                 .map(Option::unwrap)
                 .collect(),

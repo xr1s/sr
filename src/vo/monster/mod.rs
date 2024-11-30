@@ -11,7 +11,7 @@ pub struct Camp<'a> {
     pub id: u8,
     pub sort_id: u8,
     pub name: &'a str,
-    pub r#type: CampType,
+    pub r#type: Option<CampType>,
 }
 
 #[derive(derivative::Derivative)]
@@ -23,7 +23,7 @@ pub struct Config<'a> {
     #[derivative(Debug = "ignore")]
     pub(crate) game: &'a GameData,
     pub id: u32,
-    pub template: TemplateConfig<'a>,
+    pub template: Option<TemplateConfig<'a>>,
     pub name: &'a str,
     pub introduction: &'a str,
     pub battle_introduction: &'a str,
@@ -49,7 +49,12 @@ pub struct Config<'a> {
 impl Config<'_> {
     pub fn prototype(&self) -> Config {
         // 不确定 unwrap 会不会挂，总之先试试
-        self.game.monster_config(self.template.id).unwrap()
+        self.template
+            .as_ref()
+            .map(|template| template.id)
+            .map(|id| self.game.monster_config(id))
+            .map(Option::unwrap)
+            .unwrap_or_else(|| self.clone())
     }
 
     pub fn phase(&self) -> u8 {
@@ -82,17 +87,27 @@ impl Config<'_> {
     /// 78 级开始，速度 = 基础速度 * 1.20
     /// 86 级开始，速度 = 基础速度 * 1.32
     pub fn speed(&self) -> f32 {
-        self.template.speed_base as f32 * self.speed_modify_ratio + self.speed_modify_value as f32
+        self.template
+            .as_ref()
+            .map(|template| template.speed_base)
+            .unwrap_or_default() as f32
+            * self.speed_modify_ratio
+            + self.speed_modify_value as f32
     }
 
     /// 满级速度（指 `speed` 函数的 86 级版本）
     pub fn max_speed(&self) -> f32 {
-        self.speed() as f32 * 1.32
+        self.speed() * 1.32
     }
 
     /// 韧性
     pub fn stance(&self) -> f32 {
-        (self.template.stance_base as f32 * self.stance_modify_ratio
+        (self
+            .template
+            .as_ref()
+            .map(|template| template.speed_base)
+            .unwrap_or_default() as f32
+            * self.stance_modify_ratio
             + self.stance_modify_value as f32)
             / 3.
     }
@@ -135,6 +150,8 @@ impl Config<'_> {
     }
 
     pub fn special_wiki(&self, abyss_name: &str, floors: &[u8]) -> String {
+        assert!(self.template.is_some(), "普通怪物不能没有模板");
+        let template = self.template.as_ref().unwrap();
         let mut is_attr_change = false;
         is_attr_change |= self.attack_modify_ratio != 1.;
         is_attr_change |= self.defence_modify_ratio != 1.;
@@ -176,12 +193,12 @@ impl Config<'_> {
                 attr_change.push(format!("生命：{}", ratio));
             }
             if self.speed_modify_ratio != 1. || self.speed_modify_value != 0 {
-                let ratio = self.speed() / self.template.speed_base as f32;
+                let ratio = self.speed() / template.speed_base as f32;
                 let ratio = f32::round(ratio * 10000.) / 100.;
                 attr_change.push(format!("速度：{}", ratio));
             }
             if self.stance_modify_ratio != 1. || self.stance_modify_value != 0 {
-                let ratio = self.stance() * 3. / self.template.stance_base as f32;
+                let ratio = self.stance() * 3. / template.stance_base as f32;
                 let ratio = f32::round(ratio * 10000.) / 100.;
                 attr_change.push(format!("韧性：{}", ratio));
             }
@@ -302,16 +319,27 @@ impl crate::Wiki for Config<'_> {
         wiki.push_str("\n|系列=");
         // 分类（阵营）
         wiki.push_str("\n|分类=");
-        wiki.push_str(self.template.camp());
+        let camp = self
+            .template
+            .as_ref()
+            .map(|template| template.camp())
+            .unwrap_or_default();
+        wiki.push_str(camp);
         wiki.push_str("<!-- 选填：反物质军团、裂界造物、雅利洛-Ⅵ、仙舟「罗浮」、虫群、星际和平公司、惊梦剧团、忆域迷因、模拟宇宙、星核猎手、银河 -->");
         // 类型（周本Boss、剧情Boss等，这里没法获取全部，需要手动处理）
-        let mut typ = match self.template.rank {
-            Rank::BigBoss => "周本BOSS",
-            Rank::Elite => "强敌",
-            Rank::LittleBoss => "剧情BOSS",
-            Rank::Minion | Rank::MinionLv2 => "普通",
+        let mut typ = match self.template.as_ref().map(|template| template.rank) {
+            Some(Rank::BigBoss) => "周本BOSS",
+            Some(Rank::Elite) => "强敌",
+            Some(Rank::LittleBoss) => "剧情BOSS",
+            Some(Rank::Minion | Rank::MinionLv2) => "普通",
+            None => "",
         };
-        if self.template.group_id == 0 && !self.name.contains("扑满") {
+        let group_id = self
+            .template
+            .as_ref()
+            .map(|template| template.group_id)
+            .unwrap_or_default();
+        if self.template.is_some() && group_id == 0 && !self.name.contains("扑满") {
             typ = "召唤物";
         }
         wiki.push_str("\n|类型=");

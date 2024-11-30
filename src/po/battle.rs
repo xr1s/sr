@@ -194,9 +194,35 @@ pub enum StageConfigType {
 #[serde(deny_unknown_fields)]
 #[allow(non_snake_case)]
 pub(crate) struct StageConfigData {
-    #[serde(rename = "MFKLINKCPPA")]
+    #[serde(alias = "JOAHDHLLMDK")] // 1.0
+    #[serde(alias = "OEOPENFDEML")] // 1.1
+    #[serde(alias = "LFCIILHABDO")] // 1.2
+    #[serde(alias = "COJNNIIOEAK")] // 1.3
+    #[serde(alias = "JDKAMOANICM")] // 1.4
+    #[serde(alias = "CFNMGGCLFHN")] // 1.5
+    #[serde(alias = "JJNBOIODCCF")] // 1.6
+    #[serde(alias = "DJBGPLLGOEF")] // 2.0
+    #[serde(alias = "CEDKLKIHFEK")] // 2.1
+    #[serde(alias = "MLMLDHKBPLM")] // 2.2
+    #[serde(alias = "LFKFFCJNFKN")] // 2.3
+    #[serde(alias = "MBBNDDLBEPE")] // 2.4
+    #[serde(alias = "PFMLCKGCKOB")] // 2.5
+    #[serde(alias = "MFKLINKCPPA")] // 2.6
     r#type: StageConfigType,
-    #[serde(rename = "HPPEILAONGE")]
+    #[serde(alias = "LKJLPJMIGNJ")] // 1.0
+    #[serde(alias = "BHLILFMLNEE")] // 1.1
+    #[serde(alias = "LGKGOMNMBAH")] // 1.2
+    #[serde(alias = "MBOHKHKHFPD")] // 1.3
+    #[serde(alias = "MOJJBFBKBNC")] // 1.4
+    #[serde(alias = "JCFBPDLNMLH")] // 1.5
+    #[serde(alias = "AMMAAKPAKAA")] // 1.6
+    #[serde(alias = "BOANKOCFAIM")] // 2.0
+    #[serde(alias = "IEDALJJJBCE")] // 2.1
+    #[serde(alias = "PKPGBCJMDEK")] // 2.2
+    #[serde(alias = "EPBOOFFCKPJ")] // 2.3
+    #[serde(alias = "DIBKEHHCPAP")] // 2.4
+    #[serde(alias = "NLABNDMDIKM")] // 2.5
+    #[serde(alias = "HPPEILAONGE")] // 2.6
     value: String,
 }
 
@@ -215,7 +241,6 @@ pub(crate) struct StageConfig {
     stage_ability_config: Vec<String>,
     battle_scoring_group: Option<NonZero<u16>>,
     // 各种配置文件, Key 也没解密，
-    // Key 是这几个 EICGHHJHOEE FBAHMFEDNNB KCOLEICPMAD MFKLINKCPPA
     sub_level_graphs: Vec<fnv::FnvHashMap<String, String>>,
     stage_config_data: Vec<StageConfigData>,
     monster_list: Vec<fnv::FnvHashMap<String, u32>>,

@@ -226,7 +226,6 @@ impl MessageSectionConfig<'_> {
         self._contacts.get_or_init(|| {
             self.game
                 .list_message_group_config()
-                .into_iter()
                 .find(|group| {
                     group
                         .section_list
@@ -307,27 +306,40 @@ impl MessageSectionConfig<'_> {
             wiki.push_str(text);
             wiki.push_str("}}");
         }
+        fn image_text(game: &GameData, message: &MessageItemConfig<'_>) -> Cow<'static, str> {
+            let path = game
+                .message_item_image(message.content_id)
+                .unwrap()
+                .image_path;
+            // 处理一下图片路径，目录全部用小写，文件名保持大写，方便拿去查询
+            // 解包数据中
+            let segments = path.split('/').collect::<Vec<_>>();
+            let path = segments[..segments.len() - 1]
+                .iter()
+                .map(|segment| segment.to_ascii_lowercase())
+                .map(Cow::Owned)
+                .chain([Cow::Borrowed(segments[segments.len() - 1])])
+                .intersperse(Cow::Borrowed("/"))
+                .collect::<String>();
+            Cow::Owned(format!("{}<!-- {} -->", message.main_text, path))
+        }
         let text = match message.r#type {
-            ItemType::Image => {
-                let path = self
-                    .game
-                    .message_item_image(message.content_id)
-                    .unwrap()
-                    .image_path;
-                let segments = path.split('/').collect::<Vec<_>>();
-                let path = segments[..segments.len() - 1]
-                    .iter()
-                    .map(|segment| segment.to_ascii_lowercase())
-                    .map(Cow::Owned)
-                    .chain([Cow::Borrowed(segments[segments.len() - 1])])
-                    .intersperse(Cow::Borrowed("/"))
-                    .collect::<String>();
-                Cow::Owned(format!("{}<!-- {} -->", message.main_text, path))
-            }
+            ItemType::Image => image_text(self.game, message),
             ItemType::Link => Cow::Borrowed("<!-- ItemType::Link -->"),
             ItemType::Raid => Cow::Borrowed("<!-- ItemType::Raid -->"),
-            ItemType::Sticker => self.game.emoji_config(message.content_id).unwrap().wiki(),
-            ItemType::Text => Cow::Owned(format_wiki(message.main_text)),
+            ItemType::Sticker => self
+                .game
+                .emoji_config(message.content_id)
+                .map(|emoji| emoji.wiki())
+                .unwrap_or(Cow::Borrowed("<!-- 1.2 版本及之前没有解包 emoji 信息 -->")),
+            ItemType::Text => {
+                if message.content_id != 0 {
+                    // 1.2 及之前图片没有
+                    image_text(self.game, message)
+                } else {
+                    Cow::Owned(format_wiki(message.main_text))
+                }
+            }
             ItemType::Video => Cow::Borrowed("<!-- ItemType::Video -->"),
         };
         let r#type = match message.r#type {
@@ -398,8 +410,12 @@ impl MessageSectionConfig<'_> {
             wiki.push_str(&index.to_string());
             wiki.push('=');
             if is_sticker_selection {
-                let emoji = self.game.emoji_config(message.content_id).unwrap();
-                wiki.push_str(&emoji.wiki());
+                let emoji = self
+                    .game
+                    .emoji_config(message.content_id)
+                    .map(|emoji| emoji.wiki())
+                    .unwrap_or(Cow::Borrowed("<!-- 1.2 版本及之前没有解包 emoji 信息 -->"));
+                wiki.push_str(&emoji);
             } else {
                 wiki.push_str(message.option_text);
             }

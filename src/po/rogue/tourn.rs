@@ -54,12 +54,19 @@ pub enum FormulaCategory {
 
 #[serde_with::serde_as]
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct DescParam {
-    #[serde(rename = "EOMLKKGEAEF")]
+    #[serde(alias = "IAGLGKPDLOE")] // 2.3
+    #[serde(alias = "EEOLCCFMJFF")] // 2.4
+    #[serde(alias = "FGMDOEKGPEE")] // 2.5
+    #[serde(alias = "EOMLKKGEAEF")] // 2.6
     r#type: DescParamType,
     #[serde_as(as = "serde_with::DisplayFromStr")]
-    #[serde(rename = "HPPEILAONGE")]
+    #[serde(alias = "EPBOOFFCKPJ")] // 2.3
+    #[serde(alias = "DIBKEHHCPAP")] // 2.4
+    #[serde(alias = "NLABNDMDIKM")] // 2.5
+    #[serde(alias = "HPPEILAONGE")] // 2.6
     value: u32,
 }
 
@@ -363,7 +370,11 @@ impl<'a> PO<'a> for RogueTournFormula {
             sub_buff_type: self.sub_buff_type_id.map(buff_type_id_to_path),
             sub_buff_num: self.sub_buff_num.map(NonZero::get).unwrap_or_default(),
             category: self.formula_category,
-            maze_buff: game.rogue_maze_buff(self.maze_buff_id).unwrap(),
+            maze_buff: game
+                .rogue_maze_buff(self.maze_buff_id)
+                .into_iter()
+                .next()
+                .unwrap(),
             display: game
                 .rogue_tourn_formula_display(self.formula_display_id)
                 .unwrap(),

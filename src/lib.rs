@@ -16,6 +16,13 @@ pub trait ID {
     fn id(&self) -> Self::ID;
 }
 
+pub trait GroupID {
+    type GroupID: Eq + PartialEq + std::hash::Hash;
+    type InnerID: Eq + PartialEq + std::hash::Hash;
+    fn group_id(&self) -> Self::GroupID;
+    fn inner_id(&self) -> Self::InnerID;
+}
+
 trait PO<'a> {
     type VO;
     fn vo(&'a self, game: &'a GameData) -> Self::VO;

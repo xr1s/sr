@@ -61,6 +61,8 @@ pub enum ItemSubType {
     /// 合成配方
     /// 对应 ItemMainType 为 Usable
     Formula,
+    /// 怪物隐身玩法资源废弃，只在 1.6 及之前出现
+    GameplayCounter,
     /// 各种兑换类道具（包括商城礼包）
     /// 对应 ItemMainType 为 Usable
     /// 对应 UseMethod 为大小月卡四种 MonthlyCard, BPUnlock68, BPUnlock128, BPUpgradeFrom68To128
@@ -168,6 +170,14 @@ pub enum UseMethod {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum UseType {
+    Food,
+    Formula,
+    Gift,
+    Treasure,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum SellType {
     Destroy,
     Sell,
@@ -218,8 +228,11 @@ pub struct ItemConfig {
     item_figure_icon_path: PathBuf,
     item_currency_icon_path: PathBuf,
     item_avatar_icon_path: PathBuf,
+    #[serde(default)]
+    is_auto_use: bool, // 1.3 及之前，后面大概合并为 UseMethod 了
     pile_limit: u32,
     use_method: Option<UseMethod>,
+    use_type: Option<UseType>, // 1.3 及之前，后面大概合并为 UseMethod 了
     #[serde(rename = "UseDataID")]
     use_data_id: Option<NonZero<u32>>,
     custom_data_list: Vec<u16>,

@@ -16,10 +16,10 @@ pub(crate) struct MissionChapterConfig {
     #[serde(rename = "ID")]
     id: u32,
     chapter_name: String,
-    stage_name: String,
+    stage_name: Option<String>, // 1.1 及之后
     chapter_desc: String,
     chapter_type: Option<ChapterType>,
-    link_chapter_list: Vec<u32>,
+    link_chapter_list: Option<Vec<u32>>, // 1.5 及之后
     chapter_display_priority: u32,
     origin_main_mission: Option<NonZero<u32>>,
     final_main_mission: Option<NonZero<u32>>,
@@ -78,6 +78,7 @@ pub enum ParamType {
     MultiSequence,
     MuseumPhaseRenewPointReach,
     PlayerLevel,
+    Sequence,
     SequenceNextDay,
     WorldLevel,
 }
@@ -90,13 +91,21 @@ pub(crate) struct Param {
     value: Option<NonZero<u32>>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum AudioEmotionState {
+    #[serde(rename = "")]
+    None,
+    #[serde(rename = "State_Tense")]
+    Tense,
+}
+
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct MainMission {
     #[serde(rename = "MainMissionID")]
     main_mission_id: u32,
-    r#type: Type,
+    r#type: Type, // TODO: 有个 MainMissionType.json
     display_priority: u32,
     #[serde(default)]
     is_display_activity_icon: bool,
@@ -104,21 +113,34 @@ pub(crate) struct MainMission {
     is_in_raid: bool,
     next_main_mission_list: Vec<u32>, // 只有空 []
     name: Text,
-    take_operation: Operation,
+    take_type_a: Option<ParamType>,          // 1.0 及之前
+    take_param_a_int_1: Option<u32>,         // 1.0 及之前
+    take_param_a_int_list: Option<Vec<u32>>, // 1.0 及之前
+    take_type_b: Option<ParamType>,          // 1.0 及之前
+    take_param_b_int_1: Option<u32>,         // 1.0 及之前
+    take_param_b_int_list: Option<Vec<u32>>, // 1.0 及之前
+    take_operation: Option<Operation>,
     begin_operation: Operation,
-    take_param: Vec<Param>,
+    take_param: Option<Vec<Param>>,
     begin_param: Vec<Param>,
     next_track_main_mission: Option<NonZero<u32>>,
+    #[serde(default)]
+    is_show_red_dot: bool, // 1.2 及之前
     track_weight: Option<NonZero<u8>>,
+    mission_suspend: Option<NonZero<u8>>, // 1.6 及之前，只有 1
     mission_advance: Option<NonZero<u8>>,
     #[serde(rename = "RewardID")]
     reward_id: Option<NonZero<u32>>,
     #[serde(rename = "DisplayRewardID")]
     display_reward_id: Option<NonZero<u32>>,
+    audio_emotion_state: Option<AudioEmotionState>, // 仅出现于 1.4 以前
     mission_pack: Option<NonZero<u32>>,
     #[serde(rename = "ChapterID")]
     chapter_id: Option<NonZero<u32>>,
     sub_reward_list: Vec<u32>,
+    // 仅在 2.0 存在
+    #[serde(default, rename = "StoryLineIDList")]
+    story_line_id_list: [(); 0],
 }
 
 impl ID for MainMission {

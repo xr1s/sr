@@ -259,6 +259,7 @@ pub(crate) struct MessageItemConfig {
     item_type: ItemType,
     main_text: Text,
     #[serde(rename = "ItemContentID")]
+    #[serde(alias = "ItemImageID")] // 1.2 之前叫做 ItemImageID
     item_content_id: Option<NonZero<u32>>,
     option_text: Text,
     #[serde(rename = "NextItemIDList")]
@@ -303,7 +304,7 @@ pub(crate) struct MessageItemImage {
     #[serde(rename = "ID")]
     id: u32,
     image_path: String,
-    female_image_path: String,
+    female_image_path: Option<String>, // 2.3 版本及之后
 }
 
 impl ID for MessageItemImage {
@@ -319,7 +320,7 @@ impl<'a> PO<'a> for MessageItemImage {
         Self::VO {
             id: self.id,
             image_path: &self.image_path,
-            female_image_path: &self.female_image_path,
+            female_image_path: self.female_image_path.as_deref().unwrap_or_default(),
         }
     }
 }

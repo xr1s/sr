@@ -1,7 +1,7 @@
 use serde::ser::SerializeStruct;
 
 use super::{Text, Value};
-use crate::{vo, GameData, ID, PO};
+use crate::{vo, GameData, GroupID, ID, PO};
 
 use std::{num::NonZero, path::PathBuf};
 
@@ -44,6 +44,7 @@ impl<'a> PO<'a> for ExtraEffectConfig {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum MazeBuffType {
+    Assistant,
     Character,
     CharacterKeepScene,
     Level,
@@ -58,6 +59,14 @@ pub enum InBattleBindingType {
     CharacterSkill,
     StageAbilityAfterCharacterBorn,
     StageAbilityBeforeCharacterBorn,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum MazeBuffUseType {
+    AddBattleBuff,
+    Special,
+    SummonUnit,
+    TriggerBattle,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
@@ -82,6 +91,8 @@ pub(crate) struct MazeBuff {
     in_battle_binding_type: Option<InBattleBindingType>,
     in_battle_binding_key: String,
     param_list: Vec<Value<f32>>,
+    #[serde(rename = "BuffDescParamByAvatarSkillID")]
+    buff_desc_param_by_avatar_skill_id: Option<NonZero<u32>>,
     buff_icon: PathBuf,
     buff_name: Text,
     buff_desc: Text,
@@ -89,6 +100,7 @@ pub(crate) struct MazeBuff {
     buff_desc_battle: Text,
     buff_effect: String,
     maze_buff_type: MazeBuffType,
+    use_type: Option<MazeBuffUseType>, // 只在 1.6 及之前出现
     maze_buff_icon_type: Option<MazeBuffIconType>,
     maze_buff_pool: Option<NonZero<u8>>,
     #[serde(default)]
@@ -97,10 +109,14 @@ pub(crate) struct MazeBuff {
     is_display_env_in_level: bool,
 }
 
-impl ID for MazeBuff {
-    type ID = u32;
-    fn id(&self) -> Self::ID {
+impl GroupID for MazeBuff {
+    type GroupID = u32;
+    type InnerID = u8;
+    fn group_id(&self) -> Self::GroupID {
         self.id
+    }
+    fn inner_id(&self) -> Self::InnerID {
+        self.lv
     }
 }
 

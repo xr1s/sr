@@ -4,9 +4,9 @@
 /// Challenge:      混沌回忆
 /// ChallengeStory: 虚构叙事
 /// ChallengeBoss:  末日幻影
-use std::{num::NonZero, path::PathBuf};
+use std::num::NonZero;
 
-use crate::{vo, GameData, ID, PO};
+use crate::{vo, GameData, GroupID, ID, PO};
 
 use super::{Element, Text};
 
@@ -19,6 +19,12 @@ pub enum GroupType {
     Story,
     /// 末日幻影
     Boss,
+}
+
+impl Default for GroupType {
+    fn default() -> Self {
+        Self::Memory
+    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -45,11 +51,12 @@ pub(crate) struct GroupConfig {
     mapping_info_id: Option<NonZero<u32>>,
     #[serde(rename = "WorldID")]
     world_id: Option<NonZero<u16>>,
-    back_ground_path: PathBuf,
-    tab_pic_path: PathBuf,
-    tab_pic_select_path: PathBuf,
-    challenge_group_type: GroupType,
-    theme_pic_path: PathBuf,
+    back_ground_path: Option<String>,    // 1.2 及之后
+    tab_pic_path: Option<String>,        // 1.2 及之后
+    tab_pic_select_path: Option<String>, // 1.2 及之后
+    #[serde(default)]
+    challenge_group_type: GroupType, // 1.5 及之前虚构叙事出现前，无此字段
+    theme_pic_path: Option<String>,      // 1.5 及之前没有该字段
 }
 
 impl ID for GroupConfig {
@@ -90,6 +97,8 @@ impl<'a> PO<'a> for GroupConfig {
                 .maze_buff_id
                 .map(NonZero::get)
                 .map(|id| game.maze_buff(id))
+                .map(Vec::into_iter)
+                .map(|mut iter| iter.next())
                 .map(Option::unwrap),
             map_entrance: self
                 .map_entrance_id
@@ -101,7 +110,7 @@ impl<'a> PO<'a> for GroupConfig {
                 .map(NonZero::get)
                 .filter(|&id| id != 1220) // TODO: 疑似缺数据
                 .map(|id| game.mapping_info(id))
-                .map(Option::unwrap),
+                .unwrap_or_default(),
             world: self
                 .world_id
                 .map(NonZero::get)
@@ -112,6 +121,11 @@ impl<'a> PO<'a> for GroupConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum BossPattern {
+    SmallAndLarge,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
@@ -119,22 +133,23 @@ impl<'a> PO<'a> for GroupConfig {
 pub(crate) struct GroupExtra {
     #[serde(rename = "GroupID")]
     group_id: u16,
-    theme_poster_bg_pic_path: PathBuf,
+    theme_poster_bg_pic_path: String,
     // 以下 4 个只在虚构叙事和末日幻影中出现
-    theme_toast_pic_path: Option<PathBuf>,
-    theme_icon_pic_path: Option<PathBuf>,
-    theme_poster_effect_prefab_path: Option<PathBuf>,
-    theme_poster_tab_pic_path: Option<PathBuf>,
+    theme_toast_pic_path: Option<String>,
+    theme_icon_pic_path: Option<String>,
+    theme_poster_effect_prefab_path: Option<String>,
+    theme_poster_tab_pic_path: Option<String>,
     // 以下 2 个只在虚构叙事中出现
     buff_list: Option<[u32; 3]>,
     #[serde(rename = "ThemeID")]
     theme_id: Option<NonZero<u8>>,
-    // 以下 5 个只在末日幻影中出现
+    // 以下 6 个只在末日幻影中出现
     buff_list_1: Option<[u32; 3]>,
     buff_list_2: Option<[u32; 3]>,
-    boss_pattern_prefab_path: Option<PathBuf>,
-    boss_position_prefab_path_1: Option<PathBuf>,
-    boss_position_prefab_path_2: Option<PathBuf>,
+    boss_pattern: Option<BossPattern>, // 2.4 之后该字段消失
+    boss_pattern_prefab_path: Option<String>,
+    boss_position_prefab_path_1: Option<String>,
+    boss_position_prefab_path_2: Option<String>,
 }
 
 impl ID for GroupExtra {
@@ -147,14 +162,12 @@ impl ID for GroupExtra {
 impl<'a> PO<'a> for GroupExtra {
     type VO = vo::challenge::GroupExtra<'a>;
     fn vo(&self, game: &'a GameData) -> Self::VO {
-        let buff_ids_to_objects = |buff_list: [u32; 3]| {
-            std::array::from_fn(|index| game.maze_buff(buff_list[index]).unwrap())
-        };
+        let assemble = |buffs: [u32; 3]| buffs.iter().flat_map(|&id| game.maze_buff(id)).collect();
         Self::VO {
             id: self.group_id,
-            buff_list: self.buff_list.map(buff_ids_to_objects),
-            buff_list_1: self.buff_list_1.map(buff_ids_to_objects),
-            buff_list_2: self.buff_list_2.map(buff_ids_to_objects),
+            buff_list: self.buff_list.map(assemble).unwrap_or_default(),
+            buff_list_1: self.buff_list_1.map(assemble).unwrap_or_default(),
+            buff_list_2: self.buff_list_2.map(assemble).unwrap_or_default(),
         }
     }
 }
@@ -172,7 +185,7 @@ pub(crate) struct MazeConfig {
     #[serde(rename = "MapEntranceID")]
     map_entrance_id: u32,
     #[serde(rename = "MapEntranceID2")]
-    map_entrance_id_2: u32,
+    map_entrance_id_2: Option<NonZero<u32>>,
     pre_level: Option<NonZero<u8>>, // 目前只有 1
     #[serde(rename = "PreChallengeMazeID")]
     pre_challenge_maze_id: Option<NonZero<u16>>,
@@ -230,7 +243,11 @@ impl<'a> PO<'a> for MazeConfig {
             name: game.text(self.name),
             group,
             map_entrance: game.map_entrance(self.map_entrance_id).unwrap(),
-            map_entrance_2: game.map_entrance(self.map_entrance_id_2).unwrap(),
+            map_entrance_2: self
+                .map_entrance_id_2
+                .map(NonZero::get)
+                .map(|id| game.map_entrance(id))
+                .map(Option::unwrap),
             pre_level: self.pre_level.map(NonZero::get).unwrap_or_default(),
             pre_challenge_maze_id: self
                 .pre_challenge_maze_id
@@ -289,7 +306,11 @@ impl<'a> PO<'a> for MazeConfig {
                 .map(|&id| game.stage_config(id))
                 .map(Option::unwrap)
                 .collect(),
-            maze_buff: game.maze_buff(self.maze_buff_id).unwrap(),
+            maze_buff: game
+                .maze_buff(self.maze_buff_id)
+                .into_iter()
+                .next()
+                .unwrap(),
         }
     }
 }
@@ -351,10 +372,14 @@ pub(crate) struct RewardLine {
     reward_id: u32,
 }
 
-impl ID for RewardLine {
-    type ID = (u16, u8);
-    fn id(&self) -> Self::ID {
-        (self.group_id, self.star_count)
+impl GroupID for RewardLine {
+    type GroupID = u16;
+    type InnerID = u8;
+    fn group_id(&self) -> Self::GroupID {
+        self.group_id
+    }
+    fn inner_id(&self) -> Self::InnerID {
+        self.star_count
     }
 }
 

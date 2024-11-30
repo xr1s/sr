@@ -23,7 +23,7 @@ pub struct GroupConfig<'a> {
     pub schedule_data: Option<vo::misc::ScheduleData>,
     pub maze_buff: Option<vo::misc::MazeBuff<'a>>,
     pub map_entrance: Option<vo::map::MapEntrance<'a>>,
-    pub mapping_info: Option<vo::map::MappingInfo<'a>>,
+    pub mapping_info: Vec<vo::map::MappingInfo<'a>>,
     pub world: Option<vo::map::WorldDataConfig<'a>>,
     pub r#type: GroupType,
 }
@@ -161,17 +161,22 @@ impl GroupConfig<'_> {
         }
         let mut specials = indexmap::IndexMap::new();
         let mut floors = HashMap::<_, Vec<u8>>::new();
-        for maze in &mazes {
+        for (index, maze) in mazes.iter().enumerate() {
+            let floor = if maze.floor != 0 {
+                maze.floor
+            } else {
+                index as u8 + 1
+            };
             self.memory_wiki_write_event(
                 &mut wiki,
-                maze.floor,
+                floor,
                 1,
                 &maze.event_list_1[0],
                 maze.damage_type_1,
             );
             self.memory_wiki_write_event(
                 &mut wiki,
-                maze.floor,
+                floor,
                 2,
                 &maze.event_list_2[0],
                 maze.damage_type_2,
@@ -182,7 +187,7 @@ impl GroupConfig<'_> {
                 .flatten()
                 .filter(|monster| monster.is_special())
                 .for_each(|monster| {
-                    floors.entry(monster.id).or_default().push(maze.floor);
+                    floors.entry(monster.id).or_default().push(floor);
                     specials.insert(monster.id, monster);
                 });
         }
@@ -207,10 +212,11 @@ impl GroupConfig<'_> {
         if monster.name() == "王下一桶" || monster.name() == "序列扑满" {
             return strategy[1];
         }
-        match monster.template.rank {
-            Rank::Minion | Rank::MinionLv2 => strategy[0],
-            Rank::Elite => strategy[2],
-            Rank::LittleBoss | Rank::BigBoss => strategy[3],
+        match monster.template.as_ref().map(|template| template.rank) {
+            Some(Rank::Minion | Rank::MinionLv2) => strategy[0],
+            Some(Rank::Elite) => strategy[2],
+            Some(Rank::LittleBoss | Rank::BigBoss) => strategy[3],
+            None => unreachable!(),
         }
     }
 
@@ -381,7 +387,7 @@ impl GroupConfig<'_> {
                         wiki.push('%');
                     }
                 }
-                "" => unreachable!(), // 旧版虚构叙事，不知道为什么是空
+                "" => (), // 旧版虚构叙事，懒得处理了
                 // 虚构叙事定制的 Ability，目前只有给怪物增幅攻击和生命。
                 // 具体配置文件见 Config/ConfigAbility/BattleEvent/FantasticStory_Wave_Ability.json
                 // assert 的 ability 的效果是按 param_list 分别增幅攻击和生命上限
@@ -398,7 +404,12 @@ impl GroupConfig<'_> {
     ) -> Cow<'static, str> {
         let mut specials = indexmap::IndexMap::new();
         let mut floors = HashMap::<_, Vec<u8>>::new();
-        for maze in mazes {
+        for (index, maze) in mazes.iter().enumerate() {
+            let floor = if maze.floor != 0 {
+                maze.floor
+            } else {
+                index as u8 + 1
+            };
             infinite_groups
                 .iter()
                 .flat_map(|group| &group.wave_list)
@@ -406,7 +417,7 @@ impl GroupConfig<'_> {
                 .flat_map(|group| &group.monster_list)
                 .filter(|monster| monster.is_special())
                 .for_each(|monster| {
-                    floors.entry(monster.id).or_default().push(maze.floor);
+                    floors.entry(monster.id).or_default().push(floor);
                     specials.insert(monster.id, monster);
                 });
         }
@@ -434,9 +445,14 @@ impl GroupConfig<'_> {
                 wiki.push_str(&reinforces);
             }
         }
-        for maze in mazes {
-            handle(&mut wiki, &maze.event_list_1[0], maze.floor, 1);
-            handle(&mut wiki, &maze.event_list_2[0], maze.floor, 2);
+        for (index, maze) in mazes.iter().enumerate() {
+            let floor = if maze.floor != 0 {
+                maze.floor
+            } else {
+                index as u8 + 1
+            };
+            handle(&mut wiki, &maze.event_list_1[0], floor, 1);
+            handle(&mut wiki, &maze.event_list_2[0], floor, 2);
         }
         wiki.push_str("\n}}");
         wiki
@@ -515,6 +531,7 @@ impl GroupConfig<'_> {
     }
 
     fn story_wiki(&self) -> Cow<'static, str> {
+        use crate::format::format_wiki;
         let mut mazes = self.mazes();
         // 开头两个 assert 确保数据一致性
         self.story_wiki_assertions(&mazes);
@@ -528,18 +545,16 @@ impl GroupConfig<'_> {
         self.wiki_write_sched(&mut wiki);
         self.wiki_write_buff(&mut wiki, "记忆紊流", self.maze_buff.as_ref());
         let extra = self.game.challenge_story_group_extra(self.id).unwrap();
-        if let Some(buff_list) = extra.buff_list {
-            use crate::format::format_wiki;
-            for (index, buff) in buff_list.iter().enumerate() {
-                wiki.push_str("\n|荒腔");
-                wiki.push_str(&(index + 1).to_string());
-                wiki.push('=');
-                wiki.push_str(buff.name);
-                wiki.push_str("\n|荒腔走板其");
-                wiki.push_str(Self::CHNUM[index]);
-                wiki.push('=');
-                wiki.push_str(&format_wiki(&buff.desc));
-            }
+        assert_eq!(extra.buff_list.len(), 3, "虚构记忆固定三个增益");
+        for (index, buff) in extra.buff_list.iter().enumerate() {
+            wiki.push_str("\n|荒腔");
+            wiki.push_str(&(index + 1).to_string());
+            wiki.push('=');
+            wiki.push_str(buff.name);
+            wiki.push_str("\n|荒腔走板其");
+            wiki.push_str(Self::CHNUM[index]);
+            wiki.push('=');
+            wiki.push_str(&format_wiki(&buff.desc));
         }
         for maze in &mazes {
             assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
@@ -590,25 +605,27 @@ impl GroupConfig<'_> {
             assert_eq!(maze.event_list_1.len(), 1);
             let event = &maze.event_list_1[0];
             assert_eq!(event.monster_list.len(), 1, "上半只有一波怪物");
-            // 第一期难度一有个杰帕德
-            if self.issue() != 1 && maze.floor != 1 {
-                assert_eq!(event.monster_list[0].len(), 1, "上半一波只有一个首领");
+            // 敌方可能会召唤随从，随从会出现在 monster_list 中，我们直接无视非首项
+            // 目前唯一会召唤随从的特例：第一期可可利亚会召唤杰帕德
+            // 但是 2.3 版本数据有误（第二期和第一期一样了，这里不判断第二期，但是不要用 2.3 的末日幻影）
+            if self.issue() != 1 {
+                assert_eq!(event.monster_list[0].len(), 1, "上半只有一个首领");
             }
-            assert_eq!(
-                mazes[0].event_list_1[0].monster_list[0][0].template.id,
-                maze.event_list_1[0].monster_list[0][0].template.id,
-                "上半同期怪物模板相同"
-            );
+            assert!(event.monster_list[0][0].template.is_some(), "怪物模板非空");
+            let event0 = &mazes[0].event_list_1[0];
+            let template0 = event0.monster_list[0][0].template.as_ref().unwrap();
+            let template = event.monster_list[0][0].template.as_ref().unwrap();
+            assert_eq!(template0.id, template.id, "上半同期怪物模板相同");
             // 下半
             assert_eq!(maze.event_list_2.len(), 1);
+            let event0 = &mazes[0].event_list_2[0];
             let event = &maze.event_list_2[0];
             assert_eq!(event.monster_list.len(), 1, "下半只有一波怪物");
-            assert_eq!(event.monster_list[0].len(), 1, "下半一波只有一个首领");
-            assert_eq!(
-                mazes[0].event_list_2[0].monster_list[0][0].template.id,
-                maze.event_list_2[0].monster_list[0][0].template.id,
-                "下半同期怪物模板相同"
-            );
+            assert_eq!(event.monster_list[0].len(), 1, "下半只有一个首领");
+            assert!(event.monster_list[0][0].template.is_some(), "怪物模板非空");
+            let template0 = event0.monster_list[0][0].template.as_ref().unwrap();
+            let template = event.monster_list[0][0].template.as_ref().unwrap();
+            assert_eq!(template0.id, template.id, "下半同期怪物模板相同");
         }
     }
 
@@ -673,10 +690,11 @@ impl GroupConfig<'_> {
             }
         }
         let buff_list = if team == 1 {
-            extra.buff_list_1.as_ref().unwrap()
+            extra.buff_list_1.as_slice()
         } else {
-            extra.buff_list_2.as_ref().unwrap()
+            extra.buff_list_2.as_slice()
         };
+        assert_eq!(buff_list.len(), 3, "末日幻影固定 3 个增益");
         for (buff_no, buff) in buff_list.iter().enumerate() {
             let no = (team as usize * 3 + buff_no - 2).to_string();
             wiki.push_str("\n|终焉公理");
@@ -724,9 +742,9 @@ impl Wiki for GroupConfig<'_> {
 #[derive(Clone, Debug)]
 pub struct GroupExtra<'a> {
     pub id: u16,
-    pub buff_list: Option<[vo::misc::MazeBuff<'a>; 3]>,
-    pub buff_list_1: Option<[vo::misc::MazeBuff<'a>; 3]>,
-    pub buff_list_2: Option<[vo::misc::MazeBuff<'a>; 3]>,
+    pub buff_list: Vec<vo::misc::MazeBuff<'a>>,
+    pub buff_list_1: Vec<vo::misc::MazeBuff<'a>>,
+    pub buff_list_2: Vec<vo::misc::MazeBuff<'a>>,
 }
 
 #[derive(Clone, Debug)]
@@ -735,7 +753,7 @@ pub struct MazeConfig<'a> {
     pub name: &'a str,
     pub group: GroupConfig<'a>,
     pub map_entrance: vo::map::MapEntrance<'a>,
-    pub map_entrance_2: vo::map::MapEntrance<'a>,
+    pub map_entrance_2: Option<vo::map::MapEntrance<'a>>,
     pub pre_level: u8,
     pub pre_challenge_maze_id: u16,
     pub floor: u8,
