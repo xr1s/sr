@@ -288,6 +288,23 @@ impl MessageSectionConfig<'_> {
         }
     }
 
+    fn try_get_emoji(game: &GameData, content_id: u32) -> EmojiConfig {
+        game.emoji_config(content_id).unwrap_or({
+            // 1.2 版本及之前没有解包 emoji 信息，尝试一下手动组装
+            // 因为没有 group 因此出错会 panic
+            EmojiConfig {
+                id: content_id,
+                gender: Gender::All,
+                group: None,
+                keywords: "",
+                path: "",
+                same_group_order: 0,
+                gender_link: 8,
+                is_train_members: false,
+            }
+        })
+    }
+
     fn wiki_message_single_item_content(
         &self,
         wiki: &mut String,
@@ -327,11 +344,7 @@ impl MessageSectionConfig<'_> {
             ItemType::Image => image_text(self.game, message),
             ItemType::Link => Cow::Borrowed("<!-- ItemType::Link -->"),
             ItemType::Raid => Cow::Borrowed("<!-- ItemType::Raid -->"),
-            ItemType::Sticker => self
-                .game
-                .emoji_config(message.content_id)
-                .map(|emoji| emoji.wiki())
-                .unwrap_or(Cow::Borrowed("<!-- 1.2 版本及之前没有解包 emoji 信息 -->")),
+            ItemType::Sticker => Self::try_get_emoji(self.game, message.content_id).wiki(),
             ItemType::Text => {
                 if message.content_id != 0 {
                     // 1.2 及之前图片没有
@@ -385,6 +398,7 @@ impl MessageSectionConfig<'_> {
         prefix: &mut String,
         selections: &[MessageItemConfig<'_>],
     ) -> Option<MessageItemConfig<'_>> {
+        use crate::format::format_wiki;
         wiki.push_str(prefix);
         wiki.push_str("{{短信选项");
         // 存在选项为表情的情况，需要在聊天记录中再手动发一条表情
@@ -409,16 +423,11 @@ impl MessageSectionConfig<'_> {
             wiki.push_str("|选项");
             wiki.push_str(&index.to_string());
             wiki.push('=');
-            if is_sticker_selection {
-                let emoji = self
-                    .game
-                    .emoji_config(message.content_id)
-                    .map(|emoji| emoji.wiki())
-                    .unwrap_or(Cow::Borrowed("<!-- 1.2 版本及之前没有解包 emoji 信息 -->"));
-                wiki.push_str(&emoji);
+            wiki.push_str(&if is_sticker_selection {
+                Self::try_get_emoji(self.game, message.content_id).wiki()
             } else {
-                wiki.push_str(message.option_text);
-            }
+                Cow::Owned(format_wiki(message.option_text))
+            });
             wiki.push_str(prefix);
             wiki.push_str("|剧情");
             wiki.push_str(&index.to_string());
@@ -441,6 +450,7 @@ impl MessageSectionConfig<'_> {
         message: &MessageItemConfig<'_>,
         stop_recursion_message_id: u32,
     ) {
+        use crate::format::format_wiki;
         if message.id == stop_recursion_message_id {
             return;
         }
@@ -462,7 +472,7 @@ impl MessageSectionConfig<'_> {
                 // 因此需要额外加上判断 next 是不是聚合点
                 wiki.push_str(prefix);
                 wiki.push_str("{{短信选项|选项1=");
-                wiki.push_str(next.option_text);
+                wiki.push_str(&format_wiki(next.option_text));
                 wiki.push_str("}}");
             }
             self.wiki_next_message(wiki, prefix, &next, stop_recursion_message_id);
@@ -485,10 +495,21 @@ impl MessageSectionConfig<'_> {
 
     fn wiki_message_content(&self, wiki: &mut String, prefix: &mut String) {
         use crate::format::format_wiki;
+        let contacts = self.contacts();
         prefix.push_str(Self::INDENT);
         wiki.push_str(prefix);
         wiki.push_str("{{角色对话|模板开始|");
-        wiki.push_str(&format_wiki(self.contacts().name));
+        wiki.push_str(&format_wiki(contacts.name));
+        // 非自机角色的短信签名需要作为参数传入（自机角色由模板自动查询了）
+        let contacts_type = contacts
+            .r#type
+            .as_ref()
+            .map(|r#type| r#type.name)
+            .unwrap_or_default();
+        if contacts_type != "角色" && !contacts.signature_text.is_empty() {
+            wiki.push('|');
+            wiki.push_str(contacts.signature_text);
+        }
         wiki.push_str("}}");
         prefix.push_str(Self::INDENT);
         if self.start_message_item_list.len() == 1 {
