@@ -141,6 +141,7 @@ impl<'a> PO<'a> for MessageContactsConfig {
     type VO = vo::message::MessageContactsConfig<'a>;
     fn vo(&'a self, game: &'a GameData) -> Self::VO {
         Self::VO {
+            game,
             id: self.id,
             name: game.text(self.name),
             signature_text: game.text(self.signature_text),
@@ -193,9 +194,9 @@ pub(crate) struct MessageGroupConfig {
     #[serde(rename = "ID")]
     id: u16,
     #[serde(rename = "MessageContactsID")]
-    message_contacts_id: u16,
+    pub(crate) message_contacts_id: u16,
     #[serde(rename = "MessageSectionIDList")]
-    message_section_id_list: Vec<u32>,
+    pub(crate) message_section_id_list: Vec<u32>,
     #[serde(rename = "ActivityModuleID")]
     activity_module_id: Option<NonZero<u32>>,
 }
@@ -363,7 +364,7 @@ impl<'a> PO<'a> for MessageSectionConfig {
                 .map(NonZero::get)
                 .map(|id| game.main_mission(id))
                 .map(Option::unwrap),
-            _contacts: std::cell::OnceCell::new(),
+            _contacts: std::sync::OnceLock::new(),
         }
     }
 }

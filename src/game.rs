@@ -28,7 +28,7 @@ pub struct GameData {
     _challenge_boss_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_boss_target_config: OnceLock<FnvIndexMap<u16, po::challenge::TargetConfig>>,
     _challenge_group_config: OnceLock<FnvIndexMap<u16, po::challenge::GroupConfig>>,
-    _challenge_group_maze: OnceLock<FnvMultiMap<u16, u16>>,
+    _challenge_group_in_maze: OnceLock<FnvMultiMap<u16, u16>>,
     _challenge_maze_reward_line: OnceLock<FnvMultiMap<u16, po::challenge::RewardLine>>,
     _challenge_maze_group_extra: OnceLock<FnvIndexMap<u16, po::challenge::GroupExtra>>,
     _challenge_maze_config: OnceLock<FnvIndexMap<u16, po::challenge::MazeConfig>>,
@@ -66,6 +66,7 @@ pub struct GameData {
     _message_item_config: OnceLock<FnvIndexMap<u32, po::message::MessageItemConfig>>,
     _message_item_image: OnceLock<FnvIndexMap<u32, po::message::MessageItemImage>>,
     _message_section_config: OnceLock<FnvIndexMap<u32, po::message::MessageSectionConfig>>,
+    _message_section_in_contacts: OnceLock<FnvMultiMap<u16, u32>>,
 
     // misc
     /// 效果说明，比如模拟宇宙中
@@ -255,8 +256,8 @@ impl GameData {
         )
     }
 
-    fn _challenge_maze_group(&self) -> &FnvMultiMap<u16, u16> {
-        self._challenge_group_maze.get_or_init(|| {
+    fn _challenge_maze_in_group(&self) -> &FnvMultiMap<u16, u16> {
+        self._challenge_group_in_maze.get_or_init(|| {
             std::iter::empty()
                 .chain(self.list_challenge_maze_config())
                 .chain(self.list_challenge_story_maze_config())
@@ -266,7 +267,7 @@ impl GameData {
         })
     }
 
-    pub fn challenge_maze_group(&self, id: u16) -> Vec<vo::challenge::MazeConfig> {
+    pub fn challenge_maze_in_group(&self, id: u16) -> Vec<vo::challenge::MazeConfig> {
         use po::challenge::GroupType;
         let is_memory = self._challenge_group_config().contains_key(&id) as u8;
         let is_story = self._challenge_story_group_config().contains_key(&id) as u8;
@@ -278,7 +279,7 @@ impl GameData {
             (0, 0, 0) => return Vec::new(),
             _ => unreachable!(),
         };
-        self._challenge_maze_group()
+        self._challenge_maze_in_group()
             .get_vec(&id)
             .map(Vec::as_slice)
             .unwrap_or_default()
@@ -319,6 +320,33 @@ impl GameData {
 
     pub fn current_challenge_boss_group_config(&self) -> Option<vo::challenge::GroupConfig> {
         self._current_challenge_group_config(Self::list_challenge_boss_group_config)
+    }
+
+    fn _message_section_in_contacts(&self) -> &FnvMultiMap<u16, u32> {
+        self._message_section_in_contacts.get_or_init(|| {
+            let mut sections_in_contacts = FnvMultiMap::default();
+            self._message_group_config()
+                .values()
+                .map(|group| (group.message_contacts_id, &group.message_section_id_list))
+                .for_each(|(contacts_id, section_id)| {
+                    sections_in_contacts.insert_many_from_slice(contacts_id, section_id)
+                });
+            sections_in_contacts
+        })
+    }
+
+    pub fn message_section_in_contacts(
+        &self,
+        contacts_id: u16,
+    ) -> Vec<vo::message::MessageSectionConfig> {
+        self._message_section_in_contacts()
+            .get_vec(&contacts_id)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .map(|&section_id| self.message_section_config(section_id))
+            .map(Option::unwrap)
+            .collect()
     }
 }
 

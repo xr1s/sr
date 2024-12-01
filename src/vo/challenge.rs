@@ -61,7 +61,7 @@ impl GroupConfig<'_> {
     }
 
     pub fn mazes(&self) -> Vec<MazeConfig> {
-        self.game.challenge_maze_group(self.id)
+        self.game.challenge_maze_in_group(self.id)
     }
 
     fn wiki_write_sched(&self, wiki: &mut String) {

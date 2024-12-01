@@ -166,13 +166,58 @@ pub struct MessageContactsCamp<'a> {
     pub sort_id: u8,
 }
 
-#[derive(Clone, Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Debug)]
 pub struct MessageContactsConfig<'a> {
+    #[derivative(Debug = "ignore")]
+    pub(crate) game: &'a GameData,
     pub id: u16,
     pub name: &'a str,
     pub signature_text: &'a str,
     pub r#type: Option<MessageContactsType<'a>>,
     pub camp: Option<MessageContactsCamp<'a>>,
+}
+
+impl Wiki for MessageContactsConfig<'_> {
+    fn wiki(&self) -> std::borrow::Cow<'static, str> {
+        let mut wiki = String::new();
+        wiki.push_str("{{#subobject:");
+        wiki.push_str(self.name);
+        wiki.push_str("-短信内容");
+        wiki.push_str("\n|@category=短信头像");
+        wiki.push_str("\n|名称=");
+        wiki.push_str(self.name);
+        let camp_name = self.camp.as_ref().map(|camp| camp.name).unwrap_or_default();
+        wiki.push_str("\n|阵营=");
+        wiki.push_str(camp_name);
+        let contacts_type = self.r#type.as_ref().map(|typ| typ.name).unwrap_or_default();
+        wiki.push_str("\n|类型=");
+        wiki.push_str(contacts_type);
+        wiki.push_str("\n}}");
+        for section in self.game.message_section_in_contacts(self.id) {
+            if section.contacts().id != self.id {
+                continue;
+            }
+            wiki.push_str("\n\n{{#subobject:");
+            wiki.push_str(self.name);
+            wiki.push('-');
+            wiki.push_str("<!-- 填入标题，ID=");
+            wiki.push_str(&section.id.to_string());
+            wiki.push_str(" -->");
+            wiki.push_str("\n|@category=短信内容");
+            wiki.push_str("\n|人物=");
+            wiki.push_str(self.name);
+            wiki.push_str("\n|短信标题=<!-- 填入相关事件或任务 -->");
+            wiki.push_str("\n|版本=<!-- 填入版本 -->");
+            wiki.push_str("\n|内容=");
+            let mut indent = String::from("\n  ");
+            wiki.push_str(&indent);
+            section.wiki_message_template(&mut wiki, &mut indent);
+            wiki.push_str("\n}}");
+        }
+
+        Cow::Owned(wiki)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -218,7 +263,7 @@ pub struct MessageSectionConfig<'a> {
     pub start_message_item_list: Vec<MessageItemConfig<'a>>,
     pub is_perform_message: bool,
     pub main_mission_link: Option<vo::mission::MainMission<'a>>,
-    pub(crate) _contacts: std::cell::OnceCell<MessageContactsConfig<'a>>,
+    pub(crate) _contacts: std::sync::OnceLock<MessageContactsConfig<'a>>,
 }
 
 impl MessageSectionConfig<'_> {
@@ -413,7 +458,7 @@ impl MessageSectionConfig<'_> {
             .map(|message| message.id)
             .collect::<Vec<_>>();
         let convergence = self.next_convergence_node(&next_ids);
-        let stop_recursion_message_id = convergence
+        let convergence_id = convergence
             .as_ref()
             .map(|message| message.id)
             .unwrap_or_default();
@@ -433,7 +478,7 @@ impl MessageSectionConfig<'_> {
             wiki.push_str(&index.to_string());
             wiki.push('=');
             prefix.push_str(Self::INDENT);
-            self.wiki_next_message(wiki, prefix, message, stop_recursion_message_id);
+            self.wiki_next_message(wiki, prefix, message, convergence_id);
             prefix.truncate(prefix.len() - Self::INDENT_LENGTH);
         }
         wiki.push_str(prefix);
@@ -448,10 +493,10 @@ impl MessageSectionConfig<'_> {
         wiki: &mut String,
         prefix: &mut String,
         message: &MessageItemConfig<'_>,
-        stop_recursion_message_id: u32,
+        convergence_id: u32,
     ) {
         use crate::format::format_wiki;
-        if message.id == stop_recursion_message_id {
+        if message.id == convergence_id {
             return;
         }
         self.wiki_message_single_item_content(wiki, prefix, message);
@@ -463,7 +508,7 @@ impl MessageSectionConfig<'_> {
                 .game
                 .message_item_config(message.next_item_id_list[0])
                 .unwrap();
-            if next.id != stop_recursion_message_id && !next.option_text.is_empty() {
+            if next.id != convergence_id && !next.option_text.is_empty() {
                 // 存在只有一个选项的情况，这里直接写死进去吧,
                 // 具体条件是：后续没有多路分支，而且后续是选项节点
                 // 那就不需要求聚合点
@@ -475,7 +520,7 @@ impl MessageSectionConfig<'_> {
                 wiki.push_str(&format_wiki(next.option_text));
                 wiki.push_str("}}");
             }
-            self.wiki_next_message(wiki, prefix, &next, stop_recursion_message_id);
+            self.wiki_next_message(wiki, prefix, &next, convergence_id);
         }
         if message.next_item_id_list.len() > 1 {
             // 需要求聚合点的情况
@@ -488,16 +533,14 @@ impl MessageSectionConfig<'_> {
             if let Some(next) =
                 self.wiki_message_single_selection_content(wiki, prefix, &selections)
             {
-                self.wiki_next_message(wiki, prefix, &next, stop_recursion_message_id);
+                self.wiki_next_message(wiki, prefix, &next, convergence_id);
             }
         }
     }
 
-    fn wiki_message_content(&self, wiki: &mut String, prefix: &mut String) {
+    fn wiki_message_template(&self, wiki: &mut String, prefix: &mut String) {
         use crate::format::format_wiki;
         let contacts = self.contacts();
-        prefix.push_str(Self::INDENT);
-        wiki.push_str(prefix);
         wiki.push_str("{{角色对话|模板开始|");
         wiki.push_str(&format_wiki(contacts.name));
         // 非自机角色的短信签名需要作为参数传入（自机角色由模板自动查询了）
@@ -541,24 +584,9 @@ impl MessageSectionConfig<'_> {
 
 impl Wiki for MessageSectionConfig<'_> {
     fn wiki(&self) -> std::borrow::Cow<'static, str> {
-        use crate::format::format_wiki;
-        let contacts = self.contacts();
-        let contacts_name = format_wiki(contacts.name);
         let mut wiki = String::from("{{#subobject:");
-        wiki.push_str(&contacts_name);
-        wiki.push('-');
-        wiki.push_str("<!-- 填入标题 ");
-        wiki.push_str(&self.id.to_string());
-        wiki.push_str(" -->");
-        wiki.push_str("\n|@category=短信内容");
-        wiki.push_str("\n|人物=");
-        wiki.push_str(&contacts_name);
-        wiki.push_str("\n|短信标题=<!-- 填入相关事件或任务 -->");
-        wiki.push_str("\n|版本=<!-- 填入版本 -->");
-        wiki.push_str("\n|内容=");
         let mut indent = String::from("\n");
-        self.wiki_message_content(&mut wiki, &mut indent);
-        wiki.push_str("\n}}");
+        self.wiki_message_template(&mut wiki, &mut indent);
         Cow::Owned(wiki)
     }
 }
