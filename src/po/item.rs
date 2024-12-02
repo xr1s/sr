@@ -83,6 +83,9 @@ pub enum ItemSubType {
     /// 随宠
     /// 对应 ItemMainType 为 Pet
     NormalPet,
+    /// 帕姆皮肤，派对车厢皮肤
+    /// 对应的 ItemMainType 为 Usable
+    PamSkin,
     /// 手机主题
     /// 对应 ItemMainType 为 Usable
     /// 对应 UseMethod 为 AutoConversionItem 自动转换

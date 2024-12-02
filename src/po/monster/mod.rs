@@ -109,6 +109,7 @@ struct AISkillSequence {
     #[serde(alias = "IDNGFMLCGHB")] // 2.4
     #[serde(alias = "GKBBPHMLLNG")] // 2.5
     #[serde(alias = "PGKKLADJKGK")] // 2.6
+    #[serde(alias = "CAMGCAFNKPK")] // 2.7
     id: u32,
 }
 
@@ -391,15 +392,6 @@ pub enum BaseType {
     None,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum StanceType {
-    Fire,
-    Ice,
-    Imaginary,
-    Quantum,
-    Wind,
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
@@ -418,6 +410,8 @@ struct CustomValue {
     #[serde(alias = "MBBNDDLBEPE")] // 2.4
     #[serde(alias = "PFMLCKGCKOB")] // 2.5
     #[serde(alias = "MFKLINKCPPA")] // 2.6
+    #[serde(alias = "MFKLINKCPPA")] // 2.6
+    #[serde(alias = "BNCHHJCHKON")] // 2.7
     pub key: String,
     #[serde(alias = "LKJLPJMIGNJ")] // 1.0
     #[serde(alias = "BHLILFMLNEE")] // 1.1
@@ -433,6 +427,7 @@ struct CustomValue {
     #[serde(alias = "DIBKEHHCPAP")] // 2.4
     #[serde(alias = "NLABNDMDIKM")] // 2.5
     #[serde(alias = "HPPEILAONGE")] // 2.6
+    #[serde(alias = "ODPKJEJKOIH")] // 2.7
     pub value: i32,
 }
 
@@ -469,7 +464,7 @@ pub(crate) struct TemplateConfig {
     hp_base: Value<f32>,
     speed_base: Option<Value<NonZero<u16>>>,
     stance_base: Option<Value<NonZero<u16>>>,
-    stance_type: Option<StanceType>,
+    stance_type: Option<Element>,
     critical_damage_base: Option<Value<f32>>,
     status_resistance_base: Option<Value<f32>>,
     minimum_fatigue_ratio: Value<f32>,

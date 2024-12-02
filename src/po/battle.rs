@@ -176,6 +176,7 @@ pub enum StageConfigType {
     _BattleTarget,
     _BGM,
     _BindingMazeBuff,
+    _ChallengeStoryType,
     _CloseBattleStartDialog,
     _CreateBattleActionEvent,
     _CreateBattleEvent,
@@ -208,6 +209,7 @@ pub(crate) struct StageConfigData {
     #[serde(alias = "MBBNDDLBEPE")] // 2.4
     #[serde(alias = "PFMLCKGCKOB")] // 2.5
     #[serde(alias = "MFKLINKCPPA")] // 2.6
+    #[serde(alias = "BNCHHJCHKON")] // 2.7
     r#type: StageConfigType,
     #[serde(alias = "LKJLPJMIGNJ")] // 1.0
     #[serde(alias = "BHLILFMLNEE")] // 1.1
@@ -223,6 +225,7 @@ pub(crate) struct StageConfigData {
     #[serde(alias = "DIBKEHHCPAP")] // 2.4
     #[serde(alias = "NLABNDMDIKM")] // 2.5
     #[serde(alias = "HPPEILAONGE")] // 2.6
+    #[serde(alias = "ODPKJEJKOIH")] // 2.7
     value: String,
 }
 

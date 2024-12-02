@@ -606,11 +606,7 @@ impl GroupConfig<'_> {
             let event = &maze.event_list_1[0];
             assert_eq!(event.monster_list.len(), 1, "上半只有一波怪物");
             // 敌方可能会召唤随从，随从会出现在 monster_list 中，我们直接无视非首项
-            // 目前唯一会召唤随从的特例：第一期可可利亚会召唤杰帕德
-            // 但是 2.3 版本数据有误（第二期和第一期一样了，这里不判断第二期，但是不要用 2.3 的末日幻影）
-            if self.issue() != 1 {
-                assert_eq!(event.monster_list[0].len(), 1, "上半只有一个首领");
-            }
+            // 目前唯一会召唤随从的特例：可可利亚会召唤杰帕德
             assert!(event.monster_list[0][0].template.is_some(), "怪物模板非空");
             let event0 = &mazes[0].event_list_1[0];
             let template0 = event0.monster_list[0][0].template.as_ref().unwrap();
@@ -621,7 +617,6 @@ impl GroupConfig<'_> {
             let event0 = &mazes[0].event_list_2[0];
             let event = &maze.event_list_2[0];
             assert_eq!(event.monster_list.len(), 1, "下半只有一波怪物");
-            assert_eq!(event.monster_list[0].len(), 1, "下半只有一个首领");
             assert!(event.monster_list[0][0].template.is_some(), "怪物模板非空");
             let template0 = event0.monster_list[0][0].template.as_ref().unwrap();
             let template = event.monster_list[0][0].template.as_ref().unwrap();

@@ -2,7 +2,7 @@ pub mod guide;
 
 use std::borrow::Cow;
 
-use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, StanceType, SubType};
+use crate::po::monster::{CampType, CharacterType, DebuffResistKey, Rank, SubType};
 use crate::po::Element;
 use crate::{FnvIndexMap, GameData, Name, Wiki};
 
@@ -597,8 +597,8 @@ pub struct TemplateConfig<'a> {
     /// 如等于 0 表示进入战斗后立即行动
     /// 如等于 0.2 表示提前 80%，以此类推
     pub initial_delay_ratio: f32,
-    /// 不明，目前所有怪物中该值缺少物理和雷两种属性
-    pub stance_type: Option<StanceType>,
+    /// 不明，目前所有怪物中该值缺少物理属性
+    pub stance_type: Option<Element>,
     /// 不明
     pub npc_monster_list: Vec<NPCMonsterData<'a>>,
 }

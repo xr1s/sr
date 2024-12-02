@@ -183,6 +183,8 @@ impl GameData {
         std::io::Read::read_to_end(&mut reader, &mut bytes).unwrap();
         Ok(serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
+            // 每个版本更新后也存在某些特殊字段未解密导致一直在变 serde 失败的情况
+            // 具体搜 "serde(alias" 字符串。每个版本更新后初始化一下日志看看是什么报错
             .inspect_err(|e| log::warn!("疑似 2.3 之前的老数据格式: {:?}", e))
             .map_or_else(
                 // 2.3 版本及以下, 采用的数据结构是 {"123": {"ID": 123, ...} } 形式

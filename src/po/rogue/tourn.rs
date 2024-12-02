@@ -61,12 +61,14 @@ pub(crate) struct DescParam {
     #[serde(alias = "EEOLCCFMJFF")] // 2.4
     #[serde(alias = "FGMDOEKGPEE")] // 2.5
     #[serde(alias = "EOMLKKGEAEF")] // 2.6
+    #[serde(alias = "MPNJPFDCBDG")] // 2.7
     r#type: DescParamType,
     #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(alias = "EPBOOFFCKPJ")] // 2.3
     #[serde(alias = "DIBKEHHCPAP")] // 2.4
     #[serde(alias = "NLABNDMDIKM")] // 2.5
     #[serde(alias = "HPPEILAONGE")] // 2.6
+    #[serde(alias = "ODPKJEJKOIH")] // 2.7
     value: u32,
 }
 
@@ -146,6 +148,8 @@ impl<'a> PO<'a> for RogueTournWeeklyChallenge {
             content_detail: self
                 .weekly_content_detail_list
                 .iter()
+                // 2.7 版本倒数第二周（2.8 前瞻所在周）的 DisplayID 是 1302 和 1303，缺数据，注意一下
+                .filter(|&&id| id != 1302 && id != 1303)
                 .map(|&id| game.rogue_tourn_weekly_display(id))
                 .map(Option::unwrap)
                 .map(|display| display.content)
