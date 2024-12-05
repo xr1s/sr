@@ -1,0 +1,13 @@
+[package]
+name = "model"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { version = "0.4" }
+fnv = { version = "1" }
+serde = { version = "1", features = ["derive"] }
+serde_with = { version = "3", features = ["macros"] }
+thousands = { version = "0.2" }
+
+base = { path = "../base" }
