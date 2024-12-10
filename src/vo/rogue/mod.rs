@@ -8,6 +8,7 @@ use crate::{vo, Name};
 /// 模拟宇宙奇物
 pub struct RogueMiracle<'a> {
     pub id: u16,
+    /// 1.2 及之前版本的 display 为空
     pub display: RogueMiracleDisplay<'a>,
     pub desc: String,
     /// 没有 unlock_handbook 的一般是可以同时携带多个、效果不同的奇物
@@ -38,6 +39,9 @@ pub struct RogueMiracleDisplay<'a> {
     pub bg_desc: &'a str,
     /// 无意义，目前只有空字符串
     pub tag: &'a str,
+    // 图标
+    pub icon_path: &'a str,
+    pub figure_icon_path: &'a str,
 }
 
 #[derive(Clone, Debug)]

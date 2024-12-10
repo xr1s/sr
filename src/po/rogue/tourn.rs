@@ -383,7 +383,7 @@ impl<'a> PO<'a> for RogueTournFormula {
                 .rogue_tourn_formula_display(self.formula_display_id)
                 .unwrap(),
             is_in_handbook: self.is_in_handbook,
-            story: (), // TODO
+            story: &self.formula_story_json,
             unlock_display: self
                 .unlock_display_id
                 .map(NonZero::get)

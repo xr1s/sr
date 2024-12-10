@@ -52,6 +52,10 @@ impl RogueTournWeeklyChallenge<'_> {
         Self::FIRST_CHALLENGE_MONDAY + chrono::TimeDelta::weeks(self.id as _)
             - chrono::TimeDelta::nanoseconds(1)
     }
+
+    pub fn issue(&self) -> u16 {
+        self.id as u16
+    }
 }
 
 impl Wiki for RogueTournWeeklyChallenge<'_> {
@@ -192,7 +196,7 @@ pub struct RogueTournFormula<'a> {
     /// 是否在图鉴中（临界方程均为 false）
     pub is_in_handbook: bool,
     /// 临界方程和三星方程首次展开的推演故事
-    pub story: (), // TODO
+    pub story: &'a std::path::Path,
     /// 图鉴中未解锁时的提示文案，目前只有一种
     pub unlock_display: Option<RogueTournContentDisplay<'a>>,
 }
