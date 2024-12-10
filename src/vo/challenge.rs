@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
     po::{
-        challenge::{GroupType, TargetType},
+        challenge::{GroupType, StoryType, TargetType},
         monster::Rank,
         Element,
     },
@@ -26,9 +26,12 @@ pub struct GroupConfig<'a> {
     pub mapping_info: Vec<vo::map::MappingInfo<'a>>,
     pub world: Option<vo::map::WorldDataConfig<'a>>,
     pub r#type: GroupType,
+    // cache
+    pub(crate) _extra: std::sync::OnceLock<GroupExtra<'a>>,
+    pub(crate) _mazes: std::sync::OnceLock<Vec<MazeConfig<'a>>>,
 }
 
-impl GroupConfig<'_> {
+impl<'a> GroupConfig<'a> {
     const ELEMENTS: [Element; 7] = [
         Element::Fire,
         Element::Ice,
@@ -60,8 +63,20 @@ impl GroupConfig<'_> {
         }
     }
 
-    pub fn mazes(&self) -> Vec<MazeConfig> {
-        self.game.challenge_maze_in_group(self.id)
+    pub fn mazes(&self) -> &[MazeConfig<'a>] {
+        self._mazes
+            .get_or_init(move || self.game.challenge_maze_in_group(self.id))
+    }
+
+    pub fn extra(&self) -> &GroupExtra<'_> {
+        self._extra.get_or_init(|| {
+            (match self.r#type {
+                GroupType::Memory => GameData::challenge_maze_group_extra,
+                GroupType::Story => GameData::challenge_story_group_extra,
+                GroupType::Boss => GameData::challenge_boss_group_extra,
+            })(self.game, self.id)
+            .unwrap()
+        })
     }
 
     fn wiki_write_sched(&self, wiki: &mut String) {
@@ -155,7 +170,7 @@ impl GroupConfig<'_> {
         self.wiki_write_sched(&mut wiki);
         self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
         let mazes = self.mazes();
-        for maze in &mazes {
+        for maze in mazes {
             assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
             assert_eq!(maze.event_list_2.len(), 1, "只有一个 event");
         }
@@ -199,8 +214,8 @@ impl GroupConfig<'_> {
 
 // 虚构叙事相关方法
 impl GroupConfig<'_> {
-    fn monster_score(&self, monster: &vo::monster::Config) -> u16 {
-        const STRATEGY: &[[u16; 4]] = &[[500, 2000, 4000, 8000], [500, 2500, 3000, 5000]];
+    fn monster_score(&self, monster: &vo::monster::Config) -> u32 {
+        const STRATEGY: &[[u32; 4]] = &[[500, 2000, 4000, 8000], [500, 2500, 3000, 5000]];
         let strategy = &match self.issue() {
             1..=3 => STRATEGY[0],
             4..=6 => STRATEGY[1],
@@ -266,7 +281,7 @@ impl GroupConfig<'_> {
         let floor_team = format!("\n|其{}{}队", Self::CHNUM[floor as usize - 1], team);
         let infinite_group = event.infinite_group().unwrap();
         let mut weakness_scores =
-            fnv::FnvHashMap::from_iter(Self::ELEMENTS.into_iter().map(|element| (element, 0u16)));
+            fnv::FnvHashMap::from_iter(Self::ELEMENTS.into_iter().map(|element| (element, 0)));
         let mut max_teammate = [0; 3];
         for (wave_no, wave) in infinite_group.wave_list.iter().enumerate() {
             max_teammate[wave_no] = wave.max_teammate_count;
@@ -325,7 +340,7 @@ impl GroupConfig<'_> {
             match (l_in_weak, r_in_weak) {
                 (None, None) => {
                     if l.1 != r.1 {
-                        return u16::cmp(&r.1, &l.1); // 注意排序是逆向的
+                        return u32::cmp(&r.1, &l.1); // 注意排序是逆向的
                     }
                     u8::cmp(&(l.0 as u8), &(r.0 as u8))
                 }
@@ -333,7 +348,7 @@ impl GroupConfig<'_> {
                 (Some(_), None) => std::cmp::Ordering::Less,
                 (Some(l_index), Some(r_index)) => {
                     if l.1 != r.1 {
-                        return u16::cmp(&r.1, &l.1); // 注意排序是逆向的
+                        return u32::cmp(&r.1, &l.1); // 注意排序是逆向的
                     }
                     usize::cmp(&l_index, &r_index)
                 }
@@ -460,8 +475,8 @@ impl GroupConfig<'_> {
 
     /// 用来确保 monster_score 返回的值是正确的
     /// monster_score 的值每个版本都有可能不同，但是没法从数据集中提取出来，都是自己试出来的
-    fn story_wiki_score_assertions(&self, mazes: &[MazeConfig]) {
-        fn handle(story: &GroupConfig, event: &vo::battle::StageConfig) -> u16 {
+    fn story_wiki_score_assertions(&self, mazes: &[MazeConfig], extra: &GroupExtra) {
+        fn handle(story: &GroupConfig, event: &vo::battle::StageConfig) -> u32 {
             event
                 .infinite_group()
                 .unwrap()
@@ -472,14 +487,19 @@ impl GroupConfig<'_> {
                 .map(|mon| story.monster_score(&mon))
                 .sum()
         }
-        assert_eq!(handle(self, &mazes[0].event_list_1[0]), 40000, "第一层上半");
-        assert_eq!(handle(self, &mazes[0].event_list_2[0]), 40000, "第一层下半");
-        assert_eq!(handle(self, &mazes[1].event_list_1[0]), 40000, "第二层上半");
-        assert_eq!(handle(self, &mazes[1].event_list_2[0]), 40000, "第二层下半");
-        assert_eq!(handle(self, &mazes[2].event_list_1[0]), 40000, "第三层上半");
-        assert_eq!(handle(self, &mazes[2].event_list_2[0]), 40000, "第三层下半");
-        assert_eq!(handle(self, &mazes[3].event_list_1[0]), 40000, "第四层上半");
-        assert_eq!(handle(self, &mazes[3].event_list_2[0]), 40000, "第四层下半");
+        match extra.story_type.unwrap() {
+            StoryType::Normal => {
+                assert_eq!(handle(self, &mazes[0].event_list_1[0]), 40000, "第一层上半");
+                assert_eq!(handle(self, &mazes[0].event_list_2[0]), 40000, "第一层下半");
+                assert_eq!(handle(self, &mazes[1].event_list_1[0]), 40000, "第二层上半");
+                assert_eq!(handle(self, &mazes[1].event_list_2[0]), 40000, "第二层下半");
+                assert_eq!(handle(self, &mazes[2].event_list_1[0]), 40000, "第三层上半");
+                assert_eq!(handle(self, &mazes[2].event_list_2[0]), 40000, "第三层下半");
+                assert_eq!(handle(self, &mazes[3].event_list_1[0]), 40000, "第四层上半");
+                assert_eq!(handle(self, &mazes[3].event_list_2[0]), 40000, "第四层下半");
+            }
+            StoryType::Fever => (), // 还不知道怎么处理
+        }
     }
 
     fn story_wiki_elite_group_in_comments(&self, mazes: &[MazeConfig]) -> Cow<'static, str> {
@@ -532,10 +552,10 @@ impl GroupConfig<'_> {
 
     fn story_wiki(&self) -> Cow<'static, str> {
         use crate::format::format_wiki;
-        let mut mazes = self.mazes();
+        let mazes = self.mazes();
         // 开头两个 assert 确保数据一致性
         self.story_wiki_assertions(&mazes);
-        self.story_wiki_score_assertions(&mazes);
+        self.story_wiki_score_assertions(&mazes, self.extra());
 
         let mut wiki = String::from("{{虚构叙事单期");
         wiki.push_str("\n|期数=");
@@ -544,7 +564,7 @@ impl GroupConfig<'_> {
         wiki.push_str(self.name);
         self.wiki_write_sched(&mut wiki);
         self.wiki_write_buff(&mut wiki, "记忆紊流", self.maze_buff.as_ref());
-        let extra = self.game.challenge_story_group_extra(self.id).unwrap();
+        let extra = self.extra();
         assert_eq!(extra.buff_list.len(), 3, "虚构记忆固定三个增益");
         for (index, buff) in extra.buff_list.iter().enumerate() {
             wiki.push_str("\n|荒腔");
@@ -556,12 +576,11 @@ impl GroupConfig<'_> {
             wiki.push('=');
             wiki.push_str(&format_wiki(&buff.desc));
         }
-        for maze in &mazes {
+        for maze in mazes {
             assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
             assert_eq!(maze.event_list_2.len(), 1, "只有一个 event");
         }
-        mazes.sort_by_key(|maze| maze.floor);
-        for maze in &mazes {
+        for maze in mazes {
             self.story_wiki_write_event(
                 &mut wiki,
                 maze.floor,
@@ -577,7 +596,7 @@ impl GroupConfig<'_> {
                 maze.damage_type_2,
             );
         }
-        for maze in &mazes {
+        for maze in mazes {
             Self::story_wiki_write_wave_ability(&mut wiki, maze.floor, 1, &maze.event_list_1[0]);
             Self::story_wiki_write_wave_ability(&mut wiki, maze.floor, 2, &maze.event_list_2[0]);
         }
@@ -716,9 +735,9 @@ impl GroupConfig<'_> {
         self.wiki_write_sched(&mut wiki);
         self.wiki_write_buff(&mut wiki, "末法余烬", Some(&mazes[0].maze_buff));
         let maze = &mazes[2];
-        let extra = self.game.challenge_boss_group_extra(self.id).unwrap();
-        self.boss_wiki_write_tags(&mut wiki, 1, &maze.event_list_1[0], &extra);
-        self.boss_wiki_write_tags(&mut wiki, 2, &maze.event_list_2[0], &extra);
+        let extra = self.extra();
+        self.boss_wiki_write_tags(&mut wiki, 1, &maze.event_list_1[0], extra);
+        self.boss_wiki_write_tags(&mut wiki, 2, &maze.event_list_2[0], extra);
         wiki.push_str("\n}}\n<br />\n<br />\n----");
         Cow::Owned(wiki)
     }
@@ -737,6 +756,7 @@ impl Wiki for GroupConfig<'_> {
 #[derive(Clone, Debug)]
 pub struct GroupExtra<'a> {
     pub id: u16,
+    pub story_type: Option<StoryType>,
     pub buff_list: Vec<vo::misc::MazeBuff<'a>>,
     pub buff_list_1: Vec<vo::misc::MazeBuff<'a>>,
     pub buff_list_2: Vec<vo::misc::MazeBuff<'a>>,

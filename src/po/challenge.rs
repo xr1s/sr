@@ -117,6 +117,9 @@ impl<'a> PO<'a> for GroupConfig {
                 .map(|id| game.world_data_config(id))
                 .map(Option::unwrap),
             r#type: self.challenge_group_type,
+
+            _extra: std::sync::OnceLock::new(),
+            _mazes: std::sync::OnceLock::new(),
         }
     }
 }
@@ -124,6 +127,19 @@ impl<'a> PO<'a> for GroupConfig {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum BossPattern {
     SmallAndLarge,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum StoryType {
+    /// 1.6 版本首期到 2.6 版本的虚构叙事
+    /// 多波次怪物和增援，利好群攻多动角色
+    /// 按照之前的经验，每 3 期会轮换分别给终结技、DoT、追击类角色增益
+    Normal,
+    /// 2.7 新版虚构叙事
+    /// 每一轮都有一个首领，击败首领直接获得所有分数
+    /// 击败小怪获得分数，并且首领扣除一定生命
+    /// 数据保证首领生命肯定在清空小怪前被扣除完
+    Fever,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -143,6 +159,8 @@ pub(crate) struct GroupExtra {
     buff_list: Option<[u32; 3]>,
     #[serde(rename = "ThemeID")]
     theme_id: Option<NonZero<u8>>,
+    story_type: Option<StoryType>,
+    sub_maze_buff_list: Option<Vec<u32>>,
     // 以下 6 个只在末日幻影中出现
     buff_list_1: Option<[u32; 3]>,
     buff_list_2: Option<[u32; 3]>,
@@ -168,6 +186,7 @@ impl<'a> PO<'a> for GroupExtra {
             buff_list: self.buff_list.map(assemble).unwrap_or_default(),
             buff_list_1: self.buff_list_1.map(assemble).unwrap_or_default(),
             buff_list_2: self.buff_list_2.map(assemble).unwrap_or_default(),
+            story_type: self.story_type,
         }
     }
 }
