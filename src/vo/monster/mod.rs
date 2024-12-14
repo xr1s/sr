@@ -325,7 +325,10 @@ impl crate::Wiki for Config<'_> {
             .map(|template| template.camp())
             .unwrap_or_default();
         wiki.push_str(camp);
-        wiki.push_str("<!-- 选填：反物质军团、裂界造物、雅利洛-Ⅵ、仙舟「罗浮」、虫群、星际和平公司、惊梦剧团、忆域迷因、模拟宇宙、星核猎手、银河 -->");
+        wiki.push_str(
+            "<!-- 选填：反物质军团、裂界造物、雅利洛-Ⅵ、仙舟「罗浮」、虫群、星际和平公司、\
+             惊梦剧团、忆域迷因、模拟宇宙、星核猎手、银河 -->",
+        );
         // 类型（周本Boss、剧情Boss等，这里没法获取全部，需要手动处理）
         let mut typ = match self.template.as_ref().map(|template| template.rank) {
             Some(Rank::BigBoss) => "周本BOSS",

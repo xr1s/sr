@@ -161,7 +161,8 @@ impl<'a> PO<'a> for Config {
         Self::VO {
             game,
             id: self.monster_id,
-            template: None // 1.0~1.3, 2.0 存在几个数据，会导致 panic
+            // 1.0~1.3, 2.0 存在几个数据，会导致 panic
+            template: None
                 .or_else(|| game.monster_template_config(self.monster_template_id))
                 .or_else(|| game.monster_template_unique_config(self.monster_template_id)),
             name: game.text(self.monster_name),
