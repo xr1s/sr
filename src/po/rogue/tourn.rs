@@ -3,6 +3,38 @@ use std::{borrow::Cow, collections::HashMap, num::NonZero, path::PathBuf};
 use super::Text;
 use crate::{po::Path, vo, GameData, Name, Wiki, ID, PO};
 
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RogueBonus {
+    #[serde(rename = "BonusID")]
+    bonus_id: u16,
+    bonus_event: u32,
+    bonus_title: Text,
+    bonus_desc: Text,
+    bonus_tag: Text,
+    bonus_icon: String,
+}
+
+impl ID for RogueBonus {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.bonus_id
+    }
+}
+
+impl<'a> PO<'a> for RogueBonus {
+    type VO = vo::rogue::tourn::RogueBonus<'a>;
+    fn vo(&self, game: &'a GameData) -> Self::VO {
+        Self::VO {
+            id: self.bonus_id,
+            title: game.text(self.bonus_title),
+            desc: game.text(self.bonus_desc),
+            tag: game.text(self.bonus_tag),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum DescParamType {
     Formula,
@@ -139,6 +171,7 @@ impl<'a> PO<'a> for RogueTournWeeklyChallenge {
             .map(Option::unwrap)
             .collect::<Vec<_>>();
         Self::VO {
+            game,
             id: self.challenge_id,
             name: game.text(self.weekly_name),
             content: content_list
@@ -178,6 +211,7 @@ impl<'a> PO<'a> for RogueTournWeeklyChallenge {
                 .iter()
                 .map(|&(lv, id)| (lv, game.rogue_monster_group(id).unwrap()))
                 .collect(),
+            bonus: std::sync::OnceLock::new(),
         }
     }
 }

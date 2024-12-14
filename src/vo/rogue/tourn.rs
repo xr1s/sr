@@ -2,11 +2,22 @@ use std::borrow::Cow;
 
 use crate::po::rogue::tourn::{FormulaCategory, MiracleCategory};
 use crate::po::Path;
-use crate::{vo, Name, Wiki};
+use crate::{vo, GameData, Name, Wiki};
 
 #[derive(Clone, Debug)]
+pub struct RogueBonus<'a> {
+    pub id: u16,
+    pub title: &'a str,
+    pub desc: &'a str,
+    pub tag: &'a str,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Debug)]
 /// 周期演算
 pub struct RogueTournWeeklyChallenge<'a> {
+    #[derivative(Debug = "ignore")]
+    pub(crate) game: &'a GameData,
     pub id: u8,
     /// 标题
     pub name: &'a str,
@@ -26,6 +37,9 @@ pub struct RogueTournWeeklyChallenge<'a> {
     pub monster_group_2: Vec<(u8, vo::rogue::RogueMonsterGroup<'a>)>,
     /// 第三位面首领
     pub monster_group_3: Vec<(u8, vo::rogue::RogueMonsterGroup<'a>)>,
+
+    /// 如果有方程，会在进入区域获得随机方程对应的祝福
+    pub bonus: std::sync::OnceLock<Option<RogueBonus<'a>>>,
 }
 
 impl RogueTournWeeklyChallenge<'_> {
@@ -56,17 +70,37 @@ impl RogueTournWeeklyChallenge<'_> {
     pub fn issue(&self) -> u16 {
         self.id as u16
     }
+
+    pub fn bonus(&self) -> &Option<RogueBonus<'_>> {
+        self.bonus.get_or_init(|| {
+            if self.formula.is_empty() {
+                return None;
+            }
+            let mut bonus = self.game.rogue_bonus(410).unwrap();
+            for id in 2..=self.id {
+                let challenge = self.game.rogue_tourn_weekly_challenge(id).unwrap();
+                if challenge.formula.is_empty() {
+                    continue;
+                }
+                bonus = self.game.rogue_bonus(bonus.id + 1).unwrap();
+                while !bonus.desc.starts_with("获得一些") {
+                    bonus = self.game.rogue_bonus(bonus.id + 1).unwrap();
+                }
+            }
+            Some(bonus)
+        })
+    }
 }
 
 impl Wiki for RogueTournWeeklyChallenge<'_> {
     fn wiki(&self) -> Cow<'static, str> {
         let mut wiki = String::from("{{#subobject:");
         wiki.push_str(self.name);
-        wiki.push_str("|名称=");
+        wiki.push_str("\n|名称=");
         wiki.push_str(self.name);
-        wiki.push_str("|开始时间=");
+        wiki.push_str("\n|开始时间=");
         wiki.push_str(&self.begin_time().format("%Y/%m/%d").to_string());
-        wiki.push_str("|结束时间=");
+        wiki.push_str("\n|结束时间=");
         let end_date = self.end_time().date_naive().pred_opt().unwrap();
         wiki.push_str(&end_date.format("%Y/%m/%d").to_string());
         if !self.miracle.is_empty() {
@@ -76,7 +110,7 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
                 .map(RogueTournMiracle::wiki_name)
                 .intersperse(Cow::Borrowed(", "))
                 .collect::<String>();
-            wiki.push_str("|起始奇物=");
+            wiki.push_str("\n|起始奇物=");
             wiki.push_str(&miracles);
         }
         if !self.formula.is_empty() {
@@ -86,12 +120,18 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
                 .map(RogueTournFormula::wiki_name)
                 .intersperse(Cow::Borrowed(", "))
                 .collect::<String>();
-            wiki.push_str("|起始方程=");
+            wiki.push_str("\n|起始方程=");
             wiki.push_str(&formulas);
+        }
+        if let Some(bonus) = self.bonus() {
+            wiki.push_str("\n|开拓祝福=");
+            wiki.push_str(bonus.title);
+            wiki.push_str("\n|开拓祝福内容=");
+            wiki.push_str(bonus.desc);
         }
         fn boss(wiki: &mut String, plane: char, groups: &[(u8, vo::rogue::RogueMonsterGroup)]) {
             for (level, group) in groups {
-                wiki.push_str("|第");
+                wiki.push_str("\n|第");
                 wiki.push(plane);
                 wiki.push_str("位面首领");
                 if *level != 0 {
@@ -119,9 +159,9 @@ impl Wiki for RogueTournWeeklyChallenge<'_> {
             .intersperse(", ")
             .map(crate::format::format_wiki)
             .collect::<String>();
-        wiki.push_str("|规则=");
+        wiki.push_str("\n|规则=");
         wiki.push_str(&contents);
-        wiki.push_str("}}");
+        wiki.push_str("\n}}");
         Cow::Owned(wiki)
     }
 }
@@ -207,7 +247,7 @@ impl Name for RogueTournFormula<'_> {
     }
     fn wiki_name(&self) -> Cow<'_, str> {
         if self.category == FormulaCategory::PathEcho
-            || ["赏金猎人", "筑城者"].contains(&self.name())
+            || ["赏金猎人", "筑城者", "混沌医师"].contains(&self.name())
         {
             Cow::Owned(self.name().to_string() + "（方程）")
         } else {

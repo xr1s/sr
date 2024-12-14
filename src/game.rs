@@ -121,6 +121,7 @@ pub struct GameData {
 
     // rogue tourn 差分宇宙
     /// 差分宇宙文案
+    _rogue_bonus: OnceLock<FnvIndexMap<u16, po::rogue::tourn::RogueBonus>>,
     _rogue_tourn_content_display:
         OnceLock<FnvIndexMap<u16, po::rogue::tourn::RogueTournContentDisplay>>,
     /// 差分宇宙方程
@@ -512,6 +513,7 @@ impl GameData {
     // rogue magic
     field!(rogue_magic_miracle, u16 => rogue::RogueMiracle);
     // rogue tourn
+    field!(rogue_bonus, u16 => rogue::tourn::RogueBonus);
     field!(rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
     field!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
     field!(rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
