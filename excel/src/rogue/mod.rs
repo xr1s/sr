@@ -27,13 +27,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracle<'a> {
             desc: Option<Text>,
             desc_param_list: &Option<Vec<Value<f32>>>,
         ) -> String {
-            let arguments = desc_param_list
-                .as_deref()
-                .unwrap_or_default()
-                .iter()
-                .map(|param| &param.value)
-                .map(format::Argument::from)
-                .collect::<Vec<_>>();
+            let arguments =
+                format::Argument::from_array(desc_param_list.as_deref().unwrap_or_default());
             format::format(
                 desc.map(|text| game.text(text)).unwrap_or_default(),
                 &arguments,
@@ -112,12 +107,7 @@ pub struct RogueMiracleDisplay<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracleDisplay<'a> {
     type Model = model::rogue::RogueMiracleDisplay;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
-        let arguments = model
-            .desc_param_list
-            .iter()
-            .map(|param| &param.value)
-            .map(format::Argument::from)
-            .collect::<Vec<_>>();
+        let arguments = format::Argument::from_array(&model.desc_param_list);
         Self {
             id: model.miracle_display_id,
             name: game.text(model.miracle_name),

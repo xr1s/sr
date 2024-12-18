@@ -13,11 +13,7 @@ pub struct ExtraEffectConfig<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ExtraEffectConfig<'a> {
     type Model = model::misc::ExtraEffectConfig;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        let arguments = model
-            .desc_param_list
-            .iter()
-            .map(|v| format::Argument::from(&v.value))
-            .collect::<Vec<_>>();
+        let arguments = format::Argument::from_array(&model.desc_param_list);
         Self {
             id: model.extra_effect_id,
             name: game.text(model.extra_effect_name),
@@ -45,11 +41,7 @@ pub struct MazeBuff<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MazeBuff<'a> {
     type Model = model::misc::MazeBuff;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        let params = model
-            .param_list
-            .iter()
-            .map(|v| format::Argument::from(&v.value))
-            .collect::<Vec<_>>();
+        let params = format::Argument::from_array(&model.param_list);
         Self {
             id: model.id,
             lv: model.lv,

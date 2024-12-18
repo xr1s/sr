@@ -287,8 +287,11 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a> 
                 Miracle => Either::Right(game.rogue_tourn_miracle(param.value as _).unwrap()),
             })
             .collect::<Vec<_>>();
-        let names = params.iter().map(Name::name).collect::<Vec<_>>();
-        let names = names.iter().map(format::Argument::from).collect::<Vec<_>>();
+        let names = params
+            .iter()
+            .map(Name::name)
+            .map(format::Argument::from)
+            .collect::<Vec<_>>();
         let content = format::format(game.text(model.weekly_display_content), &names);
 
         Self {

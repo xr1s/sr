@@ -1035,12 +1035,7 @@ impl<Data: ExcelOutput> FromModel<'_, Data> for ChallengeTargetConfig {
             r#type: model.challenge_target_type,
             name: format::format(
                 game.text(model.challenge_target_name),
-                &[format::Argument::from(
-                    &model
-                        .challenge_target_param_1
-                        .map(NonZero::get)
-                        .unwrap_or_default(),
-                )],
+                &[format::Argument::from(model.challenge_target_param_1)],
             ),
             reward_id: model.reward_id.map(NonZero::get).unwrap_or_default(),
         }

@@ -647,11 +647,7 @@ pub struct MonsterSkillConfig<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterSkillConfig<'a> {
     type Model = model::monster::SkillConfig;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
-        let params = model
-            .param_list
-            .iter()
-            .map(|v| format::Argument::from(&v.value))
-            .collect::<Vec<_>>();
+        let params = format::Argument::from_array(&model.param_list);
         Self {
             id: model.skill_id,
             name: game.text(model.skill_name),

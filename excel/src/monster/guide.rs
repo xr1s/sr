@@ -170,19 +170,12 @@ pub struct MonsterGuideTag<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterGuideTag<'a> {
     type Model = model::monster::guide::MonsterGuideTag;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        let arguments = model
-            .parameter_list
-            .iter()
-            .map(format::Argument::from)
-            .collect::<Vec<_>>();
+        let arguments = format::Argument::from_array(&model.parameter_list);
         Self {
             id: model.tag_id,
             name: game.text(model.tag_name),
             brief_description: format::format(game.text(model.tag_brief_description), &arguments),
-            detail_description: format::format(
-                game.text(model.tag_detail_description),
-                &arguments,
-            ),
+            detail_description: format::format(game.text(model.tag_detail_description), &arguments),
             skill: model
                 .skill_id
                 .map(NonZero::get)
