@@ -25,8 +25,8 @@ impl_from_for_argument!(u64, Unsigned);
 impl_from_for_argument!(u32, Unsigned);
 impl_from_for_argument!(u16, Unsigned);
 impl_from_for_argument!(u8, Unsigned);
-impl_from_for_argument!(f32, Signed);
-impl_from_for_argument!(f64, Signed);
+impl_from_for_argument!(f32, Floating);
+impl_from_for_argument!(f64, Floating);
 impl_from_for_argument!(&'a str, String);
 
 macro_rules! impl_from_option_nonzero_for_argument {
