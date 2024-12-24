@@ -231,7 +231,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         wiki.push_str("\n|名称=");
         wiki.push_str(self.name);
         self.wiki_write_sched(&mut wiki);
-        self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
+        self.wiki_write_buff(&mut wiki, "记忆紊流", self.maze_buff.as_ref());
         let mazes = self.mazes();
         for maze in mazes {
             assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
@@ -646,7 +646,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         wiki.push_str("\n|名称=");
         wiki.push_str(self.name);
         self.wiki_write_sched(&mut wiki);
-        self.wiki_write_buff(&mut wiki, "记忆紊流", self.maze_buff.as_ref());
+        self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
         let extra = self.extra();
         assert_eq!(extra.buff_list.len(), 3, "虚构记忆固定三个增益");
         for (index, buff) in extra.buff_list.iter().enumerate() {
