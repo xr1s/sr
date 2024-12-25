@@ -429,7 +429,7 @@ impl<Data: ExcelOutput> Wiki for MonsterConfig<'_, Data> {
             .as_ref()
             .map(|template| template.group_id)
             .unwrap_or_default();
-        if self.template.is_some() && group_id == 0 && !self.name.contains("扑满") {
+        if group_id == 0 && !self.name.contains("扑满") && self.name != "虚构集合体" {
             typ = "召唤物";
         }
         wiki.push_str("\n|类型=");
