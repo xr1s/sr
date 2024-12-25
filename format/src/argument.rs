@@ -94,7 +94,7 @@ impl crate::formattable::Formattable for Argument<'_> {
         }
     }
 
-    fn write_float(&self, f: &mut crate::Formatter, prec: usize, percent: bool) {
+    fn write_float(&self, f: &mut crate::Formatter, prec: u32, percent: bool) {
         match self {
             Argument::String(s) => s.write_float(f, prec, percent),
             Argument::Signed(n) => n.write_float(f, prec, percent),

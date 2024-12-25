@@ -182,7 +182,7 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
         (self
             .template
             .as_ref()
-            .map(|template| template.speed_base)
+            .map(|template| template.stance_base)
             .unwrap_or_default() as f32
             * self.stance_modify_ratio
             + self.stance_modify_value as f32)
@@ -205,6 +205,16 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
             .iter()
             .filter_map(|(_, &id)| self.game.monster_config(id as _))
             .collect()
+    }
+
+    /// 小怪，排除精英、剧情 Boss、周本 Boss
+    pub fn is_minion(&self) -> bool {
+        let rank = self
+            .template
+            .as_ref()
+            .map(|template| template.rank)
+            .unwrap_or(MonsterRank::MinionLv2);
+        rank == MonsterRank::Minion || rank == MonsterRank::MinionLv2
     }
 }
 

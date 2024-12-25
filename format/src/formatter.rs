@@ -230,7 +230,7 @@ impl<'a> Formatter<'a> {
         }
         if self.fmt_arg.as_bytes().first() == Some(&b'f') {
             let prec = self.fmt_arg.as_bytes()[1] - b'0';
-            arg.write_float(self, prec as usize, percent);
+            arg.write_float(self, prec as _, percent);
         }
         if self.fmt_arg.as_bytes().first() == Some(&b'i') {
             arg.write_int(self, percent);

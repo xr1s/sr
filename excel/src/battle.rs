@@ -133,7 +133,8 @@ impl<Data: ExcelOutput> StageConfig<'_, Data> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(educe::Educe)]
+#[educe(Clone, Debug)]
 pub struct StageInfiniteGroup<'a, Data: ExcelOutput + ?Sized> {
     pub id: u32,
     pub wave_list: Vec<StageInfiniteWaveConfig<'a, Data>>,
@@ -154,7 +155,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for StageInfiniteGroup<'a, Data>
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(educe::Educe)]
+#[educe(Clone, Debug)]
 pub struct StageInfiniteMonsterGroup<'a, Data: ExcelOutput + ?Sized> {
     pub id: u32,
     pub monster_list: Vec<crate::monster::MonsterConfig<'a, Data>>,
@@ -183,7 +185,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for StageInfiniteMonsterGroup<'a
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(educe::Educe)]
+#[educe(Clone, Debug)]
 pub struct StageInfiniteWaveConfig<'a, Data: ExcelOutput + ?Sized> {
     pub id: u32,
     pub monster_group_list: Vec<StageInfiniteMonsterGroup<'a, Data>>,

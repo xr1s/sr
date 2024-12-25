@@ -82,7 +82,6 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ChallengeGroupConfig<'a, Dat
                 .map(|id| game.world_data_config(id))
                 .map(Option::unwrap),
             r#type: model.challenge_group_type,
-
             _extra: std::sync::OnceLock::new(),
             _mazes: std::sync::OnceLock::new(),
         }
@@ -287,7 +286,13 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
             //猜测，如果错了手动改
             _ => STRATEGY[0],
         };
-        if monster.name() == "王下一桶" || monster.name() == "序列扑满" {
+        let story_type = self
+            .extra()
+            .story_type
+            .unwrap_or(ChallengeStoryType::Normal);
+        if story_type == ChallengeStoryType::Normal
+            && (monster.name() == "王下一桶" || monster.name() == "序列扑满")
+        {
             return strategy[1];
         }
         match monster.template.as_ref().map(|template| template.rank) {
@@ -346,6 +351,10 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         let mut weakness_scores =
             fnv::FnvHashMap::from_iter(Self::ELEMENTS.into_iter().map(|element| (element, 0)));
         let mut max_teammate = [0; 3];
+        let story_type = self
+            .extra()
+            .story_type
+            .unwrap_or(ChallengeStoryType::Normal);
         for (wave_no, wave) in infinite_group.wave_list.iter().enumerate() {
             max_teammate[wave_no] = wave.max_teammate_count;
             let wave_no = (wave_no + 1).to_string();
@@ -357,28 +366,35 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
                 .into_iter()
                 .map(|(name, vec)| (name, vec.len()))
                 .collect::<FnvIndexMap<_, _>>();
-            // 计算每一种弱点在每一波中能拿到的分数
-            // 就是假如只将含有某种弱点的怪物全部击败，所能获得的总分
-            for monster in monsters {
-                let weaknesses = if monster.wiki_name() == "王下一桶" {
-                    &Self::ELEMENTS // 「王下一桶」作为全属性弱点对待
-                } else {
-                    monster.stance_weak_list
-                };
-                for weakness in weaknesses {
-                    *weakness_scores.entry(*weakness).or_default() += self.monster_score(monster)
+            if story_type == ChallengeStoryType::Normal {
+                // 计算每一种弱点在每一波中能拿到的分数
+                // 就是假如只将含有某种弱点的怪物全部击败，所能获得的总分
+                for monster in monsters {
+                    let weaknesses = if monster.wiki_name() == "王下一桶" {
+                        &Self::ELEMENTS // 「王下一桶」作为全属性弱点对待
+                    } else {
+                        monster.stance_weak_list
+                    };
+                    for weakness in weaknesses {
+                        *weakness_scores.entry(*weakness).or_default() +=
+                            self.monster_score(monster)
+                    }
                 }
             }
-            let normal_names = Self::aggregate_monster(monsters, &monster_counts, |monster| {
-                self.monster_score(monster) == 500
-            });
+            let normal_names =
+                Self::aggregate_monster(monsters, &monster_counts, |monster| match story_type {
+                    ChallengeStoryType::Normal => self.monster_score(monster) == 500,
+                    ChallengeStoryType::Fever => monster.is_minion(),
+                });
             wiki.push_str(&floor_team);
             wiki.push_str(&wave_no);
             wiki.push_str("波=");
             wiki.push_str(&normal_names);
-            let elite_names = Self::aggregate_monster(monsters, &monster_counts, |monster| {
-                self.monster_score(monster) > 500
-            });
+            let elite_names =
+                Self::aggregate_monster(monsters, &monster_counts, |monster| match story_type {
+                    ChallengeStoryType::Normal => self.monster_score(monster) > 500,
+                    ChallengeStoryType::Fever => !monster.is_minion(),
+                });
             wiki.push_str(&floor_team);
             wiki.push_str(&wave_no);
             wiki.push_str("波特殊敌方=");
@@ -386,7 +402,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         }
         wiki.push_str(&floor_team);
         wiki.push_str("敌方上限=");
-        if max_teammate[0] != max_teammate[1] && max_teammate[1] == max_teammate[2] {
+        if max_teammate[0] == max_teammate[1] && max_teammate[1] == max_teammate[2] {
             wiki.push_str(&max_teammate[0].to_string());
         } else {
             let max_teammate: String = max_teammate
@@ -397,30 +413,6 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
                 .collect();
             wiki.push_str(&max_teammate);
         }
-        // 按顺序打印出所有弱点积分
-        let mut weakness_scores = weakness_scores.into_iter().collect::<Vec<_>>();
-        // 按照弱点积分从大到小排序
-        // 建议属性无条件排到前面。当积分一致时候，在建议属性中的按照建议顺序排序，否则按照英文字典序
-        weakness_scores.sort_by(|l, r| {
-            let l_in_weak = weakness.iter().position(|&weakness| weakness == l.0);
-            let r_in_weak = weakness.iter().position(|&weakness| weakness == r.0);
-            match (l_in_weak, r_in_weak) {
-                (None, None) => {
-                    if l.1 != r.1 {
-                        return u32::cmp(&r.1, &l.1); // 注意排序是逆向的
-                    }
-                    u8::cmp(&(l.0 as u8), &(r.0 as u8))
-                }
-                (None, Some(_)) => std::cmp::Ordering::Greater,
-                (Some(_), None) => std::cmp::Ordering::Less,
-                (Some(l_index), Some(r_index)) => {
-                    if l.1 != r.1 {
-                        return u32::cmp(&r.1, &l.1); // 注意排序是逆向的
-                    }
-                    usize::cmp(&l_index, &r_index)
-                }
-            }
-        });
         let weaknesses: String = weakness
             .iter()
             .map(Element::wiki)
@@ -429,15 +421,41 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         wiki.push_str(&floor_team);
         wiki.push_str("建议属性=");
         wiki.push_str(&weaknesses);
-        let weakness_scores: String = weakness_scores
-            .into_iter()
-            .map(|(weakness, score)| format!("{}:{score}", weakness.wiki()))
-            .map(Cow::Owned)
-            .intersperse(Cow::Borrowed("、"))
-            .collect();
-        wiki.push_str(&floor_team);
-        wiki.push_str("弱点分数=");
-        wiki.push_str(&weakness_scores);
+        if story_type == ChallengeStoryType::Normal {
+            // 按顺序打印出所有弱点积分
+            let mut weakness_scores = weakness_scores.into_iter().collect::<Vec<_>>();
+            // 按照弱点积分从大到小排序
+            // 建议属性无条件排到前面。当积分一致时候，在建议属性中的按照建议顺序排序，否则按照英文字典序
+            weakness_scores.sort_by(|l, r| {
+                let l_in_weak = weakness.iter().position(|&weakness| weakness == l.0);
+                let r_in_weak = weakness.iter().position(|&weakness| weakness == r.0);
+                match (l_in_weak, r_in_weak) {
+                    (None, None) => {
+                        if l.1 != r.1 {
+                            return u32::cmp(&r.1, &l.1); // 注意排序是逆向的
+                        }
+                        u8::cmp(&(l.0 as u8), &(r.0 as u8))
+                    }
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (Some(l_index), Some(r_index)) => {
+                        if l.1 != r.1 {
+                            return u32::cmp(&r.1, &l.1); // 注意排序是逆向的
+                        }
+                        usize::cmp(&l_index, &r_index)
+                    }
+                }
+            });
+            let weakness_scores: String = weakness_scores
+                .into_iter()
+                .map(|(weakness, score)| format!("{}:{score}", weakness.wiki()))
+                .map(Cow::Owned)
+                .intersperse(Cow::Borrowed("、"))
+                .collect();
+            wiki.push_str(&floor_team);
+            wiki.push_str("弱点分数=");
+            wiki.push_str(&weakness_scores);
+        }
     }
 
     fn story_wiki_write_wave_ability(
@@ -492,7 +510,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
             } else {
                 index as u8 + 1
             };
-            infinite_groups
+            infinite_groups[index * 2..index * 2 + 2]
                 .iter()
                 .flat_map(|group| &group.wave_list)
                 .flat_map(|wave| &wave.monster_group_list)
@@ -639,16 +657,47 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         // 开头两个 assert 确保数据一致性
         self.story_wiki_assertions(mazes);
         self.story_wiki_score_assertions(mazes, self.extra());
+        let extra = self.extra();
+        assert_eq!(extra.buff_list.len(), 3, "虚构记忆固定三个增益");
+        if extra.story_type == Some(ChallengeStoryType::Fever) {
+            assert_eq!(
+                extra.sub_maze_buff_list.len(),
+                3,
+                "新版虚构虚构叙事固定三个战意机制"
+            );
+        }
 
         let mut wiki = String::from("{{虚构叙事单期");
+        if extra.story_type == Some(ChallengeStoryType::Fever) {
+            // 虚构叙事第 11 期开始更新为新版虚构叙事
+            // 主要是新增战意和 Boss 共享血量
+            // BWIKI 同时换模板
+            wiki.push('2');
+        }
         wiki.push_str("\n|期数=");
         wiki.push_str(&format!("{:03}", self.issue()));
         wiki.push_str("\n|名称=");
         wiki.push_str(self.name);
         self.wiki_write_sched(&mut wiki);
-        self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
-        let extra = self.extra();
-        assert_eq!(extra.buff_list.len(), 3, "虚构记忆固定三个增益");
+        match extra.story_type.unwrap_or(ChallengeStoryType::Normal) {
+            ChallengeStoryType::Normal => {
+                self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
+            }
+            ChallengeStoryType::Fever => {
+                // 0 => 战意机制
+                // 1 => 战熄潮平
+                // 2 => 战意汹涌
+                use format::format_wiki;
+                wiki.push_str("\n|战意机制名称=");
+                wiki.push_str(extra.sub_maze_buff_list[0].name);
+                wiki.push_str("\n|战意机制效果=");
+                wiki.push_str(&format_wiki(&extra.sub_maze_buff_list[0].desc));
+                wiki.push_str("\n|战熄潮平=");
+                wiki.push_str(&format_wiki(&extra.sub_maze_buff_list[1].desc));
+                wiki.push_str("\n|战意汹涌=");
+                wiki.push_str(&format_wiki(&extra.sub_maze_buff_list[2].desc));
+            }
+        }
         for (index, buff) in extra.buff_list.iter().enumerate() {
             wiki.push_str("\n|荒腔");
             wiki.push_str(&(index + 1).to_string());
@@ -658,6 +707,13 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
             wiki.push_str(Self::CHNUM[index]);
             wiki.push('=');
             wiki.push_str(&format_wiki(&buff.desc));
+            if extra.story_type == Some(ChallengeStoryType::Fever) {
+                wiki.push_str("\n|荒腔走板其");
+                wiki.push_str(Self::CHNUM[index]);
+                wiki.push_str("战意机制");
+                wiki.push('=');
+                wiki.push_str(&format_wiki(&buff.simple_desc));
+            }
         }
         for maze in mazes {
             assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
@@ -839,6 +895,7 @@ impl<Data: ExcelOutput> Wiki for ChallengeGroupConfig<'_, Data> {
 #[derive(Clone, Debug)]
 pub struct ChallengeGroupExtra<'a> {
     pub id: u16,
+    pub sub_maze_buff_list: Vec<crate::misc::MazeBuff<'a>>,
     pub story_type: Option<ChallengeStoryType>,
     pub buff_list: Vec<crate::misc::MazeBuff<'a>>,
     pub buff_list_1: Vec<crate::misc::MazeBuff<'a>>,
@@ -851,10 +908,17 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ChallengeGroupExtra<'a> {
         let assemble = |buffs: [u32; 3]| buffs.iter().flat_map(|&id| game.maze_buff(id)).collect();
         Self {
             id: model.group_id,
+            sub_maze_buff_list: model
+                .sub_maze_buff_list
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .flat_map(|&id| game.maze_buff(id))
+                .collect(),
+            story_type: model.story_type,
             buff_list: model.buff_list.map(assemble).unwrap_or_default(),
             buff_list_1: model.buff_list_1.map(assemble).unwrap_or_default(),
             buff_list_2: model.buff_list_2.map(assemble).unwrap_or_default(),
-            story_type: model.story_type,
         }
     }
 }
