@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-base = { path = "base" }
-data = { path = "data" }
-excel = { path = "excel" }
+base = { path = "crates/base" }
+data = { path = "crates/data" }
+excel = { path = "crates/excel" }
 
 [workspace]
 members = [
-  "base",
-  "data",
-  "excel",
-  "model",
-  "format",
+  "crates/base",
+  "crates/data",
+  "crates/excel",
+  "crates/model",
+  "crates/format",
 ]
