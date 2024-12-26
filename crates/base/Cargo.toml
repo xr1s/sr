@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = { version = "0.4" }
 either = { version = "1" }
 fnv = { version = "1" }
 indexmap = { version = "2", features = ["serde"] }
 multimap = { version = "0.10" }
+serde = { version = "1" }
+serde_json = { version = "1" }

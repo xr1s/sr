@@ -15,4 +15,7 @@ members = [
   "crates/excel",
   "crates/model",
   "crates/format",
+
+  # 米游社数据
+  "crates/bbs",
 ]

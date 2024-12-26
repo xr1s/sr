@@ -1,3 +1,5 @@
+pub mod serde;
+
 pub type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 pub type FnvMultiMap<K, V> = multimap::MultiMap<K, V, fnv::FnvBuildHasher>;
 

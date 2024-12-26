@@ -1,4 +1,4 @@
-use std::{num::NonZero, path::PathBuf, str::FromStr};
+use std::{num::NonZero, path::PathBuf};
 
 use base::{MainSubID, ID};
 
@@ -371,71 +371,6 @@ pub enum PropPerformanceType {
     SAvatar,
 }
 
-#[derive(Clone, Copy)]
-pub struct Color(pub u8, pub u8, pub u8, pub u8);
-
-impl std::str::FromStr for Color {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s
-            .strip_prefix('#')
-            .ok_or_else(|| format!("Color {s:?} not leading with #"))?;
-        if s.len() != 6 && s.len() != 8 {
-            return Err(format!("Color {s:?} length not 6 or 8"));
-        }
-        let mut color = Color(
-            u8::from_str_radix(&s[0..2], 16)
-                .map_err(|_| format!("Color {:?} not valid hex number", &s[0..2]))?,
-            u8::from_str_radix(&s[2..4], 16)
-                .map_err(|_| format!("Color {:?} not valid hex number", &s[2..4]))?,
-            u8::from_str_radix(&s[4..6], 16)
-                .map_err(|_| format!("Color {:?} not valid hex number", &s[4..6]))?,
-            0,
-        );
-        if s.len() == 8 {
-            color.3 = u8::from_str_radix(&s[6..8], 16)
-                .map_err(|_| format!("Color {:?} not valid hex color", &s[6..8]))?;
-        }
-        Ok(color)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Color {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Color::from_str(&String::deserialize(deserializer)?).map_err(serde::de::Error::custom)
-    }
-}
-
-impl serde::Serialize for Color {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl std::fmt::Display for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_fmt(format_args!("#{:02x}{:02x}{:02x}", self.0, self.1, self.2))?;
-        if self.3 != 0 {
-            f.write_fmt(format_args!("{:02x}", self.3))?;
-        }
-        Ok(())
-    }
-}
-
-impl std::fmt::Debug for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_fmt(format_args!("#{:02x}{:02x}{:02x}", self.0, self.1, self.2))?;
-        if self.3 != 0 {
-            f.write_fmt(format_args!("{:02x}", self.3))?;
-        }
-        Ok(())
-    }
-}
-
 #[serde_with::serde_as]
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
@@ -445,7 +380,7 @@ pub struct MiniMapStateIcon {
     #[serde(rename = "IconID")]
     icon_id: Option<NonZero<u8>>,
     #[serde_as(as = "serde_with::NoneAsEmptyString")]
-    color: Option<Color>,
+    color: Option<base::serde::Color>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]

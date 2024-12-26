@@ -232,41 +232,15 @@ impl serde::Serialize for RewardData {
     }
 }
 
-mod sched {
-    use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeDelta};
-    use serde::{self, de::Error, Deserialize, Deserializer, Serializer};
-
-    const ASIA_SHANGHAI: FixedOffset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
-    const ASIA_SHANGHAI_OFFSET: TimeDelta = TimeDelta::hours(8);
-    const FORMAT: &str = "%Y-%m-%d %H:%M:%S";
-
-    pub fn serialize<S>(date: &DateTime<FixedOffset>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&date.format(FORMAT).to_string())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        String::deserialize(deserializer)
-            .and_then(|s| NaiveDateTime::parse_from_str(&s, FORMAT).map_err(Error::custom))
-            .map(|datetime| DateTime::from_naive_utc_and_offset(datetime, ASIA_SHANGHAI))
-            .map(|datetime| datetime - ASIA_SHANGHAI_OFFSET)
-    }
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 pub struct ScheduleData {
     #[serde(rename = "ID")]
     pub id: u32,
-    #[serde(with = "sched")]
+    #[serde(with = "base::serde::datetime")]
     pub begin_time: chrono::DateTime<chrono::FixedOffset>,
-    #[serde(with = "sched")]
+    #[serde(with = "base::serde::datetime")]
     pub end_time: chrono::DateTime<chrono::FixedOffset>,
 }
 
@@ -283,7 +257,7 @@ impl ID for ScheduleData {
 pub struct ScheduleDataGlobal {
     #[serde(flatten)]
     pub schedule: ScheduleData,
-    #[serde(with = "sched")]
+    #[serde(with = "base::serde::datetime")]
     pub global_end_time: chrono::DateTime<chrono::FixedOffset>,
 }
 
