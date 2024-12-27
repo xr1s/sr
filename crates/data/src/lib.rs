@@ -186,11 +186,7 @@ impl GameData {
         for<'a> V: serde::Deserialize<'a>,
     {
         let path = self.base.join(dir.into());
-        let file = File::open(&path)?;
-        let file_size = file.metadata().unwrap().len();
-        let mut reader = BufReader::new(file);
-        let mut bytes = Vec::with_capacity(file_size as _);
-        std::io::Read::read_to_end(&mut reader, &mut bytes).unwrap();
+        let bytes = std::fs::read(path).unwrap();
         Ok(serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
             // 每个版本更新后也存在某些特殊字段未解密导致一直在变 serde 失败的情况
@@ -214,16 +210,12 @@ impl GameData {
         for<'a> V: serde::Deserialize<'a>,
     {
         let path = self.base.join(dir.into());
-        let file = File::open(path).unwrap();
-        let file_size = file.metadata().unwrap().len();
-        let mut reader = BufReader::new(file);
-        let mut bytes = Vec::with_capacity(file_size as _);
-        std::io::Read::read_to_end(&mut reader, &mut bytes).unwrap();
+        let bytes = std::fs::read(path).unwrap();
         serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
             .inspect_err(|e| log::warn!("疑似 2.3 之前的老数据格式: {:?}", e))
             .map_or_else(
-                // 2.3 版本及以下, 采用的数据结构是 {"123": { "4": { "GroupID": 123, "InnerID": 4, ... } } } 形式
+                // 2.3 版本及以下, 采用的数据结构是 {"123": { "4": { "MainID": 123, "SubID": 4, ... } } } 形式
                 |_| {
                     serde_json::from_slice::<FnvIndexMap<I, FnvIndexMap<S, V>>>(&bytes)
                         .unwrap()
@@ -232,7 +224,7 @@ impl GameData {
                         .map(|model| (model.id(), model))
                         .collect()
                 },
-                // 2.4 版本及以上, 采用的数据结构是 [{"GroupID": 123, "InnerID": 4, ...} ] 形式
+                // 2.4 版本及以上, 采用的数据结构是 [{"MainID": 123, "SubID": 4, ...} ] 摊平的形式
                 |model: Vec<V>| model.into_iter().map(|model| (model.id(), model)).collect(),
             )
     }
