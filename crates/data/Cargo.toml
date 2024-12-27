@@ -8,7 +8,7 @@ chrono = { version = "0.4" }
 fnv = { version = "1" }
 log = { version = "0.4" }
 paste = { version = "1" }
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "rc"] }
 serde_json = { version = "1" }
 
 base = { path = "../base" }

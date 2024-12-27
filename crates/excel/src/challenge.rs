@@ -122,7 +122,7 @@ impl<'a, Data: ExcelOutput> ChallengeGroupConfig<'a, Data> {
 
     pub fn mazes(&self) -> &[ChallengeMazeConfig<'a, Data>] {
         self._mazes
-            .get_or_init(move || self.game.challenge_maze_in_group(self.id))
+            .get_or_init(|| self.game.challenge_maze_in_group(self.id))
     }
 
     pub fn extra(&self) -> &ChallengeGroupExtra<'_> {

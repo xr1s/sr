@@ -216,7 +216,7 @@ pub trait ExcelOutput: data::Text {
 
     // caches
     #[rustfmt::skip]
-    fn message_section_in_contacts(&self, contacts_id: u16) -> Vec<message::MessageSectionConfig<Self>>;
+    fn message_section_in_contacts(&self, contacts_id: u16) -> impl Iterator<Item = message::MessageSectionConfig<Self>>;
     #[rustfmt::skip]
     fn monster_template_config_group(&self, id: u32) -> impl Iterator<Item = monster::MonsterTemplateConfig<Self>>;
     fn challenge_maze_in_group(&self, id: u16) -> Vec<challenge::ChallengeMazeConfig<Self>>;
@@ -330,15 +330,13 @@ impl ExcelOutput for data::GameData {
     fn message_section_in_contacts(
         &self,
         contacts_id: u16,
-    ) -> Vec<message::MessageSectionConfig<Self>> {
+    ) -> impl Iterator<Item = message::MessageSectionConfig<Self>> {
         self._message_section_in_contacts()
             .get_vec(&contacts_id)
             .map(Vec::as_slice)
             .unwrap_or_default()
             .iter()
-            .map(|&section_id| self.message_section_config(section_id))
-            .map(Option::unwrap)
-            .collect()
+            .map(|section| message::MessageSectionConfig::from_model(self, section))
     }
 
     fn monster_template_config_group(
@@ -354,35 +352,17 @@ impl ExcelOutput for data::GameData {
                 .map(Vec::as_slice)
                 .unwrap_or_default()
                 .iter()
-                .map(|&id| self.monster_template_config(id))
-                .map(Option::unwrap), // map 的值就是从 monster_template_config 生成的
-                                      // 所以这里不会 panic
+                .map(|template| monster::MonsterTemplateConfig::from_model(self, template)),
         )
     }
 
     fn challenge_maze_in_group(&self, id: u16) -> Vec<challenge::ChallengeMazeConfig<Self>> {
-        use model::challenge::ChallengeGroupType;
-        let is_memory = self._challenge_group_config().contains_key(&id) as u8;
-        let is_story = self._challenge_story_group_config().contains_key(&id) as u8;
-        let is_boss = self._challenge_boss_group_config().contains_key(&id) as u8;
-        let group_type = match (is_memory, is_story, is_boss) {
-            (1, 0, 0) => ChallengeGroupType::Memory,
-            (0, 1, 0) => ChallengeGroupType::Story,
-            (0, 0, 1) => ChallengeGroupType::Boss,
-            (0, 0, 0) => return Vec::new(),
-            _ => unreachable!(),
-        };
         self._challenge_maze_in_group()
             .get_vec(&id)
             .map(Vec::as_slice)
             .unwrap_or_default()
             .iter()
-            .map(move |&id| match group_type {
-                ChallengeGroupType::Memory => self.challenge_maze_config(id),
-                ChallengeGroupType::Story => self.challenge_story_maze_config(id),
-                ChallengeGroupType::Boss => self.challenge_boss_maze_config(id),
-            })
-            .map(Option::unwrap)
+            .map(|maze| challenge::ChallengeMazeConfig::from_model(self, maze))
             .collect()
     }
 

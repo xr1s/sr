@@ -4,142 +4,166 @@ use std::fs::File;
 use std::io::BufReader;
 use std::num::NonZero;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::OnceLock;
 
 #[derive(Default)]
 pub struct GameData {
     base: PathBuf,
-    text_map: std::collections::HashMap<i32, String, fnv::FnvBuildHasher>,
+    text_map: std::collections::HashMap<i32, Arc<str>, fnv::FnvBuildHasher>,
 
     // battle
     // 战斗配置
-    _battle_event_config: OnceLock<FnvIndexMap<u32, model::battle::BattleEventConfig>>,
-    _elite_group: OnceLock<FnvIndexMap<u16, model::battle::EliteGroup>>,
-    _stage_config: OnceLock<FnvIndexMap<u32, model::battle::StageConfig>>,
-    _stage_infinite_group: OnceLock<FnvIndexMap<u32, model::battle::StageInfiniteGroup>>,
+    _battle_event_config: OnceLock<FnvIndexMap<u32, Arc<model::battle::BattleEventConfig>>>,
+    _elite_group: OnceLock<FnvIndexMap<u16, Arc<model::battle::EliteGroup>>>,
+    _stage_config: OnceLock<FnvIndexMap<u32, Arc<model::battle::StageConfig>>>,
+    _stage_infinite_group: OnceLock<FnvIndexMap<u32, Arc<model::battle::StageInfiniteGroup>>>,
     _stage_infinite_monster_group:
-        OnceLock<FnvIndexMap<u32, model::battle::StageInfiniteMonsterGroup>>,
-    _stage_infinite_wave_config: OnceLock<FnvIndexMap<u32, model::battle::StageInfiniteWaveConfig>>,
+        OnceLock<FnvIndexMap<u32, Arc<model::battle::StageInfiniteMonsterGroup>>>,
+    _stage_infinite_wave_config:
+        OnceLock<FnvIndexMap<u32, Arc<model::battle::StageInfiniteWaveConfig>>>,
     // challenge
     // 逐光捡金
     _challenge_boss_group_config:
-        OnceLock<FnvIndexMap<u16, model::challenge::ChallengeGroupConfig>>,
-    _challenge_boss_group_extra: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeGroupExtra>>,
-    _challenge_boss_maze_config: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeMazeConfig>>,
-    _challenge_boss_maze_extra: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeMazeExtra>>,
-    _challenge_boss_reward_line: OnceLock<FnvMultiMap<u16, model::challenge::RewardLine>>,
-    _challenge_boss_target_config: OnceLock<FnvIndexMap<u16, model::challenge::TargetConfig>>,
-    _challenge_group_config: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeGroupConfig>>,
-    _challenge_group_in_maze: OnceLock<FnvMultiMap<u16, u16>>,
-    _challenge_maze_reward_line: OnceLock<FnvMultiMap<u16, model::challenge::RewardLine>>,
-    _challenge_maze_group_extra: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeGroupExtra>>,
-    _challenge_maze_config: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeMazeConfig>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>>,
+    _challenge_boss_group_extra:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupExtra>>>,
+    _challenge_boss_maze_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeConfig>>>,
+    _challenge_boss_maze_extra:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeExtra>>>,
+    _challenge_boss_reward_line: OnceLock<FnvMultiMap<u16, Arc<model::challenge::RewardLine>>>,
+    _challenge_boss_target_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::TargetConfig>>>,
+    _challenge_group_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>>,
+    _challenge_maze_reward_line: OnceLock<FnvMultiMap<u16, Arc<model::challenge::RewardLine>>>,
+    _challenge_maze_group_extra:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupExtra>>>,
+    _challenge_maze_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeConfig>>>,
     _challenge_story_group_config:
-        OnceLock<FnvIndexMap<u16, model::challenge::ChallengeGroupConfig>>,
-    _challenge_story_group_extra: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeGroupExtra>>,
-    _challenge_story_maze_config: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeMazeConfig>>,
-    _challenge_story_maze_extra: OnceLock<FnvIndexMap<u16, model::challenge::ChallengeMazeExtra>>,
-    _challenge_story_reward_line: OnceLock<FnvMultiMap<u16, model::challenge::RewardLine>>,
-    _challenge_story_target_config: OnceLock<FnvIndexMap<u16, model::challenge::TargetConfig>>,
-    _challenge_target_config: OnceLock<FnvIndexMap<u16, model::challenge::TargetConfig>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>>,
+    _challenge_story_group_extra:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupExtra>>>,
+    _challenge_story_maze_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeConfig>>>,
+    _challenge_story_maze_extra:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeExtra>>>,
+    _challenge_story_reward_line: OnceLock<FnvMultiMap<u16, Arc<model::challenge::RewardLine>>>,
+    _challenge_story_target_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::TargetConfig>>>,
+    _challenge_target_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::TargetConfig>>>,
     // item
     /// 道具
-    _item_config: OnceLock<FnvIndexMap<u32, model::item::ItemConfig>>,
-    _item_config_avatar_rank: OnceLock<FnvIndexMap<u32, model::item::ItemConfig>>,
-    _item_config_equipment: OnceLock<FnvIndexMap<u32, model::item::ItemConfig>>,
+    _item_config: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
+    _item_config_avatar_rank: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
+    _item_config_equipment: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
     /// 道具使用效果
-    _item_use_data: OnceLock<FnvIndexMap<u32, model::item::ItemUseData>>,
+    _item_use_data: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemUseData>>>,
     // map
-    _map_entrance: OnceLock<FnvIndexMap<u32, model::map::MapEntrance>>,
-    _mapping_info: OnceLock<FnvMultiMap<u32, model::map::MappingInfo>>,
-    _maze_floor: OnceLock<FnvIndexMap<u32, model::map::MazeFloor>>,
-    _maze_plane: OnceLock<FnvIndexMap<u32, model::map::MazePlane>>,
-    _maze_prop: OnceLock<FnvIndexMap<u32, model::map::MazeProp>>,
-    _world_data_config: OnceLock<FnvIndexMap<u16, model::map::WorldDataConfig>>,
+    _map_entrance: OnceLock<FnvIndexMap<u32, Arc<model::map::MapEntrance>>>,
+    _mapping_info: OnceLock<FnvMultiMap<u32, Arc<model::map::MappingInfo>>>,
+    _maze_floor: OnceLock<FnvIndexMap<u32, Arc<model::map::MazeFloor>>>,
+    _maze_plane: OnceLock<FnvIndexMap<u32, Arc<model::map::MazePlane>>>,
+    _maze_prop: OnceLock<FnvIndexMap<u32, Arc<model::map::MazeProp>>>,
+    _world_data_config: OnceLock<FnvIndexMap<u16, Arc<model::map::WorldDataConfig>>>,
     // message
-    _emoji_config: OnceLock<FnvIndexMap<u32, model::message::EmojiConfig>>,
-    _emoji_group: OnceLock<FnvIndexMap<u8, model::message::EmojiGroup>>,
-    _message_contacts_camp: OnceLock<FnvIndexMap<u8, model::message::MessageContactsCamp>>,
-    _message_contacts_config: OnceLock<FnvIndexMap<u16, model::message::MessageContactsConfig>>,
-    _message_contacts_type: OnceLock<FnvIndexMap<u8, model::message::MessageContactsType>>,
-    _message_group_config: OnceLock<FnvIndexMap<u16, model::message::MessageGroupConfig>>,
-    _message_item_config: OnceLock<FnvIndexMap<u32, model::message::MessageItemConfig>>,
-    _message_item_image: OnceLock<FnvIndexMap<u32, model::message::MessageItemImage>>,
-    _message_section_config: OnceLock<FnvIndexMap<u32, model::message::MessageSectionConfig>>,
-    _message_section_in_contacts: OnceLock<FnvMultiMap<u16, u32>>,
+    _emoji_config: OnceLock<FnvIndexMap<u32, Arc<model::message::EmojiConfig>>>,
+    _emoji_group: OnceLock<FnvIndexMap<u8, Arc<model::message::EmojiGroup>>>,
+    _message_contacts_camp: OnceLock<FnvIndexMap<u8, Arc<model::message::MessageContactsCamp>>>,
+    _message_contacts_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::message::MessageContactsConfig>>>,
+    _message_contacts_type: OnceLock<FnvIndexMap<u8, Arc<model::message::MessageContactsType>>>,
+    _message_group_config: OnceLock<FnvIndexMap<u16, Arc<model::message::MessageGroupConfig>>>,
+    _message_item_config: OnceLock<FnvIndexMap<u32, Arc<model::message::MessageItemConfig>>>,
+    _message_item_image: OnceLock<FnvIndexMap<u32, Arc<model::message::MessageItemImage>>>,
+    _message_section_config: OnceLock<FnvIndexMap<u32, Arc<model::message::MessageSectionConfig>>>,
     // misc
     /// 效果说明，比如模拟宇宙中
-    _extra_effect_config: OnceLock<FnvIndexMap<u32, model::misc::ExtraEffectConfig>>,
-    _maze_buff: OnceLock<FnvMultiMap<u32, model::misc::MazeBuff>>,
-    _reward_data: OnceLock<FnvIndexMap<u32, model::misc::RewardData>>,
-    _schedule_data_challenge_boss: OnceLock<FnvIndexMap<u32, model::misc::ScheduleData>>,
-    _schedule_data_challenge_maze: OnceLock<FnvIndexMap<u32, model::misc::ScheduleData>>,
-    _schedule_data_challenge_story: OnceLock<FnvIndexMap<u32, model::misc::ScheduleData>>,
-    _schedule_data_global: OnceLock<FnvIndexMap<u32, model::misc::ScheduleDataGlobal>>,
+    _extra_effect_config: OnceLock<FnvIndexMap<u32, Arc<model::misc::ExtraEffectConfig>>>,
+    _maze_buff: OnceLock<FnvMultiMap<u32, Arc<model::misc::MazeBuff>>>,
+    _reward_data: OnceLock<FnvIndexMap<u32, Arc<model::misc::RewardData>>>,
+    _schedule_data_challenge_boss: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleData>>>,
+    _schedule_data_challenge_maze: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleData>>>,
+    _schedule_data_challenge_story: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleData>>>,
+    _schedule_data_global: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleDataGlobal>>>,
     // mission
-    _main_mission: OnceLock<FnvIndexMap<u32, model::mission::MainMission>>,
-    _mission_chapter_config: OnceLock<FnvIndexMap<u32, model::mission::MissionChapterConfig>>,
-    _sub_mission: OnceLock<FnvIndexMap<u32, model::mission::SubMission>>,
+    _main_mission: OnceLock<FnvIndexMap<u32, Arc<model::mission::MainMission>>>,
+    _mission_chapter_config: OnceLock<FnvIndexMap<u32, Arc<model::mission::MissionChapterConfig>>>,
+    _sub_mission: OnceLock<FnvIndexMap<u32, Arc<model::mission::SubMission>>>,
     // monster
-    _monster_camp: OnceLock<FnvIndexMap<u8, model::monster::MonsterCamp>>,
-    _monster_config: OnceLock<FnvIndexMap<u32, model::monster::MonsterConfig>>,
-    _monster_skill_config: OnceLock<FnvIndexMap<u32, model::monster::SkillConfig>>,
-    _monster_skill_unique_config: OnceLock<FnvIndexMap<u32, model::monster::SkillConfig>>,
-    _monster_template_config: OnceLock<FnvIndexMap<u32, model::monster::MonsterTemplateConfig>>,
+    _monster_camp: OnceLock<FnvIndexMap<u8, Arc<model::monster::MonsterCamp>>>,
+    _monster_config: OnceLock<FnvIndexMap<u32, Arc<model::monster::MonsterConfig>>>,
+    _monster_skill_config: OnceLock<FnvIndexMap<u32, Arc<model::monster::SkillConfig>>>,
+    _monster_skill_unique_config: OnceLock<FnvIndexMap<u32, Arc<model::monster::SkillConfig>>>,
+    _monster_template_config:
+        OnceLock<FnvIndexMap<u32, Arc<model::monster::MonsterTemplateConfig>>>,
     _monster_template_unique_config:
-        OnceLock<FnvIndexMap<u32, model::monster::MonsterTemplateConfig>>,
-    // 因为存在自引用, 所以只好储存 group_id 到 id 的映射;
-    _monster_template_config_group: OnceLock<FnvMultiMap<u32, u32>>,
-    _monster_unique_config: OnceLock<FnvIndexMap<u32, model::monster::MonsterConfig>>,
-    _npc_monster_data: OnceLock<FnvIndexMap<u32, model::monster::NPCMonsterData>>,
+        OnceLock<FnvIndexMap<u32, Arc<model::monster::MonsterTemplateConfig>>>,
+    _monster_unique_config: OnceLock<FnvIndexMap<u32, Arc<model::monster::MonsterConfig>>>,
+    _npc_monster_data: OnceLock<FnvIndexMap<u32, Arc<model::monster::NPCMonsterData>>>,
     // monster guide
     _monster_difficulty_guide:
-        OnceLock<FnvIndexMap<u16, model::monster::guide::MonsterDifficultyGuide>>,
-    _monster_guide_config: OnceLock<FnvIndexMap<u32, model::monster::guide::MonsterGuideConfig>>,
-    _monster_guide_phase: OnceLock<FnvIndexMap<u16, model::monster::guide::MonsterGuidePhase>>,
-    _monster_guide_skill: OnceLock<FnvIndexMap<u32, model::monster::guide::MonsterGuideSkill>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::monster::guide::MonsterDifficultyGuide>>>,
+    _monster_guide_config:
+        OnceLock<FnvIndexMap<u32, Arc<model::monster::guide::MonsterGuideConfig>>>,
+    _monster_guide_phase: OnceLock<FnvIndexMap<u16, Arc<model::monster::guide::MonsterGuidePhase>>>,
+    _monster_guide_skill: OnceLock<FnvIndexMap<u32, Arc<model::monster::guide::MonsterGuideSkill>>>,
     _monster_guide_skill_text:
-        OnceLock<FnvIndexMap<u32, model::monster::guide::MonsterGuideSkillText>>,
-    _monster_guide_tag: OnceLock<FnvIndexMap<u32, model::monster::guide::MonsterGuideTag>>,
-    _monster_text_guide: OnceLock<FnvIndexMap<u16, model::monster::guide::MonsterTextGuide>>,
+        OnceLock<FnvIndexMap<u32, Arc<model::monster::guide::MonsterGuideSkillText>>>,
+    _monster_guide_tag: OnceLock<FnvIndexMap<u32, Arc<model::monster::guide::MonsterGuideTag>>>,
+    _monster_text_guide: OnceLock<FnvIndexMap<u16, Arc<model::monster::guide::MonsterTextGuide>>>,
     // rogue
     // 模拟宇宙
-    _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, model::rogue::RogueHandbookMiracle>>,
+    _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueHandbookMiracle>>>,
     _rogue_handbook_miracle_type:
-        OnceLock<FnvIndexMap<u16, model::rogue::RogueHandbookMiracleType>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueHandbookMiracleType>>>,
     /// 模拟宇宙祝福
-    _rogue_maze_buff: OnceLock<FnvMultiMap<u32, model::misc::MazeBuff>>,
+    _rogue_maze_buff: OnceLock<FnvMultiMap<u32, Arc<model::misc::MazeBuff>>>,
     /// 模拟宇宙奇物
-    _rogue_miracle: OnceLock<FnvIndexMap<u16, model::rogue::RogueMiracle>>,
-    _rogue_miracle_display: OnceLock<FnvIndexMap<u16, model::rogue::RogueMiracleDisplay>>,
-    _rogue_monster: OnceLock<FnvIndexMap<u32, model::rogue::RogueMonster>>,
-    _rogue_monster_group: OnceLock<FnvIndexMap<u32, model::rogue::RogueMonsterGroup>>,
+    _rogue_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracle>>>,
+    _rogue_miracle_display: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracleDisplay>>>,
+    _rogue_monster: OnceLock<FnvIndexMap<u32, Arc<model::rogue::RogueMonster>>>,
+    _rogue_monster_group: OnceLock<FnvIndexMap<u32, Arc<model::rogue::RogueMonsterGroup>>>,
     // rogue magic
     // 模拟宇宙：不可知域
     /// 不可知域奇物
-    _rogue_magic_miracle: OnceLock<FnvIndexMap<u16, model::rogue::RogueMiracle>>,
+    _rogue_magic_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracle>>>,
     // rogue tourn 差分宇宙
-    _rogue_bonus: OnceLock<FnvIndexMap<u16, model::rogue::tourn::RogueBonus>>,
+    _rogue_bonus: OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueBonus>>>,
     /// 差分宇宙文案
     _rogue_tourn_content_display:
-        OnceLock<FnvIndexMap<u16, model::rogue::tourn::RogueTournContentDisplay>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournContentDisplay>>>,
     /// 差分宇宙方程
-    _rogue_tourn_formula: OnceLock<FnvIndexMap<u32, model::rogue::tourn::RogueTournFormula>>,
+    _rogue_tourn_formula: OnceLock<FnvIndexMap<u32, Arc<model::rogue::tourn::RogueTournFormula>>>,
     _rogue_tourn_formula_display:
-        OnceLock<FnvIndexMap<u32, model::rogue::tourn::RogueTournFormulaDisplay>>,
+        OnceLock<FnvIndexMap<u32, Arc<model::rogue::tourn::RogueTournFormulaDisplay>>>,
     _rogue_tourn_handbook_miracle:
-        OnceLock<FnvIndexMap<u16, model::rogue::tourn::RogueTournHandbookMiracle>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournHandbookMiracle>>>,
     /// 差分宇宙奇物
-    _rogue_tourn_miracle: OnceLock<FnvIndexMap<u16, model::rogue::tourn::RogueTournMiracle>>,
-    _rogue_tourn_miracle_display: OnceLock<FnvIndexMap<u16, model::rogue::RogueMiracleDisplay>>,
+    _rogue_tourn_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournMiracle>>>,
+    _rogue_tourn_miracle_display:
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracleDisplay>>>,
     /// 差分宇宙周期演算
     _rogue_tourn_weekly_challenge:
-        OnceLock<FnvIndexMap<u8, model::rogue::tourn::RogueTournWeeklyChallenge>>,
+        OnceLock<FnvIndexMap<u8, Arc<model::rogue::tourn::RogueTournWeeklyChallenge>>>,
     _rogue_tourn_weekly_display:
-        OnceLock<FnvIndexMap<u16, model::rogue::tourn::RogueTournWeeklyDisplay>>,
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournWeeklyDisplay>>>,
     // talk
-    _talk_sentence_config: OnceLock<FnvIndexMap<u32, model::talk::TalkSentenceConfig>>,
-    _voice_config: OnceLock<FnvIndexMap<u32, model::talk::VoiceConfig>>,
+    _talk_sentence_config: OnceLock<FnvIndexMap<u32, Arc<model::talk::TalkSentenceConfig>>>,
+    _voice_config: OnceLock<FnvIndexMap<u32, Arc<model::talk::VoiceConfig>>>,
+
+    // 大多是二次聚合过，方便数据处理用的缓存
+    /// 同一期逐光捡金的每一层数据
+    /// 按照 ChallengeMazeConfig 中的 GroupID 重新聚合 ChallengeMazeConfig
+    /// 其中 GroupID 字段就是 ChallengeGroupConfig 中的 ID 外键
+    _challenge_maze_in_group:
+        OnceLock<FnvMultiMap<u16, Arc<model::challenge::ChallengeMazeConfig>>>,
+    /// 按照 MonsterConfig 中的 GroupID 字段重新聚合 MonsterConfig
+    _monster_template_config_group:
+        OnceLock<FnvMultiMap<u32, Arc<model::monster::MonsterTemplateConfig>>>,
+    /// 按照 MessageGroupConfig 中的 MessageContactsID 和 MessageSectionIDList 将联系人和消息关联起来
+    /// 形成从联系人到消息的映射
+    _message_section_in_contacts:
+        OnceLock<FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>>>,
 }
 
 impl std::fmt::Debug for GameData {
@@ -158,7 +182,7 @@ impl Text for GameData {
     fn text(&self, text: model::Text) -> &str {
         self.text_map
             .get(&text.hash)
-            .map(String::as_str)
+            .map(Arc::as_ref)
             .unwrap_or_default()
     }
 }
@@ -178,14 +202,14 @@ impl GameData {
         }
     }
 
-    fn load<K, V>(&self, dir: impl Into<std::path::PathBuf>) -> std::io::Result<FnvIndexMap<K, V>>
+    fn load<K, V>(&self, dir: &str) -> std::io::Result<FnvIndexMap<K, Arc<V>>>
     where
         K: std::cmp::Eq + std::hash::Hash,
         V: ID<ID = K>,
         for<'a> K: serde::Deserialize<'a>,
         for<'a> V: serde::Deserialize<'a>,
     {
-        let path = self.base.join(dir.into());
+        let path = self.base.join(dir);
         let bytes = std::fs::read(path).unwrap();
         Ok(serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
@@ -194,13 +218,13 @@ impl GameData {
             .inspect_err(|e| log::warn!("疑似 2.3 之前的老数据格式: {:?}", e))
             .map_or_else(
                 // 2.3 及以下, 采用的数据结构是 {"123": {"ID": 123, ...} } 形式
-                |_| serde_json::from_slice::<FnvIndexMap<K, V>>(&bytes).unwrap(),
+                |_| serde_json::from_slice::<FnvIndexMap<K, Arc<V>>>(&bytes).unwrap(),
                 // 2.4 及以上, 采用的数据结构是 [ {"ID": 123, ...} ] 形式
-                |model: Vec<V>| model.into_iter().map(|model| (model.id(), model)).collect(),
+                |model: Vec<Arc<V>>| model.into_iter().map(|model| (model.id(), model)).collect(),
             ))
     }
 
-    fn load_main_sub<I, S, V>(&self, dir: impl Into<std::path::PathBuf>) -> FnvMultiMap<I, V>
+    fn load_main_sub<I, S, V>(&self, dir: &str) -> FnvMultiMap<I, Arc<V>>
     where
         I: std::cmp::Eq + std::hash::Hash,
         S: std::cmp::Eq + std::hash::Hash,
@@ -209,7 +233,7 @@ impl GameData {
         for<'a> S: serde::Deserialize<'a>,
         for<'a> V: serde::Deserialize<'a>,
     {
-        let path = self.base.join(dir.into());
+        let path = self.base.join(dir);
         let bytes = std::fs::read(path).unwrap();
         serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
@@ -217,7 +241,7 @@ impl GameData {
             .map_or_else(
                 // 2.3 版本及以下, 采用的数据结构是 {"123": { "4": { "MainID": 123, "SubID": 4, ... } } } 形式
                 |_| {
-                    serde_json::from_slice::<FnvIndexMap<I, FnvIndexMap<S, V>>>(&bytes)
+                    serde_json::from_slice::<FnvIndexMap<I, FnvIndexMap<S, Arc<V>>>>(&bytes)
                         .unwrap()
                         .into_values()
                         .flat_map(FnvIndexMap::into_values)
@@ -225,20 +249,20 @@ impl GameData {
                         .collect()
                 },
                 // 2.4 版本及以上, 采用的数据结构是 [{"MainID": 123, "SubID": 4, ...} ] 摊平的形式
-                |model: Vec<V>| model.into_iter().map(|model| (model.id(), model)).collect(),
+                |model: Vec<Arc<V>>| model.into_iter().map(|model| (model.id(), model)).collect(),
             )
     }
 }
 
 macro_rules! declare {
     ($field:ident, $id:ty => $typ:path) => {
-        fn $field(&self) -> &FnvIndexMap<$id, paste::paste!(model::$typ)>;
+        fn $field(&self) -> &FnvIndexMap<$id, Arc<paste::paste!(model::$typ)>>;
     };
 }
 
 macro_rules! main_sub_declare {
     ($field:ident, $id:ty => $typ:ty) => {
-        fn $field(&self) -> &FnvMultiMap<$id, paste::paste!(model::$typ)>;
+        fn $field(&self) -> &FnvMultiMap<$id, Arc<paste::paste!(model::$typ)>>;
     };
 }
 
@@ -343,15 +367,18 @@ pub trait SealedGameData {
     declare!(_talk_sentence_config, u32 => talk::TalkSentenceConfig);
     declare!(_voice_config, u32 => talk::VoiceConfig);
 
-    fn _monster_template_config_group(&self) -> &FnvMultiMap<u32, u32>;
-    fn _challenge_maze_in_group(&self) -> &FnvMultiMap<u16, u16>;
-    fn _message_section_in_contacts(&self) -> &FnvMultiMap<u16, u32>;
+    #[rustfmt::skip]
+    fn _monster_template_config_group(&self) -> &FnvMultiMap<u32, Arc<model::monster::MonsterTemplateConfig>>;
+    #[rustfmt::skip]
+    fn _challenge_maze_in_group(&self) -> &FnvMultiMap<u16, Arc<model::challenge::ChallengeMazeConfig>>;
+    #[rustfmt::skip]
+    fn _message_section_in_contacts(&self) -> &FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>>;
 
     #[rustfmt::skip]
     fn _current_challenge_group_config<F>(&self, iter: F)
         -> Option<&model::challenge::ChallengeGroupConfig>
     where
-        F: Fn(&crate::GameData) -> &FnvIndexMap<u16, model::challenge::ChallengeGroupConfig>;
+        F: Fn(&crate::GameData) -> &FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>;
 }
 
 macro_rules! implement {
@@ -360,7 +387,7 @@ macro_rules! implement {
     };
 
     ($field:ident, $id:ty => $typ:path, $json:expr $(, $candidates:expr)* ) => {
-        fn $field(&self) -> &FnvIndexMap<$id, paste::paste!(model::$typ)> {
+        fn $field(&self) -> &FnvIndexMap<$id, Arc<paste::paste!(model::$typ)>> {
             self.$field.get_or_init(|| {
                 let map = self.load(concat!("ExcelOutput/", $json, ".json"))
                 $(
@@ -384,7 +411,7 @@ macro_rules! main_sub_implement {
         main_sub_implement!($field, $id => $typ, paste::paste!(stringify!([<$field:camel>])));
     };
     ($field:ident, $id:ty => $typ:ty, $json:expr) => {
-        fn $field(&self) -> &FnvMultiMap<$id, paste::paste!(model::$typ)> {
+        fn $field(&self) -> &FnvMultiMap<$id, Arc<paste::paste!(model::$typ)>> {
             self.$field.get_or_init(|| {
                 self.load_main_sub(concat!("ExcelOutput/", $json, ".json"))
             })
@@ -493,23 +520,27 @@ impl SealedGameData for GameData {
     implement!(_talk_sentence_config, u32 => talk::TalkSentenceConfig);
     implement!(_voice_config, u32 => talk::VoiceConfig);
 
-    fn _monster_template_config_group(&self) -> &FnvMultiMap<u32, u32> {
+    fn _monster_template_config_group(
+        &self,
+    ) -> &FnvMultiMap<u32, Arc<model::monster::MonsterTemplateConfig>> {
         self._monster_template_config_group.get_or_init(|| {
             self._monster_template_config()
                 .values()
                 .filter(|monster| monster.template_group_id.is_some())
-                .map(|monster| (monster.template_group_id.unwrap().get(), monster.id()))
+                .map(|monster| (monster.template_group_id.unwrap().get(), monster.clone()))
                 .collect()
         })
     }
 
-    fn _challenge_maze_in_group(&self) -> &FnvMultiMap<u16, u16> {
-        self._challenge_group_in_maze.get_or_init(|| {
+    fn _challenge_maze_in_group(
+        &self,
+    ) -> &FnvMultiMap<u16, Arc<model::challenge::ChallengeMazeConfig>> {
+        self._challenge_maze_in_group.get_or_init(|| {
             std::iter::empty()
                 .chain(self._challenge_maze_config().values())
                 .chain(self._challenge_story_maze_config().values())
                 .chain(self._challenge_boss_maze_config().values())
-                .map(|maze| (maze.group_id, maze.id()))
+                .map(|maze| (maze.group_id, Arc::clone(maze)))
                 .collect()
         })
     }
@@ -519,10 +550,10 @@ impl SealedGameData for GameData {
         iter: F,
     ) -> Option<&model::challenge::ChallengeGroupConfig>
     where
-        F: Fn(&GameData) -> &FnvIndexMap<u16, model::challenge::ChallengeGroupConfig>,
+        F: Fn(&GameData) -> &FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>,
     {
         let now = chrono::Local::now();
-        iter(self).values().find(|challenge| {
+        iter(self).values().map(Arc::as_ref).find(|challenge| {
             use model::challenge::ChallengeGroupType;
             let schedule = match challenge.challenge_group_type {
                 ChallengeGroupType::Memory => self._schedule_data_challenge_maze(),
@@ -540,16 +571,26 @@ impl SealedGameData for GameData {
         })
     }
 
-    fn _message_section_in_contacts(&self) -> &FnvMultiMap<u16, u32> {
+    fn _message_section_in_contacts(
+        &self,
+    ) -> &FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>> {
         self._message_section_in_contacts.get_or_init(|| {
-            let mut sections_in_contacts = FnvMultiMap::default();
             self._message_group_config()
                 .values()
                 .map(|group| (group.message_contacts_id, &group.message_section_id_list))
-                .for_each(|(contacts_id, section_id)| {
-                    sections_in_contacts.insert_many_from_slice(contacts_id, section_id)
-                });
-            sections_in_contacts
+                .flat_map(|(contacts_id, section_id_list)| {
+                    section_id_list
+                        .iter()
+                        .map(|section_id| (contacts_id, section_id))
+                        .collect::<Vec<_>>()
+                })
+                .map(|(contacts_id, section_id)| {
+                    (
+                        contacts_id,
+                        self._message_section_config()[section_id].clone(),
+                    )
+                })
+                .collect()
         })
     }
 }
