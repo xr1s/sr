@@ -60,7 +60,10 @@ macro_rules! implement {
 
 macro_rules! main_sub_declare {
     ($method:ident, $id:ty => $typ:ty) => {
-        fn $method(&self, id: $id) -> Vec<$typ>;
+        paste::paste! {
+            fn [<list_$method>](&self) -> impl Iterator<Item = $typ>;
+            fn $method(&self, id: $id) -> Vec<$typ>;
+        }
     };
 }
 
@@ -70,6 +73,13 @@ macro_rules! main_sub_implement {
     };
     ($field:ident, $id:ty => $typ:ty, $json:expr) => {
         paste::paste! {
+            fn [<list_$field>](&self) -> impl Iterator<Item = $typ> {
+                self.[<_$field>]()
+                    .flat_iter()
+                    .map(|(_, value)| value)
+                    .map(|model| <$typ>::from_model(self, model))
+            }
+
             fn $field(&self, id: $id) -> Vec<$typ> {
                 self.[<_$field>]()
                     .get_vec(&id)
