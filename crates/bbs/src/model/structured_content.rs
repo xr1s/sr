@@ -315,9 +315,10 @@ pub enum StructuredContent {
         /// 超链接、颜色、加粗等样式
         attributes: Option<TextAttributes>,
     },
-    /// 类似 <hr> 的分隔线，仅有 {"insert":{"divider": "line_2"}} 一种
+    /// 类似 <hr> 的分隔线，具体见 enum
     Divider {
         insert: InsertDivider,
+        attributes: Option<TextAttributes>,
     },
     /// 图片
     Image {
