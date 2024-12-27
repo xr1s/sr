@@ -161,8 +161,9 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterGuideSkillText<'a> {
 pub struct MonsterGuideTag<'a> {
     pub id: u32,
     pub name: &'a str,
-    pub brief_description: String,
-    pub detail_description: String,
+    pub brief_description: &'a str,
+    pub detail_description: &'a str,
+    pub parameter_list: Vec<format::Argument<'a>>,
     pub skill: Option<crate::monster::MonsterSkillConfig<'a>>,
     pub effect: Vec<crate::misc::ExtraEffectConfig<'a>>,
 }
@@ -170,12 +171,12 @@ pub struct MonsterGuideTag<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterGuideTag<'a> {
     type Model = model::monster::guide::MonsterGuideTag;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        let arguments = format::Argument::from_array(&model.parameter_list);
         Self {
             id: model.tag_id,
             name: game.text(model.tag_name),
-            brief_description: format::format(game.text(model.tag_brief_description), &arguments),
-            detail_description: format::format(game.text(model.tag_detail_description), &arguments),
+            brief_description: game.text(model.tag_brief_description),
+            detail_description: game.text(model.tag_detail_description),
+            parameter_list: format::Argument::from_array(&model.parameter_list),
             skill: model
                 .skill_id
                 .map(NonZero::get)

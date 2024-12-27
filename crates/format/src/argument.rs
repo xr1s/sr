@@ -1,5 +1,6 @@
 use std::num::NonZero;
 
+#[derive(Copy, Clone, Debug)]
 pub enum Argument<'a> {
     String(&'a str),
     Signed(i64),
@@ -75,31 +76,59 @@ impl Argument<'_> {
     }
 }
 
-impl crate::formattable::Formattable for Argument<'_> {
-    fn write_raw(&self, f: &mut crate::Formatter, percent: bool) {
-        match self {
-            Argument::String(s) => s.write_raw(f, percent),
-            Argument::Signed(n) => n.write_raw(f, percent),
-            Argument::Unsigned(n) => n.write_raw(f, percent),
-            Argument::Floating(n) => n.write_raw(f, percent),
+impl<Data: crate::data::GameData> crate::formattable::Formattable<Argument<'_>>
+    for crate::Formatter<'_, Data>
+{
+    fn write_raw(&mut self, value: &Argument<'_>, percent: bool) {
+        match value {
+            Argument::String(s) => {
+                <Self as crate::formattable::Formattable<&str>>::write_raw(self, s, percent);
+            }
+            Argument::Signed(n) => {
+                <Self as crate::formattable::Formattable<i64>>::write_raw(self, n, percent);
+            }
+            Argument::Unsigned(n) => {
+                <Self as crate::formattable::Formattable<u64>>::write_raw(self, n, percent);
+            }
+            Argument::Floating(n) => {
+                <Self as crate::formattable::Formattable<f64>>::write_raw(self, n, percent);
+            }
         }
     }
 
-    fn write_int(&self, f: &mut crate::Formatter, percent: bool) {
-        match self {
-            Argument::String(s) => s.write_int(f, percent),
-            Argument::Signed(n) => n.write_int(f, percent),
-            Argument::Unsigned(n) => n.write_int(f, percent),
-            Argument::Floating(n) => n.write_int(f, percent),
+    fn write_int(&mut self, value: &Argument<'_>, percent: bool) {
+        match value {
+            Argument::String(s) => {
+                <Self as crate::formattable::Formattable<&str>>::write_int(self, s, percent);
+            }
+            Argument::Signed(n) => {
+                <Self as crate::formattable::Formattable<i64>>::write_int(self, n, percent);
+            }
+            Argument::Unsigned(n) => {
+                <Self as crate::formattable::Formattable<u64>>::write_int(self, n, percent);
+            }
+            Argument::Floating(n) => {
+                <Self as crate::formattable::Formattable<f64>>::write_int(self, n, percent);
+            }
         }
     }
 
-    fn write_float(&self, f: &mut crate::Formatter, prec: u32, percent: bool) {
-        match self {
-            Argument::String(s) => s.write_float(f, prec, percent),
-            Argument::Signed(n) => n.write_float(f, prec, percent),
-            Argument::Unsigned(n) => n.write_float(f, prec, percent),
-            Argument::Floating(n) => n.write_float(f, prec, percent),
+    fn write_float(&mut self, value: &Argument<'_>, prec: u32, percent: bool) {
+        match value {
+            Argument::String(s) => {
+                <Self as crate::formattable::Formattable<&str>>::write_float(
+                    self, s, prec, percent,
+                );
+            }
+            Argument::Signed(n) => {
+                <Self as crate::formattable::Formattable<i64>>::write_float(self, n, prec, percent);
+            }
+            Argument::Unsigned(n) => {
+                <Self as crate::formattable::Formattable<u64>>::write_float(self, n, prec, percent);
+            }
+            Argument::Floating(n) => {
+                <Self as crate::formattable::Formattable<f64>>::write_float(self, n, prec, percent);
+            }
         }
     }
 }

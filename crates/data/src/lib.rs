@@ -1,4 +1,4 @@
-use base::{FnvIndexMap, FnvMultiMap, MainSubID, ID};
+use base::{FnvHashMap, FnvIndexMap, FnvMultiMap, MainSubID, ID};
 
 use std::fs::File;
 use std::io::BufReader;
@@ -77,7 +77,7 @@ pub struct GameData {
     _message_item_image: OnceLock<FnvIndexMap<u32, Arc<model::message::MessageItemImage>>>,
     _message_section_config: OnceLock<FnvIndexMap<u32, Arc<model::message::MessageSectionConfig>>>,
     // misc
-    /// 效果说明，比如模拟宇宙中
+    /// 效果说明
     _extra_effect_config: OnceLock<FnvIndexMap<u32, Arc<model::misc::ExtraEffectConfig>>>,
     _maze_buff: OnceLock<FnvMultiMap<u32, Arc<model::misc::MazeBuff>>>,
     _reward_data: OnceLock<FnvIndexMap<u32, Arc<model::misc::RewardData>>>,
@@ -85,6 +85,8 @@ pub struct GameData {
     _schedule_data_challenge_maze: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleData>>>,
     _schedule_data_challenge_story: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleData>>>,
     _schedule_data_global: OnceLock<FnvIndexMap<u32, Arc<model::misc::ScheduleDataGlobal>>>,
+    _text_join_config: OnceLock<FnvIndexMap<u8, Arc<model::misc::TextJoinConfig>>>,
+    _text_join_item: OnceLock<FnvIndexMap<u16, Arc<model::misc::TextJoinItem>>>,
     // mission
     _main_mission: OnceLock<FnvIndexMap<u32, Arc<model::mission::MainMission>>>,
     _mission_chapter_config: OnceLock<FnvIndexMap<u32, Arc<model::mission::MissionChapterConfig>>>,
@@ -164,6 +166,11 @@ pub struct GameData {
     /// 形成从联系人到消息的映射
     _message_section_in_contacts:
         OnceLock<FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>>>,
+    _message_contacts_of_section:
+        OnceLock<FnvHashMap<u32, Arc<model::message::MessageContactsConfig>>>,
+    /// 按名称索引 ExtraEffect
+    _extra_effect_config_by_name:
+        OnceLock<FnvHashMap<Arc<str>, Arc<model::misc::ExtraEffectConfig>>>,
 }
 
 impl std::fmt::Debug for GameData {
@@ -322,6 +329,8 @@ pub trait SealedGameData {
     declare!(_schedule_data_challenge_maze, u32 => misc::ScheduleData);
     declare!(_schedule_data_challenge_story, u32 => misc::ScheduleData);
     declare!(_schedule_data_global, u32 => misc::ScheduleDataGlobal);
+    declare!(_text_join_config, u8 => misc::TextJoinConfig);
+    declare!(_text_join_item, u16 => misc::TextJoinItem);
     // mission
     declare!(_main_mission, u32 => mission::MainMission);
     declare!(_mission_chapter_config, u32 => mission::MissionChapterConfig);
@@ -373,12 +382,17 @@ pub trait SealedGameData {
     fn _challenge_maze_in_group(&self) -> &FnvMultiMap<u16, Arc<model::challenge::ChallengeMazeConfig>>;
     #[rustfmt::skip]
     fn _message_section_in_contacts(&self) -> &FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>>;
+    #[rustfmt::skip]
+    fn _message_contacts_of_section(&self) -> &FnvHashMap<u32, Arc<model::message::MessageContactsConfig>>;
 
     #[rustfmt::skip]
     fn _current_challenge_group_config<F>(&self, iter: F)
         -> Option<&model::challenge::ChallengeGroupConfig>
     where
         F: Fn(&crate::GameData) -> &FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>;
+
+    #[rustfmt::skip]
+    fn _extra_effect_config_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::misc::ExtraEffectConfig>>;
 }
 
 macro_rules! implement {
@@ -475,6 +489,8 @@ impl SealedGameData for GameData {
     implement!(_schedule_data_challenge_maze, u32 => misc::ScheduleData);
     implement!(_schedule_data_challenge_story, u32 => misc::ScheduleData);
     implement!(_schedule_data_global, u32 => misc::ScheduleDataGlobal);
+    implement!(_text_join_config, u8 => misc::TextJoinConfig);
+    implement!(_text_join_item, u16 => misc::TextJoinItem);
     // mission
     implement!(_main_mission, u32 => mission::MainMission);
     implement!(_mission_chapter_config, u32 => mission::MissionChapterConfig);
@@ -585,10 +601,46 @@ impl SealedGameData for GameData {
                         .collect::<Vec<_>>()
                 })
                 .map(|(contacts_id, section_id)| {
+                    (contacts_id, &self._message_section_config()[section_id])
+                })
+                .map(|(contacts_id, section)| (contacts_id, Arc::clone(section)))
+                .collect()
+        })
+    }
+
+    fn _message_contacts_of_section(
+        &self,
+    ) -> &FnvHashMap<u32, Arc<model::message::MessageContactsConfig>> {
+        self._message_contacts_of_section.get_or_init(|| {
+            self._message_group_config()
+                .values()
+                .map(|group| (group.message_contacts_id, &group.message_section_id_list))
+                .flat_map(|(contacts_id, section_id_list)| {
+                    section_id_list
+                        .iter()
+                        .map(|&section_id| (contacts_id, section_id))
+                        .collect::<Vec<_>>()
+                })
+                .map(|(contacts_id, section_id)| {
                     (
-                        contacts_id,
-                        self._message_section_config()[section_id].clone(),
+                        section_id,
+                        Arc::clone(self._message_contacts_config().get(&contacts_id).unwrap()),
                     )
+                })
+                .collect()
+        })
+    }
+
+    fn _extra_effect_config_by_name(
+        &self,
+    ) -> &FnvHashMap<Arc<str>, Arc<model::misc::ExtraEffectConfig>> {
+        self._extra_effect_config_by_name.get_or_init(|| {
+            self._extra_effect_config()
+                .values()
+                .filter_map(|effect| {
+                    self.text_map
+                        .get(&effect.extra_effect_name.hash)
+                        .map(|name| (Arc::clone(name), Arc::clone(effect)))
                 })
                 .collect()
         })

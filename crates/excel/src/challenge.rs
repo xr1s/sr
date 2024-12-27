@@ -146,20 +146,6 @@ impl<'a, Data: ExcelOutput> ChallengeGroupConfig<'a, Data> {
         }
     }
 
-    fn wiki_write_buff(
-        &self,
-        wiki: &mut String,
-        title: &str,
-        buff: Option<&crate::misc::MazeBuff>,
-    ) {
-        if let Some(buff) = buff {
-            wiki.push_str("\n|");
-            wiki.push_str(title);
-            wiki.push('=');
-            wiki.push_str(&format::format_wiki(&buff.desc));
-        }
-    }
-
     fn special_monster_wiki(
         &self,
         specials: FnvIndexMap<u32, &crate::monster::MonsterConfig<Data>>,
@@ -182,10 +168,52 @@ impl<'a, Data: ExcelOutput> ChallengeGroupConfig<'a, Data> {
         }
         Cow::Owned(wiki)
     }
+
+    fn monster_score(&self, monster: &crate::monster::MonsterConfig<Data>) -> u32 {
+        const STRATEGY: &[[u32; 4]] = &[[500, 2000, 4000, 8000], [500, 2500, 3000, 5000]];
+        let strategy = &match self.issue() {
+            1..=3 => STRATEGY[0],
+            4..=6 => STRATEGY[1],
+            7..=8 => STRATEGY[0],
+            9..=10 => STRATEGY[1],
+            // 猜测，如果错了手动改
+            _ => STRATEGY[0],
+        };
+        let story_type = self
+            .extra()
+            .story_type
+            .unwrap_or(ChallengeStoryType::Normal);
+        if story_type == ChallengeStoryType::Normal
+            && (monster.name() == "王下一桶" || monster.name() == "序列扑满")
+        {
+            return strategy[1];
+        }
+        match monster.template.as_ref().map(|template| template.rank) {
+            Some(MonsterRank::Minion | MonsterRank::MinionLv2) => strategy[0],
+            Some(MonsterRank::Elite) => strategy[2],
+            Some(MonsterRank::LittleBoss | MonsterRank::BigBoss) => strategy[3],
+            None => unreachable!(),
+        }
+    }
 }
 
 // 混沌回忆相关方法
-impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
+impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
+    fn wiki_write_buff(
+        &self,
+        wiki: &mut String,
+        formatter: &mut format::Formatter<Data>,
+        title: &str,
+        buff: Option<&crate::misc::MazeBuff>,
+    ) {
+        if let Some(buff) = buff {
+            wiki.push_str("\n|");
+            wiki.push_str(title);
+            wiki.push('=');
+            wiki.push_str(&formatter.format(buff.desc, &buff.params));
+        }
+    }
+
     fn memory_wiki_write_event(
         &self,
         wiki: &mut String,
@@ -217,6 +245,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
     }
 
     fn memory_wiki(&self) -> Cow<'static, str> {
+        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
         if self.id < 1007 {
             // 更早以往的混沌回忆机制不太一样
             // 比如一层存在两个怪物左右分立
@@ -230,7 +259,12 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         wiki.push_str("\n|名称=");
         wiki.push_str(self.name);
         self.wiki_write_sched(&mut wiki);
-        self.wiki_write_buff(&mut wiki, "记忆紊流", self.maze_buff.as_ref());
+        self.wiki_write_buff(
+            &mut wiki,
+            &mut formatter,
+            "记忆紊流",
+            self.maze_buff.as_ref(),
+        );
         let mazes = self.mazes();
         for maze in mazes {
             assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
@@ -275,34 +309,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
 }
 
 // 虚构叙事相关方法
-impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
-    fn monster_score(&self, monster: &crate::monster::MonsterConfig<Data>) -> u32 {
-        const STRATEGY: &[[u32; 4]] = &[[500, 2000, 4000, 8000], [500, 2500, 3000, 5000]];
-        let strategy = &match self.issue() {
-            1..=3 => STRATEGY[0],
-            4..=6 => STRATEGY[1],
-            7..=8 => STRATEGY[0],
-            9..=10 => STRATEGY[1],
-            //猜测，如果错了手动改
-            _ => STRATEGY[0],
-        };
-        let story_type = self
-            .extra()
-            .story_type
-            .unwrap_or(ChallengeStoryType::Normal);
-        if story_type == ChallengeStoryType::Normal
-            && (monster.name() == "王下一桶" || monster.name() == "序列扑满")
-        {
-            return strategy[1];
-        }
-        match monster.template.as_ref().map(|template| template.rank) {
-            Some(MonsterRank::Minion | MonsterRank::MinionLv2) => strategy[0],
-            Some(MonsterRank::Elite) => strategy[2],
-            Some(MonsterRank::LittleBoss | MonsterRank::BigBoss) => strategy[3],
-            None => unreachable!(),
-        }
-    }
-
+impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
     fn aggregate_monster<F>(
         monster: &[crate::monster::MonsterConfig<Data>],
         monster_counts: &FnvIndexMap<Cow<'_, str>, usize>,
@@ -652,7 +659,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
     }
 
     fn story_wiki(&self) -> Cow<'static, str> {
-        use format::format_wiki;
+        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
         let mazes = self.mazes();
         // 开头两个 assert 确保数据一致性
         self.story_wiki_assertions(mazes);
@@ -681,21 +688,28 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         self.wiki_write_sched(&mut wiki);
         match extra.story_type.unwrap_or(ChallengeStoryType::Normal) {
             ChallengeStoryType::Normal => {
-                self.wiki_write_buff(&mut wiki, "怪诞逸闻", self.maze_buff.as_ref());
+                self.wiki_write_buff(
+                    &mut wiki,
+                    &mut formatter,
+                    "怪诞逸闻",
+                    self.maze_buff.as_ref(),
+                );
             }
             ChallengeStoryType::Fever => {
                 // 0 => 战意机制
                 // 1 => 战熄潮平
                 // 2 => 战意汹涌
-                use format::format_wiki;
                 wiki.push_str("\n|战意机制名称=");
                 wiki.push_str(extra.sub_maze_buff_list[0].name);
                 wiki.push_str("\n|战意机制效果=");
-                wiki.push_str(&format_wiki(&extra.sub_maze_buff_list[0].desc));
+                let buff = &extra.sub_maze_buff_list[0];
+                wiki.push_str(&formatter.format(&buff.desc, &buff.params));
                 wiki.push_str("\n|战熄潮平=");
-                wiki.push_str(&format_wiki(&extra.sub_maze_buff_list[1].desc));
+                let buff = &extra.sub_maze_buff_list[1];
+                wiki.push_str(&formatter.format(&buff.desc, &buff.params));
                 wiki.push_str("\n|战意汹涌=");
-                wiki.push_str(&format_wiki(&extra.sub_maze_buff_list[2].desc));
+                let buff = &extra.sub_maze_buff_list[2];
+                wiki.push_str(&formatter.format(&buff.desc, &buff.params));
             }
         }
         for (index, buff) in extra.buff_list.iter().enumerate() {
@@ -706,13 +720,13 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("\n|荒腔走板其");
             wiki.push_str(Self::CHNUM[index]);
             wiki.push('=');
-            wiki.push_str(&format_wiki(&buff.desc));
+            wiki.push_str(&formatter.format(&buff.desc, &buff.params));
             if extra.story_type == Some(ChallengeStoryType::Fever) {
                 wiki.push_str("\n|荒腔走板其");
                 wiki.push_str(Self::CHNUM[index]);
                 wiki.push_str("战意机制");
                 wiki.push('=');
-                wiki.push_str(&format_wiki(&buff.simple_desc));
+                wiki.push_str(&formatter.format(&buff.simple_desc, &buff.params));
             }
         }
         for maze in mazes {
@@ -755,7 +769,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
     }
 }
 
-impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
+impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
     fn boss_wiki_assertions(&self, mazes: &[ChallengeMazeConfig<Data>]) {
         for maze in mazes {
             assert_eq!(mazes[0].maze_buff.id, maze.maze_buff.id, "同期增益相同");
@@ -789,7 +803,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         event: &crate::battle::StageConfig<Data>,
         extra: &ChallengeGroupExtra,
     ) {
-        use format::format_wiki;
+        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
         let half = if team == 1 { "上半" } else { "下半" };
         wiki.push_str("\n|");
         wiki.push_str(half);
@@ -826,7 +840,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("特性");
             wiki.push_str(&tag_no);
             wiki.push('=');
-            let mut description = format_wiki(&tag.brief_description);
+            let mut description = formatter.format(&tag.brief_description, &tag.parameter_list);
             let mut effect_explain = String::new();
             for effect in &tag.effect {
                 let effect_wiki = format!("{{{{效果说明|{}}}}}", effect.name);
@@ -857,11 +871,12 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("\n|终焉公理");
             wiki.push_str(&no);
             wiki.push('=');
-            wiki.push_str(&format_wiki(&buff.desc));
+            wiki.push_str(&formatter.format(&buff.desc, &buff.params));
         }
     }
 
     fn boss_wiki(&self) -> Cow<'static, str> {
+        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
         let mazes = self.mazes();
         self.boss_wiki_assertions(mazes);
 
@@ -872,7 +887,12 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
         wiki.push_str(self.name);
 
         self.wiki_write_sched(&mut wiki);
-        self.wiki_write_buff(&mut wiki, "末法余烬", Some(&mazes[0].maze_buff));
+        self.wiki_write_buff(
+            &mut wiki,
+            &mut formatter,
+            "末法余烬",
+            Some(&mazes[0].maze_buff),
+        );
         let maze = &mazes[2];
         let extra = self.extra();
         self.boss_wiki_write_tags(&mut wiki, 1, &maze.event_list_1[0], extra);
@@ -882,7 +902,7 @@ impl<Data: ExcelOutput> ChallengeGroupConfig<'_, Data> {
     }
 }
 
-impl<Data: ExcelOutput> Wiki for ChallengeGroupConfig<'_, Data> {
+impl<Data: ExcelOutput + format::GameData> Wiki for ChallengeGroupConfig<'_, Data> {
     fn wiki(&self) -> Cow<'static, str> {
         match self.r#type {
             ChallengeGroupType::Memory => self.memory_wiki(),
@@ -936,7 +956,7 @@ pub struct ChallengeMazeConfig<'a, Data: ExcelOutput + ?Sized> {
     pub reward: crate::misc::RewardData<'a>,
     pub damage_type_1: &'a [Element],
     pub damage_type_2: &'a [Element],
-    pub target: [ChallengeTargetConfig; 3],
+    pub target: [ChallengeTargetConfig<'a>; 3],
     pub stage_num: u8,
     pub monster_1: Vec<crate::monster::MonsterConfig<'a, Data>>,
     pub monster_2: Vec<crate::monster::MonsterConfig<'a, Data>>,
@@ -1082,25 +1102,24 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ChallengeRewardLine<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub struct ChallengeTargetConfig {
+pub struct ChallengeTargetConfig<'a> {
     pub id: u16,
     pub r#type: ChallengeTargetType,
-    pub name: String,
+    pub name: &'a str,
+    pub params: [format::Argument<'a>; 1],
     /// 不明，不是 RewardData
     /// 只有 ChallengeBossTargetConfig.json 没有 RewardID
     pub reward_id: u32,
 }
 
-impl<Data: ExcelOutput> FromModel<'_, Data> for ChallengeTargetConfig {
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ChallengeTargetConfig<'a> {
     type Model = model::challenge::TargetConfig;
-    fn from_model(game: &Data, model: &Self::Model) -> Self {
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
         Self {
             id: model.id,
             r#type: model.challenge_target_type,
-            name: format::format(
-                game.text(model.challenge_target_name),
-                &[format::Argument::from(model.challenge_target_param_1)],
-            ),
+            name: game.text(model.challenge_target_name),
+            params: [format::Argument::from(model.challenge_target_param_1)],
             reward_id: model.reward_id.map(NonZero::get).unwrap_or_default(),
         }
     }

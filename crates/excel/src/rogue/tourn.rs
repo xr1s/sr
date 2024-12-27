@@ -53,9 +53,9 @@ pub struct RogueTournWeeklyChallenge<'a, Data: ExcelOutput + ?Sized> {
     /// 标题
     pub name: &'a str,
     /// 文字介绍，一般是初始获得方程和初始获得奇物的介绍
-    pub content: Vec<String>,
+    pub content: Vec<RogueTournWeeklyDisplay<'a>>,
     /// 点进介绍后的详情，一般是多一句进入第一位面时获得本周预设构筑
-    pub content_detail: Vec<String>,
+    pub content_detail: Vec<RogueTournWeeklyDisplay<'a>>,
     /// 左下角展示的奖励，目前为止全部都是固定的 3 遗失晶块 + 30 遗器残骸
     pub reward: crate::misc::RewardData<'a>,
     /// 从 .content 成员中提取出来的本周所有预设构筑方程
@@ -86,18 +86,19 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyChallenge<'a
             game,
             id: model.challenge_id,
             name: game.text(model.weekly_name),
-            content: content_list
-                .iter_mut()
-                .map(|content| std::mem::take(&mut content.content))
+            content: model
+                .weekly_content_list
+                .iter()
+                .map(|&id| game.rogue_tourn_weekly_display(id))
+                .map(Option::unwrap)
                 .collect(),
             content_detail: model
                 .weekly_content_detail_list
                 .iter()
-                // 2.7 版本倒数第二周（2.8 前瞻所在周）的 DisplayID 是 1302 和 1303，缺数据，注意一下
+                // 2.7 版本倒数第二周（12 月 30 日开始的一周）的 DisplayID 是 1302 和 1303，缺数据，注意一下
                 .filter(|&&id| id != 1302 && id != 1303)
                 .map(|&id| game.rogue_tourn_weekly_display(id))
                 .map(Option::unwrap)
-                .map(|display| display.content)
                 .collect(),
             reward: game.reward_data(model.reward_id).unwrap(),
             formula: content_list
@@ -178,7 +179,7 @@ impl<Data: ExcelOutput> RogueTournWeeklyChallenge<'_, Data> {
     }
 }
 
-impl<Data: ExcelOutput> Wiki for RogueTournWeeklyChallenge<'_, Data> {
+impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournWeeklyChallenge<'_, Data> {
     fn wiki(&self) -> Cow<'static, str> {
         let mut wiki = String::from("{{#subobject:");
         wiki.push_str(self.name);
@@ -237,16 +238,27 @@ impl<Data: ExcelOutput> Wiki for RogueTournWeeklyChallenge<'_, Data> {
         boss(&mut wiki, '一', &self.monster_group_1);
         boss(&mut wiki, '二', &self.monster_group_2);
         boss(&mut wiki, '三', &self.monster_group_3);
+
+        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
         let contents = self
             .content_detail
             .iter()
-            .map(String::as_str)
-            .map(|s| s.strip_prefix("●").unwrap_or(s))
+            .map(|display| {
+                let arguments = std::iter::empty()
+                    .chain(display.formula.iter().map(RogueTournFormula::name))
+                    .chain(display.miracle.iter().map(RogueTournMiracle::name))
+                    .map(format::Argument::from)
+                    .collect::<Vec<_>>();
+                formatter.format(display.content, &arguments)
+            })
+            .collect::<Vec<_>>();
+        let rules: String = contents
+            .iter()
+            .map(|content| content.strip_prefix("●").unwrap_or(content))
             .intersperse(", ")
-            .map(format::format_wiki)
-            .collect::<String>();
+            .collect();
         wiki.push_str("\n|规则=");
-        wiki.push_str(&contents);
+        wiki.push_str(&rules);
         wiki.push_str("\n}}");
         Cow::Owned(wiki)
     }
@@ -255,7 +267,7 @@ impl<Data: ExcelOutput> Wiki for RogueTournWeeklyChallenge<'_, Data> {
 #[derive(Clone, Debug)]
 pub struct RogueTournWeeklyDisplay<'a> {
     pub id: u16,
-    pub content: String,
+    pub content: &'a str,
     pub formula: Vec<RogueTournFormula<'a>>,
     pub miracle: Vec<RogueTournMiracle<'a>>,
 }
@@ -278,25 +290,9 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a> 
             .map(|param| game.rogue_tourn_miracle(param.value as _))
             .map(Option::unwrap)
             .collect();
-        use either::Either;
-        let params = model
-            .desc_params
-            .iter()
-            .map(|param| match param.r#type {
-                Formula => Either::Left(game.rogue_tourn_formula(param.value).unwrap()),
-                Miracle => Either::Right(game.rogue_tourn_miracle(param.value as _).unwrap()),
-            })
-            .collect::<Vec<_>>();
-        let names = params
-            .iter()
-            .map(Name::name)
-            .map(format::Argument::from)
-            .collect::<Vec<_>>();
-        let content = format::format(game.text(model.weekly_display_content), &names);
-
         Self {
             id: model.weekly_display_id,
-            content,
+            content: game.text(model.weekly_display_content),
             formula,
             miracle,
         }

@@ -1,104 +1,104 @@
 use super::Formatter;
 
-pub(crate) trait Formattable {
+pub(crate) trait Formattable<T> {
     /// #1% 形式
-    fn write_raw(&self, f: &mut Formatter, percent: bool);
+    fn write_raw(&mut self, value: &T, percent: bool);
     /// #1[i]% 形式
-    fn write_int(&self, f: &mut Formatter, percent: bool);
+    fn write_int(&mut self, value: &T, percent: bool);
     /// #1[f1]% 形式
-    fn write_float(&self, f: &mut Formatter, prec: u32, percent: bool);
+    fn write_float(&mut self, value: &T, prec: u32, percent: bool);
 }
 
-impl Formattable for &'_ str {
-    fn write_raw(&self, f: &mut Formatter, percent: bool) {
-        f.result.push_str(self);
+impl<'a, Data: crate::data::GameData> Formattable<&'a str> for Formatter<'_, Data> {
+    fn write_raw(&mut self, value: &&'a str, percent: bool) {
+        self.push_str(value);
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 
-    fn write_int(&self, f: &mut Formatter, percent: bool) {
-        f.result.push_str(self);
-        f.result.push_str("[i]");
+    fn write_int(&mut self, value: &&'a str, percent: bool) {
+        self.push_str(value);
+        self.push_str("[i]");
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 
-    fn write_float(&self, f: &mut Formatter, prec: u32, percent: bool) {
-        f.result.push_str(self);
-        f.result.push_str("[f");
+    fn write_float(&mut self, value: &&'a str, prec: u32, percent: bool) {
+        self.push_str(value);
+        self.push_str("[f");
         if prec != 0 {
-            f.result.push_str(&prec.to_string());
-            f.result.push(']');
+            self.push_str(&prec.to_string());
+            self.push(']');
         }
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 }
 
-impl Formattable for u64 {
-    fn write_raw(&self, f: &mut Formatter, percent: bool) {
-        self.write_int(f, percent);
+impl<Data: crate::data::GameData> Formattable<u64> for Formatter<'_, Data> {
+    fn write_raw(&mut self, value: &u64, percent: bool) {
+        self.write_int(value, percent);
     }
 
-    fn write_int(&self, f: &mut Formatter, percent: bool) {
+    fn write_int(&mut self, value: &u64, percent: bool) {
         use thousands::Separable;
-        let value = if percent { *self * 100 } else { *self };
-        f.result.push_str(&value.separate_with_commas());
+        let value = if percent { *value * 100 } else { *value };
+        self.push_str(&value.separate_with_commas());
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 
-    fn write_float(&self, f: &mut Formatter, prec: u32, percent: bool) {
-        let value = *self as f64;
-        Formattable::write_float(&value, f, prec, percent);
+    fn write_float(&mut self, value: &u64, prec: u32, percent: bool) {
+        let value = *value as f64;
+        <Self as Formattable<f64>>::write_float(self, &value, prec, percent);
     }
 }
 
-impl Formattable for i64 {
-    fn write_raw(&self, f: &mut Formatter, percent: bool) {
-        self.write_int(f, percent);
+impl<Data: crate::data::GameData> Formattable<i64> for Formatter<'_, Data> {
+    fn write_raw(&mut self, value: &i64, percent: bool) {
+        self.write_int(value, percent);
     }
 
-    fn write_int(&self, f: &mut Formatter, percent: bool) {
+    fn write_int(&mut self, value: &i64, percent: bool) {
         use thousands::Separable;
-        let value = if percent { *self * 100 } else { *self };
-        f.result.push_str(&value.separate_with_commas());
+        let value = if percent { *value * 100 } else { *value };
+        self.push_str(&value.separate_with_commas());
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 
-    fn write_float(&self, f: &mut Formatter, prec: u32, percent: bool) {
-        let value = *self as f64;
-        Formattable::write_float(&value, f, prec, percent);
+    fn write_float(&mut self, value: &i64, prec: u32, percent: bool) {
+        let value = *value as f64;
+        <Self as Formattable<f64>>::write_float(self, &value, prec, percent);
     }
 }
 
-impl Formattable for f64 {
-    fn write_raw(&self, f: &mut Formatter, percent: bool) {
-        let value = f64::round(if percent { *self * 100. } else { *self });
-        f.result.push_str(&format!("{}", value));
+impl<Data: crate::data::GameData> Formattable<f64> for Formatter<'_, Data> {
+    fn write_raw(&mut self, value: &f64, percent: bool) {
+        let value = f64::round(if percent { *value * 100. } else { *value });
+        self.push_str(&value.to_string());
     }
 
-    fn write_int(&self, f: &mut Formatter, percent: bool) {
-        let value = f64::round(if percent { *self * 100. } else { *self }) as u64;
-        Formattable::write_int(&value, f, false);
+    fn write_int(&mut self, value: &f64, percent: bool) {
+        let value = f64::round(if percent { *value * 100. } else { *value }) as u64;
+        <Self as Formattable<u64>>::write_int(self, &value, false);
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 
-    fn write_float(&self, f: &mut Formatter, prec: u32, percent: bool) {
-        let value = if percent { *self * 100. } else { *self };
+    fn write_float(&mut self, value: &f64, prec: u32, percent: bool) {
+        let value = if percent { *value * 100. } else { *value };
         let prec_10 = 10usize.pow(prec) as f64;
         let value = f64::round(value * prec_10) / prec_10;
-        f.result.push_str(&format!("{value}"));
+        self.push_str(&value.to_string());
         if percent {
-            f.result.push('%');
+            self.push('%');
         }
     }
 }

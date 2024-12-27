@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 thousands = { version = "0.2" }
 
+data = { path = "../data" }
 model = { path = "../model" }

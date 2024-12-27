@@ -218,6 +218,8 @@ pub trait ExcelOutput: data::Text {
     #[rustfmt::skip]
     fn message_section_in_contacts(&self, contacts_id: u16) -> impl Iterator<Item = message::MessageSectionConfig<Self>>;
     #[rustfmt::skip]
+    fn message_contacts_of_section(&self, section_id: u32) -> Option<message::MessageContactsConfig<Self>>;
+    #[rustfmt::skip]
     fn monster_template_config_group(&self, id: u32) -> impl Iterator<Item = monster::MonsterTemplateConfig<Self>>;
     fn challenge_maze_in_group(&self, id: u16) -> Vec<challenge::ChallengeMazeConfig<Self>>;
     fn current_challenge_boss_group_config(&self) -> Option<challenge::ChallengeGroupConfig<Self>>;
@@ -337,6 +339,15 @@ impl ExcelOutput for data::GameData {
             .unwrap_or_default()
             .iter()
             .map(|section| message::MessageSectionConfig::from_model(self, section))
+    }
+
+    fn message_contacts_of_section(
+        &self,
+        section_id: u32,
+    ) -> Option<message::MessageContactsConfig<Self>> {
+        self._message_contacts_of_section()
+            .get(&section_id)
+            .map(|contacts| message::MessageContactsConfig::from_model(self, contacts.as_ref()))
     }
 
     fn monster_template_config_group(

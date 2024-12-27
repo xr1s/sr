@@ -3,7 +3,6 @@ pub mod tourn;
 use std::{borrow::Cow, num::NonZero};
 
 use base::Name;
-use model::{Text, Value};
 
 use crate::{ExcelOutput, FromModel};
 
@@ -13,7 +12,8 @@ pub struct RogueMiracle<'a> {
     pub id: u16,
     /// 1.2 及之前版本的 display 为空
     pub display: RogueMiracleDisplay<'a>,
-    pub desc: String,
+    pub desc: &'a str,
+    pub desc_params: Vec<format::Argument<'a>>,
     /// 没有 unlock_handbook 的一般是可以同时携带多个、效果不同的奇物
     /// 如分裂咕咕钟、绝对失败处方
     pub unlock_handbook: Option<RogueHandbookMiracle<'a>>,
@@ -22,18 +22,6 @@ pub struct RogueMiracle<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracle<'a> {
     type Model = model::rogue::RogueMiracle;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
-        fn format_desc<Data: ExcelOutput>(
-            game: &Data,
-            desc: Option<Text>,
-            desc_param_list: &Option<Vec<Value<f32>>>,
-        ) -> String {
-            let arguments =
-                format::Argument::from_array(desc_param_list.as_deref().unwrap_or_default());
-            format::format(
-                desc.map(|text| game.text(text)).unwrap_or_default(),
-                &arguments,
-            )
-        }
         Self {
             id: model.miracle_id,
             // 存在一些奇物, 图鉴中展示的是模拟宇宙的效果, 游戏过程中展示的是差分宇宙的效果
@@ -49,7 +37,15 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracle<'a> {
                         .miracle_name
                         .map(|text| game.text(text))
                         .unwrap_or_default(),
-                    desc: format_desc(game, model.miracle_desc, &model.desc_param_list),
+                    desc: model
+                        .miracle_desc
+                        .map(|hash| game.text(hash))
+                        .unwrap_or_default(),
+                    desc_params: model
+                        .desc_param_list
+                        .as_deref()
+                        .map(format::Argument::from_array)
+                        .unwrap_or_default(),
                     extra_effect: Vec::new(),
                     bg_desc: model
                         .miracle_bg_desc
@@ -66,7 +62,15 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracle<'a> {
                         .unwrap_or_default(),
                 }
             },
-            desc: format_desc(game, model.miracle_desc, &model.desc_param_list),
+            desc: model
+                .miracle_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            desc_params: model
+                .desc_param_list
+                .as_deref()
+                .map(format::Argument::from_array)
+                .unwrap_or_default(),
             unlock_handbook: model
                 .unlock_handbook_miracle_id
                 .map(NonZero::get)
@@ -92,7 +96,8 @@ pub struct RogueMiracleDisplay<'a> {
     /// 名称
     pub name: &'a str,
     /// 奇物效果
-    pub desc: String,
+    pub desc: &'a str,
+    pub desc_params: Vec<format::Argument<'a>>,
     /// 奇物效果中，带有下划线的特殊效果的详细介绍
     pub extra_effect: Vec<crate::misc::ExtraEffectConfig<'a>>,
     /// 背景故事
@@ -107,11 +112,11 @@ pub struct RogueMiracleDisplay<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracleDisplay<'a> {
     type Model = model::rogue::RogueMiracleDisplay;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
-        let arguments = format::Argument::from_array(&model.desc_param_list);
         Self {
             id: model.miracle_display_id,
             name: game.text(model.miracle_name),
-            desc: format::format(game.text(model.miracle_desc), &arguments),
+            desc: game.text(model.miracle_desc),
+            desc_params: format::Argument::from_array(&model.desc_param_list),
             extra_effect: model
                 .extra_effect
                 .as_deref()

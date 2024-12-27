@@ -1,5 +1,6 @@
 pub mod serde;
 
+pub type FnvHashMap<K, V> = std::collections::HashMap<K, V, fnv::FnvBuildHasher>;
 pub type FnvIndexMap<K, V> = indexmap::IndexMap<K, V, fnv::FnvBuildHasher>;
 pub type FnvMultiMap<K, V> = multimap::MultiMap<K, V, fnv::FnvBuildHasher>;
 

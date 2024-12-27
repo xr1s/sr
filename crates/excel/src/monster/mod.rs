@@ -636,7 +636,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for NPCMonsterData<'a> {
 pub struct MonsterSkillConfig<'a> {
     pub id: u32,
     pub name: &'a str,
-    pub desc: String,
+    pub desc: &'a str,
     /// 目前只有两种 天赋、技能
     pub type_desc: &'a str,
     /// 技能分类，单攻、群攻、扩散等
@@ -652,16 +652,16 @@ pub struct MonsterSkillConfig<'a> {
     pub skill_trigger_key: &'a str,
     /// 技能命中我方角色后为对应角色的充能增加多少
     pub sp_hit_base: u16,
+    pub params: Vec<format::Argument<'a>>,
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterSkillConfig<'a> {
     type Model = model::monster::SkillConfig;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
-        let params = format::Argument::from_array(&model.param_list);
         Self {
             id: model.skill_id,
             name: game.text(model.skill_name),
-            desc: format::format(game.text(model.skill_desc), &params),
+            desc: game.text(model.skill_desc),
             type_desc: game.text(model.skill_type_desc),
             tag: model
                 .skill_tag
@@ -678,6 +678,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterSkillConfig<'a> {
             damage_type: model.damage_type,
             skill_trigger_key: model.skill_trigger_key.as_str(),
             sp_hit_base: model.sp_hit_base.unwrap_or_default().value,
+            params: format::Argument::from_array(&model.param_list),
         }
     }
 }

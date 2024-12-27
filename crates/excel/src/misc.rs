@@ -7,17 +7,18 @@ use crate::{ExcelOutput, FromModel};
 pub struct ExtraEffectConfig<'a> {
     pub id: u32,
     pub name: &'a str,
-    pub desc: String,
+    pub desc: &'a str,
+    pub desc_params: Vec<format::Argument<'a>>,
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ExtraEffectConfig<'a> {
     type Model = model::misc::ExtraEffectConfig;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        let arguments = format::Argument::from_array(&model.desc_param_list);
         Self {
             id: model.extra_effect_id,
             name: game.text(model.extra_effect_name),
-            desc: format::format(game.text(model.extra_effect_desc), &arguments),
+            desc: game.text(model.extra_effect_desc),
+            desc_params: format::Argument::from_array(&model.desc_param_list),
         }
     }
 }
@@ -29,27 +30,28 @@ pub struct MazeBuff<'a> {
     /// 初始等级
     pub lv: u8,
     pub lv_max: u8,
+    pub params: Vec<format::Argument<'a>>,
     /// 祝福名称
     pub name: &'a str,
     /// 祝福详细文案
-    pub desc: String,
+    pub desc: &'a str,
     /// 祝福简单文案
-    pub simple_desc: String,
-    pub desc_battle: String,
+    pub simple_desc: &'a str,
+    pub desc_battle: &'a str,
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MazeBuff<'a> {
     type Model = model::misc::MazeBuff;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        let params = format::Argument::from_array(&model.param_list);
         Self {
             id: model.id,
             lv: model.lv,
             lv_max: model.lv_max,
+            params: format::Argument::from_array(&model.param_list),
             name: game.text(model.buff_name),
-            desc: format::format(game.text(model.buff_desc), &params),
-            simple_desc: format::format(game.text(model.buff_simple_desc), &params),
-            desc_battle: format::format(game.text(model.buff_desc_battle), &params),
+            desc: game.text(model.buff_desc),
+            simple_desc: game.text(model.buff_simple_desc),
+            desc_battle: game.text(model.buff_desc_battle),
         }
     }
 }

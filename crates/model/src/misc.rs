@@ -267,3 +267,45 @@ impl ID for ScheduleDataGlobal {
         self.schedule.id
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum TextJoinType {
+    AvatarID,
+    CustomText,
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct TextJoinConfig {
+    #[serde(rename = "TextJoinID")]
+    pub text_join_id: u8,
+    pub default_item: u16,
+    pub text_join_item_list: Vec<u16>,
+    #[serde(default)]
+    pub is_override: bool,
+    pub r#type: Option<TextJoinType>,
+}
+
+impl ID for TextJoinConfig {
+    type ID = u8;
+    fn id(&self) -> Self::ID {
+        self.text_join_id
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct TextJoinItem {
+    #[serde(rename = "TextJoinItemID")]
+    pub text_join_item_id: u16,
+    pub text_join_text: Text,
+}
+
+impl ID for TextJoinItem {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.text_join_item_id
+    }
+}

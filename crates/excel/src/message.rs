@@ -247,7 +247,7 @@ pub struct MessageContactsConfig<'a, Data: ExcelOutput + ?Sized> {
     pub camp: Option<MessageContactsCamp<'a>>,
 }
 
-impl<Data: ExcelOutput> Wiki for MessageContactsConfig<'_, Data> {
+impl<Data: ExcelOutput + format::GameData> Wiki for MessageContactsConfig<'_, Data> {
     fn wiki(&self) -> std::borrow::Cow<'static, str> {
         let mut wiki = String::new();
         wiki.push_str("{{#subobject:");
@@ -422,18 +422,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MessageSectionConfig<'a, Dat
 
 impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
     pub fn contacts(&self) -> &MessageContactsConfig<'_, Data> {
-        self._contacts.get_or_init(|| {
-            self.game
-                .list_message_group_config()
-                .find(|group| {
-                    group
-                        .section_list
-                        .iter()
-                        .any(|section| section.id == self.id)
-                })
-                .unwrap()
-                .contacts
-        })
+        self._contacts
+            .get_or_init(|| self.game.message_contacts_of_section(self.id).unwrap())
     }
 
     /// 寻找该节点的下一个聚合点 MessageItemConfig 的 ID
@@ -503,14 +493,16 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
             }
         })
     }
+}
 
+impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
     fn wiki_message_single_item_content(
         &self,
         wiki: &mut String,
         prefix: &str,
+        formatter: &mut format::Formatter<Data>,
         message: &MessageItemConfig<Data>,
     ) {
-        use format::format_wiki;
         fn dialogue(wiki: &mut String, direction: char, contacts: &str, r#type: &str, text: &str) {
             wiki.push_str("{{角色对话|");
             wiki.push(direction);
@@ -552,7 +544,7 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
                     // 1.2 及之前图片没有
                     image_text(self.game, message)
                 } else {
-                    Cow::Owned(format_wiki(message.main_text))
+                    Cow::Owned(formatter.format(message.main_text, &[]))
                 }
             }
             MessageItemType::Video => Cow::Borrowed("<!-- ItemType::Video -->"),
@@ -588,7 +580,7 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
             }
             MessageSender::System => {
                 wiki.push_str("{{短信警告|");
-                wiki.push_str(&format_wiki(message.main_text));
+                wiki.push_str(&formatter.format(message.main_text, &[]));
                 wiki.push_str("}}");
             }
         };
@@ -598,9 +590,9 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
         &self,
         wiki: &mut String,
         prefix: &mut String,
+        formatter: &mut format::Formatter<Data>,
         selections: &[MessageItemConfig<Data>],
     ) -> Option<MessageItemConfig<Data>> {
-        use format::format_wiki;
         wiki.push_str(prefix);
         wiki.push_str("{{短信选项");
         // 存在选项为表情的情况，需要在聊天记录中再手动发一条表情
@@ -628,14 +620,14 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
             wiki.push_str(&if is_sticker_selection {
                 Self::try_get_emoji(self.game, message.content_id).wiki()
             } else {
-                Cow::Owned(format_wiki(message.option_text))
+                Cow::Owned(formatter.format(message.option_text, &[]))
             });
             wiki.push_str(prefix);
             wiki.push_str("|剧情");
             wiki.push_str(&index.to_string());
             wiki.push('=');
             prefix.push_str(Self::INDENT);
-            self.wiki_next_message(wiki, prefix, message, convergence_id);
+            self.wiki_next_message(wiki, prefix, formatter, message, convergence_id);
             prefix.truncate(prefix.len() - Self::INDENT_LENGTH);
         }
         wiki.push_str(prefix);
@@ -649,14 +641,14 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
         &self,
         wiki: &mut String,
         prefix: &mut String,
+        formatter: &mut format::Formatter<Data>,
         message: &MessageItemConfig<Data>,
         convergence_id: u32,
     ) {
-        use format::format_wiki;
         if message.id == convergence_id {
             return;
         }
-        self.wiki_message_single_item_content(wiki, prefix, message);
+        self.wiki_message_single_item_content(wiki, prefix, formatter, message);
         if message.next_item_id_list.len() == 1 {
             // 快速判断，不需要求聚合点，直接往后走即可
             // 快速判断不是完全准确，具体就是唯一的 next 是选项的情况，在下面处理了
@@ -674,10 +666,10 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
                 // 因此需要额外加上判断 next 是不是聚合点
                 wiki.push_str(prefix);
                 wiki.push_str("{{短信选项|选项1=");
-                wiki.push_str(&format_wiki(next.option_text));
+                wiki.push_str(&formatter.format(next.option_text, &[]));
                 wiki.push_str("}}");
             }
-            self.wiki_next_message(wiki, prefix, &next, convergence_id);
+            self.wiki_next_message(wiki, prefix, formatter, &next, convergence_id);
         }
         if message.next_item_id_list.len() > 1 {
             // 需要求聚合点的情况
@@ -688,18 +680,18 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
                 .map(Option::unwrap)
                 .collect::<Vec<_>>();
             if let Some(next) =
-                self.wiki_message_single_selection_content(wiki, prefix, &selections)
+                self.wiki_message_single_selection_content(wiki, prefix, formatter, &selections)
             {
-                self.wiki_next_message(wiki, prefix, &next, convergence_id);
+                self.wiki_next_message(wiki, prefix, formatter, &next, convergence_id);
             }
         }
     }
 
     fn wiki_message_template(&self, wiki: &mut String, prefix: &mut String) {
-        use format::format_wiki;
+        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
         let contacts = self.contacts();
         wiki.push_str("{{角色对话|模板开始|");
-        wiki.push_str(&format_wiki(contacts.name));
+        wiki.push_str(&formatter.format(contacts.name, &[]));
         // 非自机角色的短信签名需要作为参数传入（自机角色由模板自动查询了）
         let contacts_type = contacts
             .r#type
@@ -713,15 +705,22 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
         wiki.push_str("}}");
         prefix.push_str(Self::INDENT);
         if self.start_message_item_list.len() == 1 {
-            self.wiki_next_message(wiki, prefix, &self.start_message_item_list[0], 0);
+            self.wiki_next_message(
+                wiki,
+                prefix,
+                &mut formatter,
+                &self.start_message_item_list[0],
+                0,
+            );
         }
         if self.start_message_item_list.len() > 1 {
             if let Some(next) = self.wiki_message_single_selection_content(
                 wiki,
                 prefix,
+                &mut formatter,
                 &self.start_message_item_list,
             ) {
-                self.wiki_next_message(wiki, prefix, &next, 0);
+                self.wiki_next_message(wiki, prefix, &mut formatter, &next, 0);
             }
         }
         if let Some(mission) = &self.main_mission_link {
@@ -739,7 +738,7 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
     }
 }
 
-impl<Data: ExcelOutput> Wiki for MessageSectionConfig<'_, Data> {
+impl<Data: ExcelOutput + format::GameData> Wiki for MessageSectionConfig<'_, Data> {
     fn wiki(&self) -> std::borrow::Cow<'static, str> {
         let mut wiki = String::from("{{#subobject:");
         let mut indent = String::from("\n");
