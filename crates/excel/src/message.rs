@@ -688,7 +688,7 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
     }
 
     fn wiki_message_template(&self, wiki: &mut String, prefix: &mut String) {
-        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         let contacts = self.contacts();
         wiki.push_str("{{角色对话|模板开始|");
         wiki.push_str(&formatter.format(contacts.name, &[]));

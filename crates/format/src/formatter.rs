@@ -24,8 +24,7 @@ enum State {
 pub struct Formatter<'a, Data: crate::data::GameData + ?Sized> {
     data: &'a Data,
 
-    keep_xml_tag: bool,
-    output_wiki: bool,
+    media_wiki_syntax: bool,
 
     state: State,
     result: String,
@@ -50,8 +49,7 @@ impl<'a, Data: crate::data::GameData> Formatter<'a, Data> {
     pub fn new(data: &'a Data) -> Self {
         Self {
             data,
-            keep_xml_tag: true,
-            output_wiki: false,
+            media_wiki_syntax: false,
             state: State::Literal,
             result: String::new(),
             arg_num: 0,
@@ -67,13 +65,8 @@ impl<'a, Data: crate::data::GameData> Formatter<'a, Data> {
 }
 
 impl<Data: crate::data::GameData> Formatter<'_, Data> {
-    pub fn keep_xml_tag(mut self, keep: bool) -> Self {
-        self.keep_xml_tag = keep;
-        self
-    }
-
-    pub fn output_wiki(mut self, wiki: bool) -> Self {
-        self.output_wiki = wiki;
+    pub fn media_wiki_syntax(mut self, wiki: bool) -> Self {
+        self.media_wiki_syntax = wiki;
         self
     }
 
@@ -103,14 +96,16 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                 }
                 match char {
                     '#' => self.state = State::Hashbang,
-                    '<' if !self.keep_xml_tag || self.output_wiki => {
-                        self.state = State::UnityTagKey(String::new());
-                    }
-                    '{' if self.output_wiki => self.state = State::UnityVarKey(String::new()),
-                    '\\' if self.output_wiki => self.state = State::UnityEscape,
-                    '\u{00A0}' => self.push_str(if self.output_wiki { "&nbsp;" } else { " " }),
-                    '|' if self.output_wiki => self.push_str("&#x7c;"),
-                    '=' if self.output_wiki => self.push_str("{{=}}"),
+                    '<' => self.state = State::UnityTagKey(String::new()),
+                    '{' => self.state = State::UnityVarKey(String::new()),
+                    '\\' => self.state = State::UnityEscape,
+                    '\u{00A0}' => self.push_str(if self.media_wiki_syntax {
+                        "&nbsp;"
+                    } else {
+                        " "
+                    }),
+                    '|' if self.media_wiki_syntax => self.push_str("&#x7c;"),
+                    '=' if self.media_wiki_syntax => self.push_str("{{=}}"),
                     _ => self.push(char),
                 };
             }
@@ -162,7 +157,7 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             State::UnityEscape => {
                 self.state = State::Literal;
                 self.push_str(&match char {
-                    'n' => Cow::Borrowed(if !self.output_wiki {
+                    'n' => Cow::Borrowed(if !self.media_wiki_syntax {
                         "\n"
                     } else if !self.omit_br_once {
                         "<br />"
@@ -271,6 +266,13 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
         if !std::matches!(self.state, State::UnityTagKey(_) | State::UnityTagVal(_, _)) {
             return;
         }
+        if !self.media_wiki_syntax
+            && ["u", "i", "color", "align", "size"].contains(&tag.strip_prefix('/').unwrap_or(&tag))
+        {
+            // TODO: 对于这种情况，输出 ANSI 转义字符
+            self.state = State::Literal;
+            return;
+        }
         match tag.as_str() {
             "u" => self.underlining = true,
             "/u" => {
@@ -344,13 +346,23 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             "/size" => self.push_str("</span>"),
             _ => {
                 // 不认识的标签原样填回去
-                self.push('<');
-                self.push_str(&tag);
-                if let Some(val) = val {
-                    self.push('=');
-                    self.push_str(&val);
+                if self.media_wiki_syntax {
+                    self.push_str("&lt;");
+                    self.push_str(&tag.replace('\u{00A0}', "&nbsp;"));
+                    if let Some(val) = val {
+                        self.push('=');
+                        self.push_str(&val.replace('\u{00A0}', "&nbsp;"));
+                    }
+                    self.push_str("&gt;");
+                } else {
+                    self.push('<');
+                    self.push_str(&tag.replace('\u{00A0}', " "));
+                    if let Some(val) = val {
+                        self.push('=');
+                        self.push_str(&val.replace('\u{00A0}', " "));
+                    }
+                    self.push('>');
                 }
-                self.push('>');
             }
         }
         self.state = State::Literal;

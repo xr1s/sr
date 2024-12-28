@@ -245,7 +245,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
     }
 
     fn memory_wiki(&self) -> Cow<'static, str> {
-        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         if self.id < 1007 {
             // 更早以往的混沌回忆机制不太一样
             // 比如一层存在两个怪物左右分立
@@ -659,7 +659,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
     }
 
     fn story_wiki(&self) -> Cow<'static, str> {
-        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         let mazes = self.mazes();
         // 开头两个 assert 确保数据一致性
         self.story_wiki_assertions(mazes);
@@ -803,7 +803,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         event: &crate::battle::StageConfig<Data>,
         extra: &ChallengeGroupExtra,
     ) {
-        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         let half = if team == 1 { "上半" } else { "下半" };
         wiki.push_str("\n|");
         wiki.push_str(half);
@@ -876,7 +876,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
     }
 
     fn boss_wiki(&self) -> Cow<'static, str> {
-        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         let mazes = self.mazes();
         self.boss_wiki_assertions(mazes);
 

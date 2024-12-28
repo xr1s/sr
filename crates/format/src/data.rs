@@ -2,7 +2,7 @@ use data::Text;
 
 use data::SealedGameData;
 
-pub trait GameData: data::Text {
+pub trait GameData {
     fn default_text_join_item(&self, id: u8) -> &str;
     fn has_extra_effect_config(&self, name: &str) -> bool;
 }

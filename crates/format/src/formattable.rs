@@ -9,6 +9,7 @@ pub(crate) trait Formattable<T> {
     fn write_float(&mut self, value: &T, prec: u32, percent: bool);
 }
 
+// 理论上来说，这里也应该要做 MediaWiki 相关的转义。但是算了，没遇到过。
 impl<'a, Data: crate::data::GameData> Formattable<&'a str> for Formatter<'_, Data> {
     fn write_raw(&mut self, value: &&'a str, percent: bool) {
         self.push_str(value);

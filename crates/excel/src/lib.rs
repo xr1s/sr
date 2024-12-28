@@ -113,6 +113,7 @@ macro_rules! main_sub_implement {
 // rogue 依赖 misc 和 monster
 // rogue tourn 依赖 misc 和 monster
 
+// 为了后面不用到处 use data::Text, 这里直接作为 trait 本身的依赖了
 pub trait ExcelOutput: data::Text {
     // battle
     declare!(battle_event_config, u32 => battle::BattleEventConfig);

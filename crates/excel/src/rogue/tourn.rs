@@ -239,7 +239,7 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournWeeklyChallenge<'_
         boss(&mut wiki, '二', &self.monster_group_2);
         boss(&mut wiki, '三', &self.monster_group_3);
 
-        let mut formatter = format::Formatter::new(self.game).output_wiki(true);
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         let contents = self
             .content_detail
             .iter()
