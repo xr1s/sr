@@ -97,7 +97,7 @@ impl<Data: crate::data::GameData> Formattable<f64> for Formatter<'_, Data> {
         let value = if percent { *value * 100. } else { *value };
         let prec_10 = 10usize.pow(prec) as f64;
         let value = f64::round(value * prec_10) / prec_10;
-        self.push_str(&value.to_string());
+        self.push_str(&format!("{:.1$}", value, prec as _));
         if percent {
             self.push('%');
         }

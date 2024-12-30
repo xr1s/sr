@@ -56,7 +56,7 @@ pub enum Path {
     /// 丰饶
     Abundance,
     /// 巡猎
-    Hunt,
+    TheHunt,
     /// 毁灭
     Destruction,
     /// 欢愉
@@ -74,7 +74,7 @@ impl base::Wiki for Path {
             Path::Remembrance => "记忆",
             Path::Nihility => "虚无",
             Path::Abundance => "丰饶",
-            Path::Hunt => "巡猎",
+            Path::TheHunt => "巡猎",
             Path::Destruction => "毁灭",
             Path::Elation => "欢愉",
             Path::Propagation => "繁育",

@@ -2,9 +2,96 @@ pub mod tourn;
 
 use std::{collections::HashMap, num::NonZero, path::PathBuf};
 
-use base::ID;
+use base::{MainSubID, Wiki, ID};
 
 use super::{Text, Value};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum RogueBuffCategory {
+    /// 一星祝福
+    Common,
+    /// 三星祝福
+    Legendary,
+    /// 二星祝福
+    Rare,
+}
+
+impl Wiki for RogueBuffCategory {
+    fn wiki(&self) -> std::borrow::Cow<'static, str> {
+        std::borrow::Cow::Borrowed(match self {
+            Self::Common => "1星",
+            Self::Legendary => "3星",
+            Self::Rare => "2星",
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum BattleEventBuffType {
+    BattleEventBuff,
+    BattleEventBuffCross,
+    BattleEventBuffEnhance,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+/// 模拟宇宙祝福
+pub struct RogueBuff {
+    #[serde(rename = "MazeBuffID")]
+    pub maze_buff_id: u32,
+    pub maze_buff_level: u8,
+    pub rogue_buff_type: u8,
+    pub rogue_buff_rarity: Option<NonZero<u8>>,
+    pub rogue_buff_category: Option<RogueBuffCategory>,
+    pub rogue_buff_tag: u32,
+    #[serde(rename = "ExtraEffectIDList")]
+    pub extra_effect_id_list: Vec<u32>,
+    #[serde(rename = "AeonID")]
+    pub aeon_id: Option<NonZero<u8>>,
+    pub rogue_version: u8, // 目前仅有 1
+    #[serde(rename = "UnlockIDList")]
+    pub unlock_id_list: Vec<u32>,
+    #[serde(default)]
+    pub is_show: bool,
+    pub battle_event_buff_type: Option<BattleEventBuffType>,
+    #[serde(rename = "ActivityModuleID")]
+    pub activity_module_id: Option<NonZero<u32>>,
+    pub handbook_unlock_desc: Text,
+    pub aeon_cross_icon: String,
+}
+
+impl MainSubID for RogueBuff {
+    type ID = u32;
+    type SubID = u8;
+    fn id(&self) -> Self::ID {
+        self.maze_buff_id
+    }
+    fn sub_id(&self) -> Self::SubID {
+        self.maze_buff_level
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct RogueBuffType {
+    pub rogue_buff_type: u8,
+    #[serde(rename = "RogueBuffTypeTextmapID")]
+    pub rogue_buff_type_textmap_id: Text,
+    pub rogue_buff_type_icon: String,
+    pub rogue_buff_type_title: Text,
+    pub rugue_buff_type_reward_quest_list: Vec<u32>,
+    pub rogue_buff_type_sub_title: Text,
+    pub hint_desc: Text,
+}
+
+impl ID for RogueBuffType {
+    type ID = u8;
+    fn id(&self) -> Self::ID {
+        self.rogue_buff_type
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum MonsterDropType {

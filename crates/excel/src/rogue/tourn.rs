@@ -2,6 +2,7 @@ use crate::{ExcelOutput, FromModel};
 
 use base::{Name, Wiki};
 pub use model::rogue::tourn::{FormulaCategory, MiracleCategory};
+use model::rogue::RogueBuffCategory;
 pub use model::Path;
 
 use std::borrow::Cow;
@@ -23,6 +24,125 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueBonus<'a> {
             title: game.text(model.bonus_title),
             desc: game.text(model.bonus_desc),
             tag: game.text(model.bonus_tag),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RogueTournBuff<'a, Data: ExcelOutput + ?Sized> {
+    game: &'a Data,
+    pub id: u32,
+    pub level: u8,
+    pub buff: crate::misc::MazeBuff<'a>,
+    pub r#type: RogueTournBuffType<'a>,
+    pub category: Option<RogueBuffCategory>,
+    pub extra_effect_list: Vec<crate::misc::ExtraEffectConfig<'a>>,
+    pub is_in_handbook: bool,
+    pub unlock_display: RogueTournContentDisplay<'a>,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournBuff<'a, Data> {
+    type Model = model::rogue::tourn::RogueTournBuff;
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
+        Self {
+            game,
+            id: model.maze_buff_id,
+            level: model.maze_buff_level,
+            buff: game
+                .rogue_maze_buff(model.maze_buff_id)
+                .into_iter()
+                .nth(model.maze_buff_level as usize - 1)
+                .unwrap(),
+            r#type: game.rogue_tourn_buff_type(model.rogue_buff_type).unwrap(),
+            category: model.rogue_buff_category,
+            extra_effect_list: model
+                .extra_effect_id_list
+                .iter()
+                .map(|&id| game.extra_effect_config(id))
+                .map(Option::unwrap)
+                .collect(),
+            is_in_handbook: model.is_in_handbook,
+            unlock_display: game
+                .rogue_tourn_content_display(model.unlock_display)
+                .unwrap(),
+        }
+    }
+}
+
+impl<Data: ExcelOutput + format::GameData> Name for RogueTournBuff<'_, Data> {
+    fn name(&self) -> &str {
+        self.buff.name
+    }
+
+    fn wiki_name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::Owned(
+            self.name()
+                .replace("\u{00A0}", "")
+                .replace("<unbreak>", "")
+                .replace("</unbreak>", ""),
+        )
+    }
+}
+
+impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournBuff<'_, Data> {
+    fn wiki(&self) -> std::borrow::Cow<'static, str> {
+        if self.level != 1 {
+            return Cow::Borrowed("");
+        }
+        let classic = self.game.rogue_buff_by_name(self.buff.name);
+        if classic.is_some() {
+            // 存在模拟宇宙祝福的情况，我们会在模拟宇宙祝福的 Wiki impl 中拿到完整数据
+            return Cow::Borrowed("");
+        }
+        let mut wiki = String::from("{{模拟宇宙祝福");
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
+        wiki.push_str("\n|名称=");
+        wiki.push_str(&self.wiki_name());
+        if let Some(category) = self.category {
+            wiki.push_str("\n|稀有度=");
+            wiki.push_str(&category.wiki());
+        }
+        wiki.push_str("\n|命途=");
+        wiki.push_str(self.r#type.name);
+        wiki.push_str("\n|模式=差分宇宙");
+        wiki.push_str("\n|差分效果=");
+        wiki.push_str(&formatter.format(self.buff.desc, &self.buff.params));
+        if let Some(upgrade) = self.game.rogue_maze_buff(self.id).get(1) {
+            wiki.push_str("\n|差分强化效果=");
+            wiki.push_str(&formatter.format(upgrade.desc, &upgrade.params));
+        }
+        wiki.push_str("\n|TAG=");
+        wiki.push_str("\n|实装版本=");
+        wiki.push_str("\n|类型=");
+        wiki.push_str(match self.category {
+            None => "",
+            Some(RogueBuffCategory::Legendary) if self.name().starts_with("命途回响：") => "1",
+            Some(RogueBuffCategory::Legendary) if self.name().starts_with("回响构音：") => "2",
+            Some(RogueBuffCategory::Legendary) if self.name().starts_with("回响交错：") => "3",
+            Some(RogueBuffCategory::Legendary) => "4",
+            Some(RogueBuffCategory::Rare) => "5",
+            Some(RogueBuffCategory::Common) => "6",
+        });
+        wiki.push_str("\n|排序=");
+        wiki.push_str("\n}}");
+        Cow::Owned(wiki)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RogueTournBuffType<'a> {
+    pub id: u8,
+    pub name: &'a str,
+    pub deco_name: model::Path,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournBuffType<'a> {
+    type Model = model::rogue::tourn::RogueTournBuffType;
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
+        Self {
+            id: model.rogue_buff_type,
+            name: game.text(model.rogue_buff_type_name),
+            deco_name: model.rogue_buff_type_deco_name.into(),
         }
     }
 }
@@ -371,16 +491,16 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournHandbookMiracle<'a
 pub struct RogueTournFormula<'a> {
     pub id: u32,
     /// 主要命途
-    pub main_buff_type: Path,
+    pub main_buff_type: RogueTournBuffType<'a>,
     /// 主要命途需求数量
     pub main_buff_num: u8,
     /// 次要命途（临界方程时为 None）
-    pub sub_buff_type: Option<Path>,
+    pub sub_buff_type: Option<RogueTournBuffType<'a>>,
     /// 次要命途需求数量
     pub sub_buff_num: u8,
     /// 方程稀有度
     pub category: FormulaCategory,
-    /// 对应模拟宇宙祝福（方程名称、效果文案都在此）
+    /// 对应模拟战斗增益（方程名称、效果文案都在此）
     pub maze_buff: crate::misc::MazeBuff<'a>,
     /// 方程的背景故事文案和特殊效果说明
     pub display: crate::rogue::tourn::RogueTournFormulaDisplay<'a>,
@@ -395,25 +515,15 @@ pub struct RogueTournFormula<'a> {
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournFormula<'a> {
     type Model = model::rogue::tourn::RogueTournFormula;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
-        fn buff_type_id_to_path(buff_type_id: impl Into<u8>) -> Path {
-            match buff_type_id.into() {
-                120 => Path::Preservation,
-                121 => Path::Remembrance,
-                122 => Path::Nihility,
-                123 => Path::Abundance,
-                124 => Path::Hunt,
-                125 => Path::Destruction,
-                126 => Path::Elation,
-                127 => Path::Propagation,
-                128 => Path::Erudition,
-                _ => unreachable!(),
-            }
-        }
         Self {
             id: model.formula_id,
-            main_buff_type: buff_type_id_to_path(model.main_buff_type_id),
+            main_buff_type: game.rogue_tourn_buff_type(model.main_buff_type_id).unwrap(),
             main_buff_num: model.main_buff_num,
-            sub_buff_type: model.sub_buff_type_id.map(buff_type_id_to_path),
+            sub_buff_type: model
+                .sub_buff_type_id
+                .map(NonZero::get)
+                .map(|id| game.rogue_tourn_buff_type(id))
+                .map(Option::unwrap),
             sub_buff_num: model.sub_buff_num.map(NonZero::get).unwrap_or_default(),
             category: model.formula_category,
             maze_buff: game

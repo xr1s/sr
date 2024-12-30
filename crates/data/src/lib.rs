@@ -115,6 +115,9 @@ pub struct GameData {
     _monster_text_guide: OnceLock<FnvIndexMap<u16, Arc<model::monster::guide::MonsterTextGuide>>>,
     // rogue
     // 模拟宇宙
+    _rogue_buff: OnceLock<FnvMultiMap<u32, Arc<model::rogue::RogueBuff>>>,
+    _rogue_buff_type: OnceLock<FnvIndexMap<u8, Arc<model::rogue::RogueBuffType>>>,
+    _rogue_extra_config: OnceLock<FnvIndexMap<u32, Arc<model::misc::ExtraEffectConfig>>>,
     _rogue_handbook_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueHandbookMiracle>>>,
     _rogue_handbook_miracle_type:
         OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueHandbookMiracleType>>>,
@@ -131,6 +134,8 @@ pub struct GameData {
     _rogue_magic_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracle>>>,
     // rogue tourn 差分宇宙
     _rogue_bonus: OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueBonus>>>,
+    _rogue_tourn_buff: OnceLock<FnvMultiMap<u32, Arc<model::rogue::tourn::RogueTournBuff>>>,
+    _rogue_tourn_buff_type: OnceLock<FnvIndexMap<u8, Arc<model::rogue::tourn::RogueTournBuffType>>>,
     /// 差分宇宙文案
     _rogue_tourn_content_display:
         OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournContentDisplay>>>,
@@ -168,9 +173,14 @@ pub struct GameData {
         OnceLock<FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>>>,
     _message_contacts_of_section:
         OnceLock<FnvHashMap<u32, Arc<model::message::MessageContactsConfig>>>,
-    /// 按名称索引 ExtraEffect
+
+    // 名称反向索引
+    /// 按名称索引的 ExtraEffectConfig
     _extra_effect_config_by_name:
         OnceLock<FnvHashMap<Arc<str>, Arc<model::misc::ExtraEffectConfig>>>,
+    _rogue_buff_by_name: OnceLock<FnvHashMap<Arc<str>, Arc<model::rogue::RogueBuff>>>,
+    _rogue_tourn_buff_by_name:
+        OnceLock<FnvHashMap<Arc<str>, Arc<model::rogue::tourn::RogueTournBuff>>>,
 }
 
 impl std::fmt::Debug for GameData {
@@ -217,7 +227,7 @@ impl GameData {
         for<'a> V: serde::Deserialize<'a>,
     {
         let path = self.base.join(dir);
-        let bytes = std::fs::read(path).unwrap();
+        let bytes = std::fs::read(path)?;
         Ok(serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
             // 每个版本更新后也存在某些特殊字段未解密导致一直在变 serde 失败的情况
@@ -231,7 +241,7 @@ impl GameData {
             ))
     }
 
-    fn load_main_sub<I, S, V>(&self, dir: &str) -> FnvMultiMap<I, Arc<V>>
+    fn load_main_sub<I, S, V>(&self, dir: &str) -> std::io::Result<FnvMultiMap<I, Arc<V>>>
     where
         I: std::cmp::Eq + std::hash::Hash,
         S: std::cmp::Eq + std::hash::Hash,
@@ -241,8 +251,8 @@ impl GameData {
         for<'a> V: serde::Deserialize<'a>,
     {
         let path = self.base.join(dir);
-        let bytes = std::fs::read(path).unwrap();
-        serde_json::from_slice(&bytes)
+        let bytes = std::fs::read(path)?;
+        Ok(serde_json::from_slice(&bytes)
             // 仅应在处理 2.3 版本及以下的数据集时输出错误
             .inspect_err(|e| log::warn!("疑似 2.3 之前的老数据格式: {:?}", e))
             .map_or_else(
@@ -257,7 +267,7 @@ impl GameData {
                 },
                 // 2.4 版本及以上, 采用的数据结构是 [{"MainID": 123, "SubID": 4, ...} ] 摊平的形式
                 |model: Vec<Arc<V>>| model.into_iter().map(|model| (model.id(), model)).collect(),
-            )
+            ))
     }
 }
 
@@ -353,6 +363,9 @@ pub trait SealedGameData {
     declare!(_monster_guide_tag, u32 => monster::guide::MonsterGuideTag);
     declare!(_monster_text_guide, u16 => monster::guide::MonsterTextGuide);
     // rogue
+    main_sub_declare!(_rogue_buff, u32 => rogue::RogueBuff);
+    declare!(_rogue_buff_type, u8 => rogue::RogueBuffType);
+    declare!(_rogue_extra_config, u32 => misc::ExtraEffectConfig);
     declare!(_rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);
     declare!(_rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_declare!(_rogue_maze_buff, u32 => misc::MazeBuff);
@@ -364,6 +377,8 @@ pub trait SealedGameData {
     declare!(_rogue_magic_miracle, u16 => rogue::RogueMiracle);
     // rogue tourn
     declare!(_rogue_bonus, u16 => rogue::tourn::RogueBonus);
+    main_sub_declare!(_rogue_tourn_buff, u32 => rogue::tourn::RogueTournBuff);
+    declare!(_rogue_tourn_buff_type, u8 => rogue::tourn::RogueTournBuffType);
     declare!(_rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
     declare!(_rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
     declare!(_rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
@@ -391,8 +406,13 @@ pub trait SealedGameData {
     where
         F: Fn(&crate::GameData) -> &FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>;
 
+    // 名称反向索引
+    /// 按名称索引的 ExtraEffectConfig
     #[rustfmt::skip]
     fn _extra_effect_config_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::misc::ExtraEffectConfig>>;
+    fn _rogue_buff_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::rogue::RogueBuff>>;
+    #[rustfmt::skip]
+    fn _rogue_tourn_buff_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::rogue::tourn::RogueTournBuff>>;
 }
 
 macro_rules! implement {
@@ -403,18 +423,19 @@ macro_rules! implement {
     ($field:ident, $id:ty => $typ:path, $json:expr $(, $candidates:expr)* ) => {
         fn $field(&self) -> &FnvIndexMap<$id, Arc<paste::paste!(model::$typ)>> {
             self.$field.get_or_init(|| {
-                let map = self.load(concat!("ExcelOutput/", $json, ".json"))
+                self.load(concat!("ExcelOutput/", $json, ".json"))
                 $(
                     .or_else(|_| self.load(concat!("ExcelOutput/", $candidates, ".json")))
-                )*;
-                if let Err(err) = &map {
-                    if err.kind() == std::io::ErrorKind::NotFound {
-                        // 很无奈，因为存在无此文件的情况（随着版本更新新增的文件）
-                        // 这里只好默认不存在的文件均为这种数据，并返回空
-                        return FnvIndexMap::default();
-                    }
-                }
-                map.unwrap()
+                )*
+                    .or_else(|err| {
+                        if err.kind() == std::io::ErrorKind::NotFound {
+                            // 很无奈，因为存在无此文件的情况（随着版本更新新增的文件）
+                            // 这里只好默认不存在的文件均为这种数据，并返回空
+                            return Ok(FnvIndexMap::default());
+                        }
+                        Err(err)
+                    })
+                    .unwrap()
             })
         }
     };
@@ -428,6 +449,15 @@ macro_rules! main_sub_implement {
         fn $field(&self) -> &FnvMultiMap<$id, Arc<paste::paste!(model::$typ)>> {
             self.$field.get_or_init(|| {
                 self.load_main_sub(concat!("ExcelOutput/", $json, ".json"))
+                    .or_else(|err| {
+                        if err.kind() == std::io::ErrorKind::NotFound {
+                            // 很无奈，因为存在无此文件的情况（随着版本更新新增的文件）
+                            // 这里只好默认不存在的文件均为这种数据，并返回空
+                            return Ok(FnvMultiMap::default());
+                        }
+                        Err(err)
+                    })
+                    .unwrap()
             })
         }
     };
@@ -513,6 +543,9 @@ impl SealedGameData for GameData {
     implement!(_monster_guide_tag, u32 => monster::guide::MonsterGuideTag);
     implement!(_monster_text_guide, u16 => monster::guide::MonsterTextGuide);
     // rogue
+    main_sub_implement!(_rogue_buff, u32 => rogue::RogueBuff);
+    implement!(_rogue_buff_type, u8 => rogue::RogueBuffType);
+    implement!(_rogue_extra_config, u32 => misc::ExtraEffectConfig);
     implement!(_rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);
     implement!(_rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_implement!(_rogue_maze_buff, u32 => misc::MazeBuff);
@@ -524,6 +557,8 @@ impl SealedGameData for GameData {
     implement!(_rogue_magic_miracle, u16 => rogue::RogueMiracle);
     // rogue tourn
     implement!(_rogue_bonus, u16 => rogue::tourn::RogueBonus);
+    main_sub_implement!(_rogue_tourn_buff, u32 => rogue::tourn::RogueTournBuff);
+    implement!(_rogue_tourn_buff_type, u8 => rogue::tourn::RogueTournBuffType);
     implement!(_rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
     implement!(_rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
     implement!(_rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
@@ -637,10 +672,45 @@ impl SealedGameData for GameData {
         self._extra_effect_config_by_name.get_or_init(|| {
             self._extra_effect_config()
                 .values()
+                .chain(self._rogue_extra_config().values())
                 .filter_map(|effect| {
                     self.text_map
                         .get(&effect.extra_effect_name.hash)
                         .map(|name| (Arc::clone(name), Arc::clone(effect)))
+                })
+                .collect()
+        })
+    }
+
+    fn _rogue_buff_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::rogue::RogueBuff>> {
+        self._rogue_buff_by_name.get_or_init(|| {
+            self._rogue_buff()
+                .flat_iter()
+                .filter(|&(_, buff)| buff.maze_buff_level == 1)
+                .filter_map(|(_, buff)| {
+                    self._rogue_maze_buff()
+                        .get(&buff.maze_buff_id)
+                        .map(|maze_buff| maze_buff.buff_name.hash)
+                        .and_then(|hash| self.text_map.get(&hash))
+                        .map(|name| (Arc::clone(name), Arc::clone(buff)))
+                })
+                .collect()
+        })
+    }
+
+    fn _rogue_tourn_buff_by_name(
+        &self,
+    ) -> &FnvHashMap<Arc<str>, Arc<model::rogue::tourn::RogueTournBuff>> {
+        self._rogue_tourn_buff_by_name.get_or_init(|| {
+            self._rogue_tourn_buff()
+                .flat_iter()
+                .filter(|&(_, buff)| buff.maze_buff_level == 1)
+                .filter_map(|(_, buff)| {
+                    self._rogue_maze_buff()
+                        .get(&buff.maze_buff_id)
+                        .map(|maze_buff| maze_buff.buff_name.hash)
+                        .and_then(|hash| self.text_map.get(&hash))
+                        .map(|name| (Arc::clone(name), Arc::clone(buff)))
                 })
                 .collect()
         })

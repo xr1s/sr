@@ -2,9 +2,177 @@ pub mod tourn;
 
 use std::{borrow::Cow, num::NonZero};
 
-use base::Name;
+use base::{Name, Wiki};
+pub use model::rogue::RogueBuffCategory;
 
 use crate::{ExcelOutput, FromModel};
+
+#[derive(educe::Educe)]
+#[educe(Clone, Debug)]
+/// 模拟宇宙奇物
+pub struct RogueBuff<'a, Data: ExcelOutput + ?Sized> {
+    #[educe(Debug(ignore))]
+    game: &'a Data,
+    pub id: u32,
+    pub level: u8,
+    pub buff: Option<crate::misc::MazeBuff<'a>>,
+    pub r#type: RogueBuffType<'a>,
+    pub category: Option<RogueBuffCategory>,
+    pub tag: u32,
+    pub extra_effect_list: Vec<crate::misc::ExtraEffectConfig<'a>>,
+    pub handbook_unlock_desc: &'a str,
+    pub aeon_cross_icon: &'a str,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueBuff<'a, Data> {
+    type Model = model::rogue::RogueBuff;
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
+        Self {
+            game,
+            id: model.maze_buff_id,
+            level: model.maze_buff_level,
+            r#type: game.rogue_buff_type(model.rogue_buff_type).unwrap(),
+            buff: game
+                .rogue_maze_buff(model.maze_buff_id)
+                .into_iter()
+                .nth(model.maze_buff_level as usize - 1),
+            category: model
+                .rogue_buff_rarity
+                .and_then(|rarity| match rarity.get() {
+                    1 => Some(RogueBuffCategory::Common),
+                    3 => Some(RogueBuffCategory::Legendary),
+                    2 => Some(RogueBuffCategory::Rare),
+                    4 => None,
+                    _ => unreachable!(),
+                })
+                .or(model.rogue_buff_category),
+            tag: model.rogue_buff_tag,
+            extra_effect_list: model
+                .extra_effect_id_list
+                .iter()
+                // 2.0 及之前存在 RogueExtraConfig.json 中，留作 TODO
+                .map(|&id| {
+                    None.or_else(|| game.extra_effect_config(id))
+                        .or_else(|| game.rogue_extra_config(id))
+                })
+                .map(Option::unwrap)
+                .collect(),
+            handbook_unlock_desc: game.text(model.handbook_unlock_desc),
+            aeon_cross_icon: &model.aeon_cross_icon,
+        }
+    }
+}
+
+impl<Data: ExcelOutput + format::GameData> Name for RogueBuff<'_, Data> {
+    fn name(&self) -> &str {
+        self.buff.as_ref().map(|buff| buff.name).unwrap_or_default()
+    }
+
+    fn wiki_name(&self) -> std::borrow::Cow<'_, str> {
+        Cow::Owned(
+            self.name()
+                .replace("\u{00A0}", "")
+                .replace("<unbreak>", "")
+                .replace("</unbreak>", ""),
+        )
+    }
+}
+
+impl<Data: ExcelOutput + format::GameData> Wiki for RogueBuff<'_, Data> {
+    fn wiki(&self) -> Cow<'static, str> {
+        if self.level != 1 || self.buff.is_none() {
+            return Cow::Borrowed("");
+        }
+        let buff = self.buff.as_ref().unwrap();
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
+        let mut wiki = String::new();
+        let tourn = self.game.rogue_tourn_buff_by_name(buff.name);
+        wiki.push_str("{{模拟宇宙祝福");
+        wiki.push_str("\n|名称=");
+        wiki.push_str(&self.wiki_name());
+        if let Some(category) = self.category {
+            wiki.push_str("\n|稀有度=");
+            wiki.push_str(&category.wiki());
+        }
+        wiki.push_str("\n|命途=");
+        wiki.push_str(self.r#type.sub_title);
+        wiki.push_str("\n|模式=模拟宇宙");
+        wiki.push_str(match self.r#type.sub_title {
+            "繁育" => "、寰宇蝗灾、黄金与机械",
+            "智识" => "、黄金与机械",
+            _ => "、寰宇蝗灾、黄金与机械",
+        });
+        if tourn.is_some() {
+            wiki.push_str("、差分宇宙");
+        }
+        wiki.push_str("\n|效果=");
+        let desc = formatter.format(buff.desc, &buff.params);
+        wiki.push_str(&desc);
+        let mut upgrade_desc = String::new();
+        if let Some(upgrade) = self.game.rogue_maze_buff(self.id).get(1) {
+            wiki.push_str("\n|强化后效果=");
+            upgrade_desc = formatter.format(upgrade.desc, &upgrade.params);
+            wiki.push_str(&upgrade_desc);
+        }
+        if let Some(tourn) = self.game.rogue_tourn_buff_by_name(buff.name) {
+            if self.buff.as_ref().map(|buff| buff.id).unwrap_or_default() != tourn.buff.id {
+                // 如果 id 相同，那么描述肯定相同，直接跳过
+                let divergent_desc = formatter.format(tourn.buff.desc, &tourn.buff.params);
+                let divergent_upgrade = self.game.rogue_maze_buff(tourn.id);
+                let divergent_upgrade_desc = divergent_upgrade
+                    .get(1)
+                    .map(|upgrade| formatter.format(upgrade.desc, &upgrade.params))
+                    .unwrap_or_default();
+                // 否则判断文案完全相同才继续录入（可能存在升级前相同但是升级后不同，所以需要完整比较）
+                if desc != divergent_desc || upgrade_desc != divergent_upgrade_desc {
+                    wiki.push_str("\n|差分效果=");
+                    wiki.push_str(&divergent_desc);
+                    if let Some(upgrade) = self.game.rogue_maze_buff(tourn.id).get(1) {
+                        wiki.push_str("\n|差分强化效果=");
+                        wiki.push_str(&formatter.format(upgrade.desc, &upgrade.params));
+                    }
+                }
+            }
+        }
+        wiki.push_str("\n|TAG=");
+        wiki.push_str("\n|实装版本=");
+        wiki.push_str("\n|类型=");
+        wiki.push_str(match self.category {
+            None => "",
+            Some(RogueBuffCategory::Legendary) if self.name().starts_with("命途回响：") => "1",
+            Some(RogueBuffCategory::Legendary) if self.name().starts_with("回响构音：") => "2",
+            Some(RogueBuffCategory::Legendary) if self.name().starts_with("回响交错：") => "3",
+            Some(RogueBuffCategory::Legendary) => "4",
+            Some(RogueBuffCategory::Rare) => "5",
+            Some(RogueBuffCategory::Common) => "6",
+        });
+        wiki.push_str("\n|排序=");
+        wiki.push_str("\n}}");
+        Cow::Owned(wiki)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RogueBuffType<'a> {
+    pub id: u8,
+    pub text: &'a str,
+    pub title: &'a str,
+    pub sub_title: &'a str,
+    pub hint_desc: &'a str,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueBuffType<'a> {
+    type Model = model::rogue::RogueBuffType;
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
+        Self {
+            id: model.rogue_buff_type,
+            text: game.text(model.rogue_buff_type_textmap_id),
+            title: game.text(model.rogue_buff_type_title),
+            sub_title: game.text(model.rogue_buff_type_sub_title),
+            hint_desc: game.text(model.hint_desc),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 /// 模拟宇宙奇物

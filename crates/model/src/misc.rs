@@ -76,7 +76,7 @@ pub struct MazeBuff {
     pub param_list: Vec<Value<f32>>,
     #[serde(rename = "BuffDescParamByAvatarSkillID")]
     pub buff_desc_param_by_avatar_skill_id: Option<NonZero<u32>>,
-    pub buff_icon: PathBuf,
+    pub buff_icon: String,
     pub buff_name: Text,
     pub buff_desc: Text,
     pub buff_simple_desc: Text,

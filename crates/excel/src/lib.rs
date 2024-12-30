@@ -61,7 +61,7 @@ macro_rules! implement {
 macro_rules! main_sub_declare {
     ($method:ident, $id:ty => $typ:ty) => {
         paste::paste! {
-            fn [<list_$method>](&self) -> impl Iterator<Item = $typ>;
+            fn [<list_$method>](&self) -> impl Iterator<Item = Vec<$typ>>;
             fn $method(&self, id: $id) -> Vec<$typ>;
         }
     };
@@ -73,11 +73,13 @@ macro_rules! main_sub_implement {
     };
     ($field:ident, $id:ty => $typ:ty, $json:expr) => {
         paste::paste! {
-            fn [<list_$field>](&self) -> impl Iterator<Item = $typ> {
+            fn [<list_$field>](&self) -> impl Iterator<Item = Vec<$typ>> {
                 self.[<_$field>]()
-                    .flat_iter()
+                    .iter_all()
                     .map(|(_, value)| value)
-                    .map(|model| <$typ>::from_model(self, model))
+                    .map(|models| {
+                        models.iter().map(|model| <$typ>::from_model(self, model)).collect()
+                    })
             }
 
             fn $field(&self, id: $id) -> Vec<$typ> {
@@ -110,7 +112,7 @@ macro_rules! main_sub_implement {
 // challenge 依赖 battle, misc, monster
 //
 // rogue tourn 和 rogue 互相依赖
-// rogue 依赖 misc 和 monster
+// rogue 依赖 misc, mission 和 monster
 // rogue tourn 依赖 misc 和 monster
 
 // 为了后面不用到处 use data::Text, 这里直接作为 trait 本身的依赖了
@@ -192,6 +194,9 @@ pub trait ExcelOutput: data::Text {
     declare!(monster_guide_tag, u32 => monster::guide::MonsterGuideTag);
     declare!(monster_text_guide, u16 => monster::guide::MonsterTextGuide);
     // rogue
+    main_sub_declare!(rogue_buff, u32 => rogue::RogueBuff<Self>);
+    declare!(rogue_buff_type, u8 => rogue::RogueBuffType);
+    declare!(rogue_extra_config, u32 => misc::ExtraEffectConfig);
     declare!(rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);
     declare!(rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_declare!(rogue_maze_buff, u32 => misc::MazeBuff);
@@ -203,6 +208,8 @@ pub trait ExcelOutput: data::Text {
     declare!(rogue_magic_miracle, u16 => rogue::RogueMiracle);
     // rogue tourn
     declare!(rogue_bonus, u16 => rogue::tourn::RogueBonus);
+    main_sub_declare!(rogue_tourn_buff, u32 => rogue::tourn::RogueTournBuff<Self>);
+    declare!(rogue_tourn_buff_type, u8 => rogue::tourn::RogueTournBuffType);
     declare!(rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
     declare!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
     declare!(rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
@@ -227,6 +234,10 @@ pub trait ExcelOutput: data::Text {
     fn current_challenge_group_config(&self) -> Option<challenge::ChallengeGroupConfig<Self>>;
     fn current_challenge_story_group_config(&self)
         -> Option<challenge::ChallengeGroupConfig<Self>>;
+
+    // 按名称索引
+    fn rogue_buff_by_name(&self, name: &str) -> Option<rogue::RogueBuff<Self>>;
+    fn rogue_tourn_buff_by_name(&self, name: &str) -> Option<rogue::tourn::RogueTournBuff<Self>>;
 }
 
 impl ExcelOutput for data::GameData {
@@ -307,6 +318,9 @@ impl ExcelOutput for data::GameData {
     implement!(monster_guide_tag, u32 => monster::guide::MonsterGuideTag);
     implement!(monster_text_guide, u16 => monster::guide::MonsterTextGuide);
     // rogue
+    main_sub_implement!(rogue_buff, u32 => rogue::RogueBuff<Self>);
+    implement!(rogue_buff_type, u8 => rogue::RogueBuffType);
+    implement!(rogue_extra_config, u32 => misc::ExtraEffectConfig);
     implement!(rogue_handbook_miracle, u16 => rogue::RogueHandbookMiracle);
     implement!(rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_implement!(rogue_maze_buff, u32 => misc::MazeBuff);
@@ -318,6 +332,8 @@ impl ExcelOutput for data::GameData {
     implement!(rogue_magic_miracle, u16 => rogue::RogueMiracle);
     // rogue tourn
     implement!(rogue_bonus, u16 => rogue::tourn::RogueBonus);
+    main_sub_implement!(rogue_tourn_buff, u32 => rogue::tourn::RogueTournBuff<Self>);
+    implement!(rogue_tourn_buff_type, u8 => rogue::tourn::RogueTournBuffType);
     implement!(rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
     implement!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
     implement!(rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
@@ -393,5 +409,17 @@ impl ExcelOutput for data::GameData {
     ) -> Option<challenge::ChallengeGroupConfig<Self>> {
         self._current_challenge_group_config(Self::_challenge_story_group_config)
             .map(|challenge| challenge::ChallengeGroupConfig::from_model(self, challenge))
+    }
+
+    fn rogue_tourn_buff_by_name(&self, name: &str) -> Option<rogue::tourn::RogueTournBuff<Self>> {
+        self._rogue_tourn_buff_by_name()
+            .get(name)
+            .map(|model| rogue::tourn::RogueTournBuff::from_model(self, model))
+    }
+
+    fn rogue_buff_by_name(&self, name: &str) -> Option<rogue::RogueBuff<Self>> {
+        self._rogue_buff_by_name()
+            .get(name)
+            .map(|model| rogue::RogueBuff::from_model(self, model))
     }
 }

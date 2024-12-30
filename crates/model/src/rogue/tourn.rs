@@ -1,12 +1,13 @@
 use std::{borrow::Cow, collections::HashMap, num::NonZero, path::PathBuf};
 
-use base::{Wiki, ID};
+use base::{MainSubID, Wiki, ID};
 
 use super::Text;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
+/// 进入宇宙的时候获取祝福的名称
 pub struct RogueBonus {
     #[serde(rename = "BonusID")]
     pub bonus_id: u16,
@@ -21,6 +22,99 @@ impl ID for RogueBonus {
     type ID = u16;
     fn id(&self) -> Self::ID {
         self.bonus_id
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct RogueTournBuff {
+    #[serde(rename = "MazeBuffID")]
+    pub maze_buff_id: u32,
+    pub maze_buff_level: u8,
+    pub rogue_buff_type: u8,
+    pub rogue_buff_category: Option<crate::rogue::RogueBuffCategory>,
+    pub rogue_buff_tag: u32,
+    #[serde(rename = "ExtraEffectIDList")]
+    pub extra_effect_id_list: Vec<u32>,
+    pub unlock_display: u16, // 只有 835 一个值
+    #[serde(default)]
+    pub is_in_handbook: bool,
+}
+
+impl MainSubID for RogueTournBuff {
+    type ID = u32;
+    type SubID = u8;
+    fn id(&self) -> Self::ID {
+        self.maze_buff_id
+    }
+    fn sub_id(&self) -> Self::SubID {
+        self.maze_buff_level
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+#[serde(untagged)]
+pub enum BuffDecoName {
+    Path(crate::Path),
+    Test(BuffDecoNameTest),
+}
+
+impl From<BuffDecoName> for crate::Path {
+    fn from(value: BuffDecoName) -> Self {
+        match value {
+            BuffDecoName::Path(path) => path,
+            BuffDecoName::Test(BuffDecoNameTest::Preservation) => crate::Path::Preservation,
+            BuffDecoName::Test(BuffDecoNameTest::Remembrance) => crate::Path::Remembrance,
+            BuffDecoName::Test(BuffDecoNameTest::Elation) => crate::Path::Elation,
+            BuffDecoName::Test(BuffDecoNameTest::TheHunt) => crate::Path::TheHunt,
+            BuffDecoName::Test(BuffDecoNameTest::Destruction) => crate::Path::Destruction,
+            BuffDecoName::Test(BuffDecoNameTest::Nihility) => crate::Path::Nihility,
+            BuffDecoName::Test(BuffDecoNameTest::Abundance) => crate::Path::Abundance,
+            BuffDecoName::Test(BuffDecoNameTest::Propagation) => crate::Path::Propagation,
+            BuffDecoName::Test(BuffDecoNameTest::Erudition) => crate::Path::Erudition,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum BuffDecoNameTest {
+    #[serde(rename = "test_Preservation")]
+    Preservation,
+    #[serde(rename = "test_Remembrance")]
+    Remembrance,
+    #[serde(rename = "test_Elation")]
+    Elation,
+    #[serde(rename = "test_TheHunt")]
+    TheHunt,
+    #[serde(rename = "test_Destruction")]
+    Destruction,
+    #[serde(rename = "test_Nihility")]
+    Nihility,
+    #[serde(rename = "test_Abundance")]
+    Abundance,
+    #[serde(rename = "test_Propagation")]
+    Propagation,
+    #[serde(rename = "test_Erudition")]
+    Erudition,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct RogueTournBuffType {
+    pub rogue_buff_type: u8,
+    pub rogue_buff_type_name: Text,
+    pub rogue_buff_type_deco_name: BuffDecoName,
+    pub rogue_buff_type_icon: String,
+    pub rogue_buff_type_small_icon: String,
+    pub rogue_buff_type_large_icon: String,
+}
+
+impl ID for RogueTournBuffType {
+    type ID = u8;
+    fn id(&self) -> Self::ID {
+        self.rogue_buff_type
     }
 }
 

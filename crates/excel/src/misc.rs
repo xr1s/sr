@@ -31,6 +31,7 @@ pub struct MazeBuff<'a> {
     pub lv: u8,
     pub lv_max: u8,
     pub params: Vec<format::Argument<'a>>,
+    pub icon: &'a str,
     /// 祝福名称
     pub name: &'a str,
     /// 祝福详细文案
@@ -42,12 +43,13 @@ pub struct MazeBuff<'a> {
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MazeBuff<'a> {
     type Model = model::misc::MazeBuff;
-    fn from_model(game: &'a Data, model: &Self::Model) -> Self {
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
         Self {
             id: model.id,
             lv: model.lv,
             lv_max: model.lv_max,
             params: format::Argument::from_array(&model.param_list),
+            icon: &model.buff_icon,
             name: game.text(model.buff_name),
             desc: game.text(model.buff_desc),
             simple_desc: game.text(model.buff_simple_desc),
