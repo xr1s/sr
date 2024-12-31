@@ -1,6 +1,7 @@
 #![feature(iter_intersperse)]
 
 pub mod battle;
+pub mod book;
 pub mod challenge;
 pub mod item;
 pub mod map;
@@ -124,6 +125,11 @@ pub trait ExcelOutput: data::Text {
     declare!(stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup<Self>);
     declare!(stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig<Self>);
     declare!(stage_config, u32 => battle::StageConfig<Self>);
+    // book
+    declare!(book_display_type, u8 => book::BookDisplayType);
+    declare!(book_series_config, u16 => book::BookSeriesConfig);
+    declare!(book_series_world, u8 => book::BookSeriesWorld);
+    declare!(localbook_config, u32 => book::LocalbookConfig);
     // challenge
     declare!(challenge_boss_group_config, u16 => challenge::ChallengeGroupConfig<Self>);
     declare!(challenge_boss_group_extra, u16 => challenge::ChallengeGroupExtra);
@@ -248,6 +254,11 @@ impl ExcelOutput for data::GameData {
     implement!(stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup<Self>);
     implement!(stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig<Self>);
     implement!(stage_config, u32 => battle::StageConfig<Self>);
+    // book
+    implement!(book_display_type, u8 => book::BookDisplayType);
+    implement!(book_series_config, u16 => book::BookSeriesConfig);
+    implement!(book_series_world, u8 => book::BookSeriesWorld);
+    implement!(localbook_config, u32 => book::LocalbookConfig);
     // challenge
     implement!(challenge_boss_group_config, u16 => challenge::ChallengeGroupConfig<Self>);
     implement!(challenge_boss_group_extra, u16 => challenge::ChallengeGroupExtra);

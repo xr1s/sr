@@ -407,8 +407,8 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             }
             "TEXTJOIN" => {
                 let id: u8 = val.unwrap().parse().unwrap();
-                let item = self.data.default_text_join_item(id);
-                self.push_str(item);
+                let item = self.data.default_text_join_item(id, self.media_wiki_syntax);
+                self.push_str(&item);
             }
             _ => {
                 self.push('{');

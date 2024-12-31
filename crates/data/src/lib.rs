@@ -22,6 +22,12 @@ pub struct GameData {
         OnceLock<FnvIndexMap<u32, Arc<model::battle::StageInfiniteMonsterGroup>>>,
     _stage_infinite_wave_config:
         OnceLock<FnvIndexMap<u32, Arc<model::battle::StageInfiniteWaveConfig>>>,
+    // book
+    // 游戏内阅读物
+    _book_display_type: OnceLock<FnvIndexMap<u8, Arc<model::book::BookDisplayType>>>,
+    _book_series_config: OnceLock<FnvIndexMap<u16, Arc<model::book::BookSeriesConfig>>>,
+    _book_series_world: OnceLock<FnvIndexMap<u8, Arc<model::book::BookSeriesWorld>>>,
+    _localbook_config: OnceLock<FnvIndexMap<u32, Arc<model::book::LocalbookConfig>>>,
     // challenge
     // 逐光捡金
     _challenge_boss_group_config:
@@ -291,6 +297,11 @@ pub trait SealedGameData {
     declare!(_stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup);
     declare!(_stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig);
     declare!(_stage_config, u32 => battle::StageConfig);
+    // book
+    declare!(_book_display_type, u8 => book::BookDisplayType);
+    declare!(_book_series_config, u16 => book::BookSeriesConfig);
+    declare!(_book_series_world, u8 => book::BookSeriesWorld);
+    declare!(_localbook_config, u32 => book::LocalbookConfig);
     // challenge
     declare!(_challenge_boss_group_config, u16 => challenge::ChallengeGroupConfig);
     declare!(_challenge_boss_group_extra, u16 => challenge::ChallengeGroupExtra);
@@ -471,6 +482,11 @@ impl SealedGameData for GameData {
     implement!(_stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup);
     implement!(_stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig);
     implement!(_stage_config, u32 => battle::StageConfig);
+    // book
+    implement!(_book_display_type, u8 => book::BookDisplayType);
+    implement!(_book_series_config, u16 => book::BookSeriesConfig);
+    implement!(_book_series_world, u8 => book::BookSeriesWorld);
+    implement!(_localbook_config, u32 => book::LocalbookConfig);
     // challenge
     implement!(_challenge_boss_group_config, u16 => challenge::ChallengeGroupConfig);
     implement!(_challenge_boss_group_extra, u16 => challenge::ChallengeGroupExtra);

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 pub mod battle;
+pub mod book;
 pub mod challenge;
 pub mod item;
 pub mod map;
