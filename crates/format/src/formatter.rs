@@ -288,7 +288,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                 self.underlining = false;
                 self.underline = String::new();
             }
+            "s" => self.push_str("<s>"),
+            "/s" => self.push_str("</s>"),
             "i" | "/i" => self.push_str("''"),
+            "b" | "/b" => self.push_str("'''"),
             "color" => {
                 self.push_str("{{颜色|");
                 let color = val.unwrap();
