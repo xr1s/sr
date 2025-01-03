@@ -57,8 +57,8 @@ pub struct RogueBuff {
     pub battle_event_buff_type: Option<BattleEventBuffType>,
     #[serde(rename = "ActivityModuleID")]
     pub activity_module_id: Option<NonZero<u32>>,
-    pub handbook_unlock_desc: Text,
-    pub aeon_cross_icon: String,
+    pub handbook_unlock_desc: Option<Text>, // 1.2 及之前无此字段
+    pub aeon_cross_icon: Option<String>,    // 1.2 及之前无此字段
 }
 
 impl MainSubID for RogueBuff {
@@ -82,8 +82,8 @@ pub struct RogueBuffType {
     pub rogue_buff_type_icon: String,
     pub rogue_buff_type_title: Text,
     pub rugue_buff_type_reward_quest_list: Vec<u32>,
-    pub rogue_buff_type_sub_title: Text,
-    pub hint_desc: Text,
+    pub rogue_buff_type_sub_title: Option<Text>, // 1.0 及之前无此字段
+    pub hint_desc: Option<Text>,                 // 1.2 及以前无此字段
 }
 
 impl ID for RogueBuffType {

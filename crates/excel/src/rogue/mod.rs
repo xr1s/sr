@@ -50,15 +50,17 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueBuff<'a, Data> {
             extra_effect_list: model
                 .extra_effect_id_list
                 .iter()
-                // 2.0 及之前存在 RogueExtraConfig.json 中，留作 TODO
                 .map(|&id| {
                     None.or_else(|| game.extra_effect_config(id))
                         .or_else(|| game.rogue_extra_config(id))
                 })
                 .map(Option::unwrap)
                 .collect(),
-            handbook_unlock_desc: game.text(model.handbook_unlock_desc),
-            aeon_cross_icon: &model.aeon_cross_icon,
+            handbook_unlock_desc: model
+                .handbook_unlock_desc
+                .map(|text| game.text(text))
+                .unwrap_or_default(),
+            aeon_cross_icon: model.aeon_cross_icon.as_deref().unwrap_or_default(),
         }
     }
 }
@@ -94,10 +96,11 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueBuff<'_, Data> {
             wiki.push_str("\n|稀有度=");
             wiki.push_str(&category.wiki());
         }
+        let path = &self.r#type.title[3..9];
         wiki.push_str("\n|命途=");
-        wiki.push_str(self.r#type.sub_title);
+        wiki.push_str(path);
         wiki.push_str("\n|模式=模拟宇宙");
-        wiki.push_str(match self.r#type.sub_title {
+        wiki.push_str(match path {
             "繁育" => "、寰宇蝗灾、黄金与机械",
             "智识" => "、黄金与机械",
             _ => "、寰宇蝗灾、黄金与机械",
@@ -168,8 +171,14 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueBuffType<'a> {
             id: model.rogue_buff_type,
             text: game.text(model.rogue_buff_type_textmap_id),
             title: game.text(model.rogue_buff_type_title),
-            sub_title: game.text(model.rogue_buff_type_sub_title),
-            hint_desc: game.text(model.hint_desc),
+            sub_title: model
+                .rogue_buff_type_sub_title
+                .map(|text| game.text(text))
+                .unwrap_or_default(),
+            hint_desc: model
+                .hint_desc
+                .map(|text| game.text(text))
+                .unwrap_or_default(),
         }
     }
 }
