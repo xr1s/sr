@@ -23,6 +23,7 @@ pub struct BookSeriesConfig<'a> {
     pub comments: &'a str,
     pub num: u8,
     pub world: BookSeriesWorld<'a>,
+    pub is_show_in_bookshelf: bool,
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for BookSeriesConfig<'a> {
@@ -34,6 +35,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for BookSeriesConfig<'a> {
             comments: game.text(model.book_series_comments),
             num: model.book_series_num,
             world: game.book_series_world(model.book_series_world).unwrap(),
+            is_show_in_bookshelf: model.is_show_in_bookshelf,
         }
     }
 }
