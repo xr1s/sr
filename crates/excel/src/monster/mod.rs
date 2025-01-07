@@ -11,6 +11,98 @@ use model::Element;
 
 use crate::{ExcelOutput, FromModel};
 
+#[derive(Clone)]
+pub struct EliteGroup {
+    pub id: u16,
+    pub attack_ratio: f32,
+    pub defence_ratio: f32,
+    pub hp_ratio: f32,
+    pub speed_ratio: f32,
+    pub stance_ratio: f32,
+}
+
+impl<Data: ExcelOutput> FromModel<'_, Data> for EliteGroup {
+    type Model = model::monster::EliteGroup;
+    fn from_model(_game: &Data, model: &Self::Model) -> Self {
+        Self {
+            id: model.elite_group,
+            attack_ratio: model.attack_ratio.value,
+            defence_ratio: model.defence_ratio.value,
+            hp_ratio: model.hp_ratio.value,
+            speed_ratio: model.speed_ratio.value,
+            stance_ratio: model.stance_ratio.value,
+        }
+    }
+}
+
+impl std::fmt::Debug for EliteGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut formatter = f.debug_struct("EliteGroup");
+        formatter.field("id", &self.id);
+        if self.attack_ratio != 1. {
+            formatter.field("attack_ratio", &self.attack_ratio);
+        }
+        if self.defence_ratio != 1. {
+            formatter.field("defence_ratio", &self.defence_ratio);
+        }
+        if self.hp_ratio != 1. {
+            formatter.field("hp_ratio", &self.hp_ratio);
+        }
+        if self.speed_ratio != 1. {
+            formatter.field("speed_ratio", &self.speed_ratio);
+        }
+        if self.stance_ratio != 1. {
+            formatter.field("stance_ratio", &self.stance_ratio);
+        }
+        formatter.finish()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HardLevelGroup {
+    pub id: u16,
+    pub level: u8,
+    pub attack_ratio: f32,
+    pub defence_ratio: f32,
+    pub hp_ratio: f32,
+    pub speed_ratio: f32,
+    pub stance_ratio: f32,
+    pub combat_power_list: Vec<u16>,
+    pub status_probability: f32,
+    pub status_resistance: f32,
+}
+
+impl<Data: ExcelOutput> FromModel<'_, Data> for HardLevelGroup {
+    type Model = model::monster::HardLevelGroup;
+    fn from_model(_game: &Data, model: &Self::Model) -> Self {
+        Self {
+            id: model.hard_level_group,
+            level: model.level,
+            attack_ratio: model.attack_ratio.value,
+            defence_ratio: model
+                .defence_ratio
+                .map(|value| value.value)
+                .unwrap_or_default(),
+            hp_ratio: model.hp_ratio.value,
+            speed_ratio: model.speed_ratio.value,
+            stance_ratio: model.stance_ratio.value,
+            combat_power_list: model
+                .combat_power_list
+                .iter()
+                .map(|value| value.value)
+                .collect(),
+            status_probability: model
+                .status_probability
+                .map(|value| value.value)
+                .unwrap_or_default(),
+            status_resistance: model
+                .status_resistance
+                .map(|value| value.value)
+                .unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct MonsterCamp<'a> {
     pub id: u8,
@@ -44,6 +136,8 @@ pub struct MonsterConfig<'a, Data: ExcelOutput + ?Sized> {
     pub name: &'a str,
     pub introduction: &'a str,
     pub battle_introduction: &'a str,
+    pub elite_group: EliteGroup,
+    pub hard_level_group: Vec<HardLevelGroup>,
     pub attack_modify_ratio: f32,
     pub defence_modify_ratio: f32,
     pub hp_modify_ratio: f32,
@@ -79,6 +173,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterConfig<'a, Data> {
                 .monster_battle_introduction
                 .map(|hash| game.text(hash))
                 .unwrap_or_default(),
+            elite_group: game.elite_group(model.elite_group).unwrap(),
+            hard_level_group: game.hard_level_group(model.hard_level_group),
             attack_modify_ratio: model.attack_modify_ratio.value,
             defence_modify_ratio: model.defence_modify_ratio.value,
             hp_modify_ratio: model.hp_modify_ratio.value,
@@ -150,7 +246,7 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
             .iter()
             .filter(|skill| skill.phase_list.contains(&phase))
             .collect::<Vec<_>>();
-        skills.sort_by(|lhs, rhs| match (lhs.is_threat, rhs.is_threat) {
+        skills.sort_by(|&lhs, &rhs| match (lhs.is_threat, rhs.is_threat) {
             (true, true) => std::cmp::Ordering::Equal,
             (true, false) => std::cmp::Ordering::Less,
             (false, true) => std::cmp::Ordering::Greater,
@@ -159,10 +255,21 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
         skills
     }
 
+    /// 基础生命值
+    pub fn hp(&self) -> f32 {
+        self.template
+            .as_ref()
+            .map(|template| template.hp_base)
+            .unwrap_or_default()
+            * self.hp_modify_ratio
+    }
+
+    /// 在某一级的生命值
+    pub fn hp_at(&self, level: u8) -> f32 {
+        self.hp() * self.hard_level_group[level as usize - 1].hp_ratio
+    }
+
     /// 基础速度
-    /// 65 级开始，速度 = 基础速度 * 1.10
-    /// 78 级开始，速度 = 基础速度 * 1.20
-    /// 86 级开始，速度 = 基础速度 * 1.32
     pub fn speed(&self) -> f32 {
         self.template
             .as_ref()
@@ -172,9 +279,9 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
             + self.speed_modify_value as f32
     }
 
-    /// 满级速度（指 `speed` 函数的 86 级版本）
-    pub fn max_speed(&self) -> f32 {
-        self.speed() * 1.32
+    /// 在某一级的速度
+    pub fn speed_at(&self, level: u8) -> f32 {
+        self.speed() * self.hard_level_group[level as usize - 1].speed_ratio
     }
 
     /// 韧性
@@ -482,7 +589,7 @@ impl<Data: ExcelOutput> Wiki for MonsterConfig<'_, Data> {
         wiki.push_str(&speed.to_string());
         if speed != 0 {
             wiki.push('~');
-            let max_speed = self.max_speed() as u16;
+            let max_speed = self.speed_at(100) as u16;
             wiki.push_str(&max_speed.to_string());
         }
         wiki.push_str("\n|韧性=");

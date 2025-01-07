@@ -15,7 +15,6 @@ pub struct GameData {
     // battle
     // 战斗配置
     _battle_event_config: OnceLock<FnvIndexMap<u32, Arc<model::battle::BattleEventConfig>>>,
-    _elite_group: OnceLock<FnvIndexMap<u16, Arc<model::battle::EliteGroup>>>,
     _stage_config: OnceLock<FnvIndexMap<u32, Arc<model::battle::StageConfig>>>,
     _stage_infinite_group: OnceLock<FnvIndexMap<u32, Arc<model::battle::StageInfiniteGroup>>>,
     _stage_infinite_monster_group:
@@ -98,6 +97,8 @@ pub struct GameData {
     _mission_chapter_config: OnceLock<FnvIndexMap<u32, Arc<model::mission::MissionChapterConfig>>>,
     _sub_mission: OnceLock<FnvIndexMap<u32, Arc<model::mission::SubMission>>>,
     // monster
+    _elite_group: OnceLock<FnvIndexMap<u16, Arc<model::monster::EliteGroup>>>,
+    _hard_level_group: OnceLock<FnvMultiMap<u16, Arc<model::monster::HardLevelGroup>>>,
     _monster_camp: OnceLock<FnvIndexMap<u8, Arc<model::monster::MonsterCamp>>>,
     _monster_config: OnceLock<FnvIndexMap<u32, Arc<model::monster::MonsterConfig>>>,
     _monster_skill_config: OnceLock<FnvIndexMap<u32, Arc<model::monster::SkillConfig>>>,
@@ -292,7 +293,6 @@ macro_rules! main_sub_declare {
 pub trait SealedGameData {
     // battle
     declare!(_battle_event_config, u32 => battle::BattleEventConfig);
-    declare!(_elite_group, u16 => battle::EliteGroup);
     declare!(_stage_infinite_group, u32 => battle::StageInfiniteGroup);
     declare!(_stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup);
     declare!(_stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig);
@@ -357,6 +357,8 @@ pub trait SealedGameData {
     declare!(_mission_chapter_config, u32 => mission::MissionChapterConfig);
     declare!(_sub_mission, u32 => mission::SubMission);
     // monster
+    declare!(_elite_group, u16 => monster::EliteGroup);
+    main_sub_declare!(_hard_level_group, u16 => monster::HardLevelGroup);
     declare!(_monster_camp, u8 => monster::MonsterCamp);
     declare!(_monster_config, u32 => monster::MonsterConfig);
     declare!(_monster_unique_config, u32 => monster::MonsterConfig);
@@ -477,7 +479,6 @@ macro_rules! main_sub_implement {
 impl SealedGameData for GameData {
     // battle
     implement!(_battle_event_config, u32 => battle::BattleEventConfig);
-    implement!(_elite_group, u16 => battle::EliteGroup);
     implement!(_stage_infinite_group, u32 => battle::StageInfiniteGroup);
     implement!(_stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup);
     implement!(_stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig);
@@ -542,6 +543,8 @@ impl SealedGameData for GameData {
     implement!(_mission_chapter_config, u32 => mission::MissionChapterConfig);
     implement!(_sub_mission, u32 => mission::SubMission);
     // monster
+    implement!(_elite_group, u16 => monster::EliteGroup);
+    main_sub_implement!(_hard_level_group, u16 => monster::HardLevelGroup);
     implement!(_monster_camp, u8 => monster::MonsterCamp);
     implement!(_monster_config, u32 => monster::MonsterConfig);
     implement!(_monster_unique_config, u32 => monster::MonsterConfig);

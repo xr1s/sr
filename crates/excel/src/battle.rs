@@ -38,30 +38,6 @@ impl<Data: ExcelOutput> FromModel<'_, Data> for BattleEventConfig {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct EliteGroup {
-    pub id: u16,
-    pub attack_ratio: f32,
-    pub defence_ratio: f32,
-    pub hp_ratio: f32,
-    pub speed_ratio: f32,
-    pub stance_ratio: f32,
-}
-
-impl<Data: ExcelOutput> FromModel<'_, Data> for EliteGroup {
-    type Model = model::battle::EliteGroup;
-    fn from_model(_game: &Data, model: &Self::Model) -> Self {
-        Self {
-            id: model.elite_group,
-            attack_ratio: model.attack_ratio.value,
-            defence_ratio: model.defence_ratio.value,
-            hp_ratio: model.hp_ratio.value,
-            speed_ratio: model.speed_ratio.value,
-            stance_ratio: model.stance_ratio.value,
-        }
-    }
-}
-
 #[derive(educe::Educe)]
 #[educe(Clone, Debug)]
 pub struct StageConfig<'a, Data: crate::ExcelOutput + ?Sized> {
@@ -70,9 +46,9 @@ pub struct StageConfig<'a, Data: crate::ExcelOutput + ?Sized> {
     pub id: u32,
     pub r#type: StageType,
     pub name: &'a str,
-    pub hard_level_group: u16,
+    pub hard_level_group: crate::monster::HardLevelGroup,
     pub level: u8,
-    pub elite_group: Option<EliteGroup>,
+    pub elite_group: Option<crate::monster::EliteGroup>,
     pub stage_config_data: fnv::FnvHashMap<StageConfigType, &'a str>,
     pub monster_list: Vec<Vec<crate::monster::MonsterConfig<'a, Data>>>,
     pub forbid_auto_battle: bool,
@@ -99,7 +75,11 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for StageConfig<'a, Data> {
             id: model.stage_id,
             r#type: model.stage_type,
             name: game.text(model.stage_name),
-            hard_level_group: model.hard_level_group,
+            hard_level_group: game
+                .hard_level_group(model.hard_level_group)
+                .into_iter()
+                .nth(model.level as _)
+                .unwrap(),
             level: model.level,
             elite_group: model
                 .elite_group
@@ -160,7 +140,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for StageInfiniteGroup<'a, Data>
 pub struct StageInfiniteMonsterGroup<'a, Data: ExcelOutput + ?Sized> {
     pub id: u32,
     pub monster_list: Vec<crate::monster::MonsterConfig<'a, Data>>,
-    pub elite_group: Option<EliteGroup>,
+    pub elite_group: Option<crate::monster::EliteGroup>,
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for StageInfiniteMonsterGroup<'a, Data> {

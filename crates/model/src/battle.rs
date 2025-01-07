@@ -87,26 +87,6 @@ impl ID for BattleEventConfig {
     }
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-#[serde(deny_unknown_fields)]
-pub struct EliteGroup {
-    pub elite_group: u16,
-    pub attack_ratio: Value<f32>,
-    pub defence_ratio: Value<f32>,
-    #[serde(rename = "HPRatio")]
-    pub hp_ratio: Value<f32>,
-    pub speed_ratio: Value<f32>,
-    pub stance_ratio: Value<f32>,
-}
-
-impl ID for EliteGroup {
-    type ID = u16;
-    fn id(&self) -> Self::ID {
-        self.elite_group
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum StageType {
     AetherDivide,

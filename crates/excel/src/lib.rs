@@ -120,7 +120,6 @@ macro_rules! main_sub_implement {
 pub trait ExcelOutput: data::Text {
     // battle
     declare!(battle_event_config, u32 => battle::BattleEventConfig);
-    declare!(elite_group, u16 => battle::EliteGroup);
     declare!(stage_infinite_group, u32 => battle::StageInfiniteGroup<Self>);
     declare!(stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup<Self>);
     declare!(stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig<Self>);
@@ -183,6 +182,8 @@ pub trait ExcelOutput: data::Text {
     declare!(mission_chapter_config, u32 => mission::MissionChapterConfig);
     declare!(sub_mission, u32 => mission::SubMission);
     // monster
+    declare!(elite_group, u16 => monster::EliteGroup);
+    main_sub_declare!(hard_level_group, u16 => monster::HardLevelGroup);
     declare!(monster_camp, u8 => monster::MonsterCamp);
     declare!(monster_config, u32 => monster::MonsterConfig<Self>);
     declare!(monster_unique_config, u32 => monster::MonsterConfig<Self>);
@@ -249,7 +250,6 @@ pub trait ExcelOutput: data::Text {
 impl ExcelOutput for data::GameData {
     // battle
     implement!(battle_event_config, u32 => battle::BattleEventConfig);
-    implement!(elite_group, u16 => battle::EliteGroup);
     implement!(stage_infinite_group, u32 => battle::StageInfiniteGroup<Self>);
     implement!(stage_infinite_monster_group, u32 => battle::StageInfiniteMonsterGroup<Self>);
     implement!(stage_infinite_wave_config, u32 => battle::StageInfiniteWaveConfig<Self>);
@@ -312,6 +312,8 @@ impl ExcelOutput for data::GameData {
     implement!(mission_chapter_config, u32 => mission::MissionChapterConfig);
     implement!(sub_mission, u32 => mission::SubMission);
     // monster
+    implement!(elite_group, u16 => monster::EliteGroup);
+    main_sub_implement!(hard_level_group, u16 => monster::HardLevelGroup);
     implement!(monster_camp, u8 => monster::MonsterCamp);
     implement!(monster_config, u32 => monster::MonsterConfig<Self>);
     implement!(monster_unique_config, u32 => monster::MonsterConfig<Self>);

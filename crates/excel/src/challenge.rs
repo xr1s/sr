@@ -153,6 +153,7 @@ impl<'a, Data: ExcelOutput> ChallengeGroupConfig<'a, Data> {
     ) -> Cow<'static, str> {
         let mut wiki = String::new();
         for floors in floors.values_mut() {
+            floors.sort();
             floors.dedup();
         }
         if !specials.is_empty() {
@@ -336,9 +337,21 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             assert_eq!(maze.event_list_2.len(), 1, "下半场景中只有一个 NPC 敌方");
             for wave in maze.event_list_1[0].infinite_group().unwrap().wave_list {
                 assert_eq!(wave.monster_group_list.len(), 1, "上半每一波只有一个敌人组");
+                for monster in &wave.monster_group_list[0].monster_list {
+                    assert_eq!(
+                        monster.hard_level_group[0].id, maze.event_list_1[0].hard_level_group.id,
+                        "monster 的 hard_level_group 和 stage 的 hard_level_group 是同一个"
+                    );
+                }
             }
             for wave in maze.event_list_2[0].infinite_group().unwrap().wave_list {
                 assert_eq!(wave.monster_group_list.len(), 1, "下半每一波只有一个敌人组");
+                for monster in &wave.monster_group_list[0].monster_list {
+                    assert_eq!(
+                        monster.hard_level_group[0].id, maze.event_list_2[0].hard_level_group.id,
+                        "monster 的 hard_level_group 和 stage 的 hard_level_group 是同一个"
+                    );
+                }
             }
         }
     }
@@ -612,7 +625,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
     ) -> Cow<'static, str> {
         let mut wiki = String::new();
         // 下面的注释用于提示虚构叙事敌方阵容是否换代
-        let mut elite_groups = std::collections::HashMap::<u16, crate::battle::EliteGroup>::new();
+        let mut elite_groups = std::collections::HashMap::<u16, crate::monster::EliteGroup>::new();
         let mut elite_application = multimap::MultiMap::<u16, String>::new();
         for maze in mazes {
             for (half, event) in [
@@ -621,8 +634,8 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             ] {
                 for (wave_no, wave) in event.infinite_group().unwrap().wave_list.iter().enumerate()
                 {
-                    const EMPTY_ELITE_GROUP: crate::battle::EliteGroup =
-                        crate::battle::EliteGroup {
+                    const EMPTY_ELITE_GROUP: crate::monster::EliteGroup =
+                        crate::monster::EliteGroup {
                             id: 0,
                             attack_ratio: 1.,
                             defence_ratio: 1.,
@@ -651,7 +664,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("<!-- 当期敌方属性增幅（降幅）：\n");
             for (id, group) in &elite_groups {
                 let applied = elite_application.get_vec(id).unwrap().join("、");
-                wiki.push_str(&format!("{applied}：{group:#?}\n"));
+                wiki.push_str(&format!("{applied}：{group:?}\n"));
             }
             wiki.push_str("-->");
         }
@@ -703,13 +716,13 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
                 wiki.push_str(extra.sub_maze_buff_list[0].name);
                 wiki.push_str("\n|战意机制效果=");
                 let buff = &extra.sub_maze_buff_list[0];
-                wiki.push_str(&formatter.format(&buff.desc, &buff.params));
+                wiki.push_str(&formatter.format(buff.desc, &buff.params));
                 wiki.push_str("\n|战熄潮平=");
                 let buff = &extra.sub_maze_buff_list[1];
-                wiki.push_str(&formatter.format(&buff.desc, &buff.params));
+                wiki.push_str(&formatter.format(buff.desc, &buff.params));
                 wiki.push_str("\n|战意汹涌=");
                 let buff = &extra.sub_maze_buff_list[2];
-                wiki.push_str(&formatter.format(&buff.desc, &buff.params));
+                wiki.push_str(&formatter.format(buff.desc, &buff.params));
             }
         }
         for (index, buff) in extra.buff_list.iter().enumerate() {
@@ -720,13 +733,13 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("\n|荒腔走板其");
             wiki.push_str(Self::CHNUM[index]);
             wiki.push('=');
-            wiki.push_str(&formatter.format(&buff.desc, &buff.params));
+            wiki.push_str(&formatter.format(buff.desc, &buff.params));
             if extra.story_type == Some(ChallengeStoryType::Fever) {
                 wiki.push_str("\n|荒腔走板其");
                 wiki.push_str(Self::CHNUM[index]);
                 wiki.push_str("战意机制");
                 wiki.push('=');
-                wiki.push_str(&formatter.format(&buff.simple_desc, &buff.params));
+                wiki.push_str(&formatter.format(buff.simple_desc, &buff.params));
             }
         }
         for maze in mazes {
@@ -840,7 +853,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("特性");
             wiki.push_str(&tag_no);
             wiki.push('=');
-            let mut description = formatter.format(&tag.brief_description, &tag.parameter_list);
+            let mut description = formatter.format(tag.brief_description, &tag.parameter_list);
             let mut effect_explain = String::new();
             for effect in &tag.effect {
                 let effect_wiki = format!("{{{{效果说明|{}}}}}", effect.name);
@@ -848,7 +861,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
                 effect_explain.push_str("<br />'''· ");
                 effect_explain.push_str(effect.name);
                 effect_explain.push_str("'''<br />");
-                effect_explain.push_str(&effect.desc);
+                effect_explain.push_str(effect.desc);
             }
             wiki.push_str(&description);
             if !effect_explain.is_empty() {
@@ -871,7 +884,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("\n|终焉公理");
             wiki.push_str(&no);
             wiki.push('=');
-            wiki.push_str(&formatter.format(&buff.desc, &buff.params));
+            wiki.push_str(&formatter.format(buff.desc, &buff.params));
         }
     }
 

@@ -3,9 +3,57 @@ pub mod guide;
 use std::num::NonZero;
 use std::path::PathBuf;
 
-use base::ID;
+use base::{MainSubID, ID};
 
 use crate::{Element, Text, Value};
+
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct EliteGroup {
+    pub elite_group: u16,
+    pub attack_ratio: Value<f32>,
+    pub defence_ratio: Value<f32>,
+    #[serde(rename = "HPRatio")]
+    pub hp_ratio: Value<f32>,
+    pub speed_ratio: Value<f32>,
+    pub stance_ratio: Value<f32>,
+}
+
+impl ID for EliteGroup {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.elite_group
+    }
+}
+
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct HardLevelGroup {
+    pub hard_level_group: u16,
+    pub level: u8,
+    pub attack_ratio: Value<f32>,
+    pub defence_ratio: Option<Value<f32>>,
+    #[serde(rename = "HPRatio")]
+    pub hp_ratio: Value<f32>,
+    pub speed_ratio: Value<f32>,
+    pub stance_ratio: Value<f32>,
+    pub combat_power_list: Vec<Value<u16>>,
+    pub status_probability: Option<Value<f32>>,
+    pub status_resistance: Option<Value<f32>>,
+}
+
+impl MainSubID for HardLevelGroup {
+    type ID = u16;
+    type SubID = u8;
+    fn id(&self) -> Self::ID {
+        self.hard_level_group
+    }
+    fn sub_id(&self) -> Self::SubID {
+        self.level
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum MonsterCampType {
@@ -113,7 +161,7 @@ pub struct MonsterConfig {
     pub monster_name: Text,
     pub monster_introduction: Text,
     pub monster_battle_introduction: Option<Text>, // 1.0 及之前
-    pub hard_level_group: u8,                      // 目前只有 1
+    pub hard_level_group: u16,                     // 目前只有 1
     pub elite_group: u16,
     pub attack_modify_ratio: Value<f32>,
     pub defence_modify_ratio: Value<f32>,
