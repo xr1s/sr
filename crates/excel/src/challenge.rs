@@ -249,9 +249,8 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         if self.id < 1007 {
             // 更早以往的混沌回忆机制不太一样
-            // 比如一层存在两个怪物左右分立
-            // 左右分立对应到数据上是 event_list_*.len() == 2
-            // 左右各自又有两波怪物，对应到数据上是 event_list_*[].monster_list.len() == 2
+            // 比如同一层存在两个敌方 Boss 左右分立（具体见游戏内常驻回忆「永屹之城的遗秘」回忆其六）
+            // 左右分立对应到数据上是 event_list_1.len() == 2
             return Cow::Borrowed("<!-- 过旧数据，不考虑兼容 -->");
         }
         let mut wiki = String::from("{{混沌回忆单期3");
@@ -268,8 +267,8 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         );
         let mazes = self.mazes();
         for maze in mazes {
-            assert_eq!(maze.event_list_1.len(), 1, "只有一个 event");
-            assert_eq!(maze.event_list_2.len(), 1, "只有一个 event");
+            assert_eq!(maze.event_list_1.len(), 1, "上半场景中无分立敌方首领");
+            assert_eq!(maze.event_list_2.len(), 1, "下半场景中无分立敌方首领");
         }
         let mut specials = FnvIndexMap::default();
         let mut floors = HashMap::<_, Vec<u8>>::new();
@@ -305,6 +304,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         }
         wiki.push_str("\n}}");
         wiki.push_str(&self.special_monster_wiki(specials, floors));
+        wiki.push_str("<br />\n<br />\n----");
         Cow::Owned(wiki)
     }
 }
@@ -340,7 +340,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
                 for monster in &wave.monster_group_list[0].monster_list {
                     assert_eq!(
                         monster.hard_level_group[0].id, maze.event_list_1[0].hard_level_group.id,
-                        "monster 的 hard_level_group 和 stage 的 hard_level_group 是同一个"
+                        "monster 的 hard_level_group 和 stage 的 hard_level_group 应当是同一个"
                     );
                 }
             }
@@ -349,7 +349,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
                 for monster in &wave.monster_group_list[0].monster_list {
                     assert_eq!(
                         monster.hard_level_group[0].id, maze.event_list_2[0].hard_level_group.id,
-                        "monster 的 hard_level_group 和 stage 的 hard_level_group 是同一个"
+                        "monster 的 hard_level_group 和 stage 的 hard_level_group 应当是同一个"
                     );
                 }
             }
@@ -678,7 +678,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         self.story_wiki_assertions(mazes);
         self.story_wiki_score_assertions(mazes, self.extra());
         let extra = self.extra();
-        assert_eq!(extra.buff_list.len(), 3, "虚构记忆固定三个增益");
+        assert_eq!(extra.buff_list.len(), 3, "虚构叙事固定三个增益");
         if extra.story_type == Some(ChallengeStoryType::Fever) {
             assert_eq!(
                 extra.sub_maze_buff_list.len(),
@@ -856,7 +856,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             let mut description = formatter.format(tag.brief_description, &tag.parameter_list);
             let mut effect_explain = String::new();
             for effect in &tag.effect {
-                let effect_wiki = format!("{{{{效果说明|{}}}}}", effect.name);
+                let effect_wiki = String::from("{{效果说明|") + effect.name + "}}";
                 description = description.replace(&effect_wiki, &format!("<u>{}</u>", effect.name));
                 effect_explain.push_str("<br />'''· ");
                 effect_explain.push_str(effect.name);
@@ -916,6 +916,34 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
 }
 
 impl<Data: ExcelOutput + format::GameData> Wiki for ChallengeGroupConfig<'_, Data> {
+    /// 备注一下各个深渊计算敌方属性的方法
+    ///
+    /// - 混沌回忆，敌方属性来源于敌方基础数据
+    ///   再乘以当前层上下半精英组别增益，乘以当前层上下半成长曲线数据。
+    ///   需要注意的是不能乘以怪物模板中敌方本身的成长曲线，
+    ///   这个数据会被混沌回忆自带的成长曲线数据覆盖。
+    ///   具体公式是：
+    ///   ``` rust
+    ///   let hp = monster.template.hp_base * monster.hp_modify_ratio \
+    ///       * maze.event_list_1[0].elite_group.hp_ratio \
+    ///       * maze.event_list_1[0].hard_level_group.hp_ratio
+    ///   ```
+    /// - 虚构叙事，敌方属性可以直接取自敌方在当前层等级下的生命
+    ///   再乘以当前波次的 1 + param_list\[1\] 即可。
+    ///   这意味着虚构叙事下敌方模板中本身的成长曲线和各自层里的是一致的。
+    ///   顺便一提 param_list\[0\] 是攻击增益。
+    ///   具体公式是：
+    ///   ```rust
+    ///   let hp = monster.hp_at(maze.event_list_1[0].level) \
+    ///       * (1. + wave.param_list.get(1).unwrap_or_default())
+    ///   ```
+    /// - 末日幻影，敌方属性可以直接取自敌方在当前层等级下的生命
+    ///   再乘以当前层上下半的精英组别增益即可。
+    ///   具体公式是：
+    ///   ```rust
+    ///   let hp = monster.hp_at(maze.event_list_1[0].level) \
+    ///       * maze.event_list_1[0].elite_group.hp_ratio
+    ///   ```
     fn wiki(&self) -> Cow<'static, str> {
         match self.r#type {
             ChallengeGroupType::Memory => self.memory_wiki(),
@@ -965,19 +993,36 @@ pub struct ChallengeMazeConfig<'a, Data: ExcelOutput + ?Sized> {
     pub map_entrance_2: Option<crate::map::MapEntrance<'a>>,
     pub pre_level: u8,
     pub pre_challenge_maze_id: u16,
+    /// 本 Maze 所在层数
+    /// 混沌回忆一期共有 12 层 Maze
+    /// 虚构叙事一期共有 4 层 Maze
+    /// 末日幻影一期共有 4 层 Maze
     pub floor: u8,
     pub reward: crate::misc::RewardData<'a>,
+    /// 上半层敌方主要弱点属性（官方推荐属性）
     pub damage_type_1: &'a [Element],
+    /// 下半层敌方主要弱点属性（官方推荐属性）
     pub damage_type_2: &'a [Element],
     pub target: [ChallengeTargetConfig<'a>; 3],
     pub stage_num: u8,
+    /// 不清楚，大部分是空的，存在非空的情况，但是似乎和当期敌人无关
     pub monster_1: Vec<crate::monster::MonsterConfig<'a, Data>>,
+    /// 不清楚，大部分是空的，存在非空的情况，但是似乎和当期敌人无关
     pub monster_2: Vec<crate::monster::MonsterConfig<'a, Data>>,
     /// 回合数内打倒敌人，仅出现在混沌回忆中
     pub challenge_count_down: u8,
+    /// 上半场地图上站桩的敌人
     pub npc_monster_id_list_1: Vec<crate::monster::NPCMonsterData<'a>>,
+    /// 深渊同层上半信息
+    /// 1.6 版本开始混沌回忆、所有虚构叙事、所有末日幻影中，该字段长度均为 1
+    /// 此前的旧混沌回忆和常驻回忆中存在一些同一层两个首领左右分立的情况，此时长度为 2
     pub event_list_1: Vec<crate::battle::StageConfig<'a, Data>>,
+    /// 下半场地图上站桩的敌人
     pub npc_monster_id_list_2: Vec<crate::monster::NPCMonsterData<'a>>,
+    /// 深渊同层下半信息
+    /// 1.6 版本开始混沌回忆、所有虚构叙事、所有末日幻影中，该字段长度均为 1
+    /// 此前的旧混沌回忆和常驻回忆中存在一些同一层两个首领左右分立的情况，此时长度为 2
+    /// 入门的常驻回忆前几层没有下半，此时长度为 0
     pub event_list_2: Vec<crate::battle::StageConfig<'a, Data>>,
     pub maze_buff: crate::misc::MazeBuff<'a>,
 }
@@ -1126,7 +1171,7 @@ pub struct ChallengeTargetConfig<'a> {
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ChallengeTargetConfig<'a> {
-    type Model = model::challenge::TargetConfig;
+    type Model = model::challenge::ChallengeTargetConfig;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
         Self {
             id: model.id,

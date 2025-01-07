@@ -38,7 +38,8 @@ pub struct GameData {
     _challenge_boss_maze_extra:
         OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeExtra>>>,
     _challenge_boss_reward_line: OnceLock<FnvMultiMap<u16, Arc<model::challenge::RewardLine>>>,
-    _challenge_boss_target_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::TargetConfig>>>,
+    _challenge_boss_target_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeTargetConfig>>>,
     _challenge_group_config:
         OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeGroupConfig>>>,
     _challenge_maze_reward_line: OnceLock<FnvMultiMap<u16, Arc<model::challenge::RewardLine>>>,
@@ -54,8 +55,10 @@ pub struct GameData {
     _challenge_story_maze_extra:
         OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeMazeExtra>>>,
     _challenge_story_reward_line: OnceLock<FnvMultiMap<u16, Arc<model::challenge::RewardLine>>>,
-    _challenge_story_target_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::TargetConfig>>>,
-    _challenge_target_config: OnceLock<FnvIndexMap<u16, Arc<model::challenge::TargetConfig>>>,
+    _challenge_story_target_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeTargetConfig>>>,
+    _challenge_target_config:
+        OnceLock<FnvIndexMap<u16, Arc<model::challenge::ChallengeTargetConfig>>>,
     // item
     /// 道具
     _item_config: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
@@ -308,7 +311,7 @@ pub trait SealedGameData {
     declare!(_challenge_boss_maze_config, u16 => challenge::ChallengeMazeConfig);
     declare!(_challenge_boss_maze_extra, u16 => challenge::ChallengeMazeExtra);
     main_sub_declare!(_challenge_boss_reward_line, u16 => challenge::RewardLine);
-    declare!(_challenge_boss_target_config, u16 => challenge::TargetConfig);
+    declare!(_challenge_boss_target_config, u16 => challenge::ChallengeTargetConfig);
     declare!(_challenge_group_config, u16 => challenge::ChallengeGroupConfig);
     declare!(_challenge_maze_config, u16 => challenge::ChallengeMazeConfig);
     declare!(_challenge_maze_group_extra, u16 => challenge::ChallengeGroupExtra);
@@ -318,8 +321,8 @@ pub trait SealedGameData {
     declare!(_challenge_story_maze_config, u16 => challenge::ChallengeMazeConfig);
     declare!(_challenge_story_maze_extra, u16 => challenge::ChallengeMazeExtra);
     main_sub_declare!(_challenge_story_reward_line, u16 => challenge::RewardLine);
-    declare!(_challenge_story_target_config, u16 => challenge::TargetConfig);
-    declare!(_challenge_target_config, u16 => challenge::TargetConfig);
+    declare!(_challenge_story_target_config, u16 => challenge::ChallengeTargetConfig);
+    declare!(_challenge_target_config, u16 => challenge::ChallengeTargetConfig);
     // item
     declare!(_item_config, u32 => item::ItemConfig);
     declare!(_item_config_avatar_rank, u32 => item::ItemConfig);
@@ -494,7 +497,7 @@ impl SealedGameData for GameData {
     implement!(_challenge_boss_maze_config, u16 => challenge::ChallengeMazeConfig);
     implement!(_challenge_boss_maze_extra, u16 => challenge::ChallengeMazeExtra);
     main_sub_implement!(_challenge_boss_reward_line, u16 => challenge::RewardLine);
-    implement!(_challenge_boss_target_config, u16 => challenge::TargetConfig);
+    implement!(_challenge_boss_target_config, u16 => challenge::ChallengeTargetConfig);
     implement!(_challenge_group_config, u16 => challenge::ChallengeGroupConfig);
     implement!(_challenge_maze_config, u16 => challenge::ChallengeMazeConfig);
     implement!(_challenge_maze_group_extra, u16 => challenge::ChallengeGroupExtra);
@@ -504,8 +507,8 @@ impl SealedGameData for GameData {
     implement!(_challenge_story_maze_config, u16 => challenge::ChallengeMazeConfig);
     implement!(_challenge_story_maze_extra, u16 => challenge::ChallengeMazeExtra);
     main_sub_implement!(_challenge_story_reward_line, u16 => challenge::RewardLine);
-    implement!(_challenge_story_target_config, u16 => challenge::TargetConfig);
-    implement!(_challenge_target_config, u16 => challenge::TargetConfig);
+    implement!(_challenge_story_target_config, u16 => challenge::ChallengeTargetConfig);
+    implement!(_challenge_target_config, u16 => challenge::ChallengeTargetConfig);
     // item
     implement!(_item_config, u32 => item::ItemConfig);
     implement!(_item_config_avatar_rank, u32 => item::ItemConfig);

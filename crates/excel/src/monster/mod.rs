@@ -265,8 +265,10 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
     }
 
     /// 在某一级的生命值
-    pub fn hp_at(&self, level: u8) -> f32 {
-        self.hp() * self.hard_level_group[level as usize - 1].hp_ratio
+    pub fn hp_at(&self, level: u8) -> f64 {
+        self.hp() as f64
+            * self.elite_group.hp_ratio as f64
+            * self.hard_level_group[level as usize - 1].hp_ratio as f64
     }
 
     /// 基础速度

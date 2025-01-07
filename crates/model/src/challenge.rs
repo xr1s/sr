@@ -236,7 +236,7 @@ pub enum ChallengeTargetType {
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
-pub struct TargetConfig {
+pub struct ChallengeTargetConfig {
     #[serde(rename = "ID")]
     pub id: u16,
     pub challenge_target_type: ChallengeTargetType,
@@ -246,7 +246,7 @@ pub struct TargetConfig {
     pub reward_id: Option<NonZero<u32>>,
 }
 
-impl ID for TargetConfig {
+impl ID for ChallengeTargetConfig {
     type ID = u16;
     fn id(&self) -> Self::ID {
         self.id

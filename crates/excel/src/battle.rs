@@ -46,10 +46,19 @@ pub struct StageConfig<'a, Data: crate::ExcelOutput + ?Sized> {
     pub id: u32,
     pub r#type: StageType,
     pub name: &'a str,
+    /// 敌方属性成长曲线，这里根据 level 字段从 1~100 级所有成长曲线里取出了对应的值
     pub hard_level_group: crate::monster::HardLevelGroup,
+    /// 敌方等级
     pub level: u8,
     pub elite_group: Option<crate::monster::EliteGroup>,
+    /// 一些额外信息的键值对
+    /// 比如 BGM，比如虚构叙事对应的 StageInfiniteGroup 信息
     pub stage_config_data: fnv::FnvHashMap<StageConfigType, &'a str>,
+    /// 只有混沌回忆和虚构叙事该字段非空
+    /// 混沌回忆就是敌方阵容，也是未进入秘境时预览用的敌方信息、敌人列表
+    /// 虚构叙事只是未进入秘境时预览用的敌方信息、敌人列表
+    /// 有两波则外层 Vec 长度为 2、有三波则外层 Vec 长度为 3，以此类推
+    /// 内层 Vec 是每一波不同的敌人，即使波次内怪物会重复出现，这里不会有重复
     pub monster_list: Vec<Vec<crate::monster::MonsterConfig<'a, Data>>>,
     pub forbid_auto_battle: bool,
     pub release: bool,
@@ -78,7 +87,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for StageConfig<'a, Data> {
             hard_level_group: game
                 .hard_level_group(model.hard_level_group)
                 .into_iter()
-                .nth(model.level as _)
+                .find(|group| group.level == model.level)
                 .unwrap(),
             level: model.level,
             elite_group: model

@@ -114,6 +114,7 @@ pub enum StageType {
     TelevisionActivity,
     TreasureDungeon,
     Trial,
+    TrialAdventure,
     VerseSimulation,
 }
 
@@ -207,7 +208,7 @@ pub struct StageConfig {
     pub monster_warning_ratio: Option<f32>,
     #[serde(default)]
     pub reset_battle_speed: bool,
-    pub trial_avatar_list: Vec<u32>,
+    pub trial_avatar_list: Option<Vec<u32>>,
 }
 
 impl ID for StageConfig {
