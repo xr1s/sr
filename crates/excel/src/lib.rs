@@ -126,9 +126,9 @@ pub trait ExcelOutput: data::Text {
     declare!(stage_config, u32 => battle::StageConfig<Self>);
     // book
     declare!(book_display_type, u8 => book::BookDisplayType);
-    declare!(book_series_config, u16 => book::BookSeriesConfig);
+    declare!(book_series_config, u16 => book::BookSeriesConfig<Self>);
     declare!(book_series_world, u8 => book::BookSeriesWorld);
-    declare!(localbook_config, u32 => book::LocalbookConfig);
+    declare!(localbook_config, u32 => book::LocalbookConfig<Self>);
     // challenge
     declare!(challenge_boss_group_config, u16 => challenge::ChallengeGroupConfig<Self>);
     declare!(challenge_boss_group_extra, u16 => challenge::ChallengeGroupExtra);
@@ -150,6 +150,7 @@ pub trait ExcelOutput: data::Text {
     // item
     declare!(item_config, u32 => item::ItemConfig);
     declare!(item_config_avatar_rank, u32 => item::ItemConfig);
+    declare!(item_config_book, u32 => item::ItemConfig);
     declare!(item_config_equipment, u32 => item::ItemConfig);
     declare!(item_use_data, u32 => item::ItemUseData);
     // map
@@ -241,6 +242,8 @@ pub trait ExcelOutput: data::Text {
     fn current_challenge_group_config(&self) -> Option<challenge::ChallengeGroupConfig<Self>>;
     fn current_challenge_story_group_config(&self)
         -> Option<challenge::ChallengeGroupConfig<Self>>;
+    #[rustfmt::skip]
+    fn localbook_in_book_series(&self, id: u16) -> impl Iterator<Item = book::LocalbookConfig<Self>>;
 
     // 按名称索引
     fn rogue_buff_by_name(&self, name: &str) -> Option<rogue::RogueBuff<Self>>;
@@ -256,9 +259,9 @@ impl ExcelOutput for data::GameData {
     implement!(stage_config, u32 => battle::StageConfig<Self>);
     // book
     implement!(book_display_type, u8 => book::BookDisplayType);
-    implement!(book_series_config, u16 => book::BookSeriesConfig);
+    implement!(book_series_config, u16 => book::BookSeriesConfig<Self>);
     implement!(book_series_world, u8 => book::BookSeriesWorld);
-    implement!(localbook_config, u32 => book::LocalbookConfig);
+    implement!(localbook_config, u32 => book::LocalbookConfig<Self>);
     // challenge
     implement!(challenge_boss_group_config, u16 => challenge::ChallengeGroupConfig<Self>);
     implement!(challenge_boss_group_extra, u16 => challenge::ChallengeGroupExtra);
@@ -280,6 +283,7 @@ impl ExcelOutput for data::GameData {
     // item
     implement!(item_config, u32 => item::ItemConfig);
     implement!(item_config_avatar_rank, u32 => item::ItemConfig);
+    implement!(item_config_book, u32 => item::ItemConfig);
     implement!(item_config_equipment, u32 => item::ItemConfig);
     implement!(item_use_data, u32 => item::ItemUseData);
     // map
@@ -422,6 +426,18 @@ impl ExcelOutput for data::GameData {
     ) -> Option<challenge::ChallengeGroupConfig<Self>> {
         self._current_challenge_group_config(Self::_challenge_story_group_config)
             .map(|challenge| challenge::ChallengeGroupConfig::from_model(self, challenge))
+    }
+
+    fn localbook_in_book_series(
+        &self,
+        id: u16,
+    ) -> impl Iterator<Item = book::LocalbookConfig<Self>> {
+        self._localbook_in_book_series()
+            .get_vec(&id)
+            .map(|v| v.as_slice())
+            .unwrap_or_default()
+            .iter()
+            .map(|model| book::LocalbookConfig::from_model(self, model))
     }
 
     fn rogue_tourn_buff_by_name(&self, name: &str) -> Option<rogue::tourn::RogueTournBuff<Self>> {

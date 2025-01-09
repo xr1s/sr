@@ -21,10 +21,26 @@ enum State {
     UnityVarVal(String, String),
 }
 
+enum Syntax {
+    Raw,
+    MediaWiki,
+    AnsiSequence,
+}
+
+impl Syntax {
+    fn is_raw(&self) -> bool {
+        std::matches!(self, Self::Raw)
+    }
+    fn is_media_wiki(&self) -> bool {
+        std::matches!(self, Self::MediaWiki)
+    }
+}
+
 pub struct Formatter<'a, Data: crate::data::GameData + ?Sized> {
     data: &'a Data,
 
-    media_wiki_syntax: bool,
+    syntax: Syntax,
+    newline_after_block: bool,
 
     state: State,
     result: String,
@@ -49,7 +65,8 @@ impl<'a, Data: crate::data::GameData> Formatter<'a, Data> {
     pub fn new(data: &'a Data) -> Self {
         Self {
             data,
-            media_wiki_syntax: false,
+            syntax: Syntax::Raw,
+            newline_after_block: false,
             state: State::Literal,
             result: String::new(),
             arg_num: 0,
@@ -65,8 +82,22 @@ impl<'a, Data: crate::data::GameData> Formatter<'a, Data> {
 }
 
 impl<Data: crate::data::GameData> Formatter<'_, Data> {
-    pub fn media_wiki_syntax(mut self, wiki: bool) -> Self {
-        self.media_wiki_syntax = wiki;
+    pub fn media_wiki_syntax(mut self, set: bool) -> Self {
+        if set {
+            self.syntax = Syntax::MediaWiki;
+        }
+        self
+    }
+
+    pub fn ansi_sequence_syntax(mut self, set: bool) -> Self {
+        if set {
+            self.syntax = Syntax::AnsiSequence;
+        }
+        self
+    }
+
+    pub fn newline_after_block(mut self, set: bool) -> Self {
+        self.newline_after_block = set;
         self
     }
 
@@ -99,13 +130,13 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                     '<' => self.state = State::UnityTagKey(String::new()),
                     '{' => self.state = State::UnityVarKey(String::new()),
                     '\\' => self.state = State::UnityEscape,
-                    '\u{00A0}' => self.push_str(if self.media_wiki_syntax {
+                    '\u{00A0}' => self.push_str(if self.syntax.is_media_wiki() {
                         "&nbsp;"
                     } else {
                         " "
                     }),
-                    '|' if self.media_wiki_syntax => self.push_str("&#x7c;"),
-                    '=' if self.media_wiki_syntax => self.push_str("{{=}}"),
+                    '|' if self.syntax.is_media_wiki() => self.push_str("&#x7c;"),
+                    '=' if self.syntax.is_media_wiki() => self.push_str("{{=}}"),
                     _ => self.push(char),
                 };
             }
@@ -157,9 +188,11 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             State::UnityEscape => {
                 self.state = State::Literal;
                 self.push_str(&match char {
-                    'n' => Cow::Borrowed(if !self.media_wiki_syntax {
+                    'n' => Cow::Borrowed(if !self.syntax.is_media_wiki() {
                         "\n"
-                    } else if !self.omit_br_once {
+                    } else if !self.omit_br_once && self.newline_after_block {
+                        "<br />\n"
+                    } else if !self.omit_br_once && !self.newline_after_block {
                         "<br />"
                     } else {
                         ""
@@ -266,7 +299,7 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
         if !std::matches!(self.state, State::UnityTagKey(_) | State::UnityTagVal(_, _)) {
             return;
         }
-        if !self.media_wiki_syntax
+        if self.syntax.is_raw()
             && ["u", "i", "color", "align", "size"].contains(&tag.strip_prefix('/').unwrap_or(&tag))
         {
             // TODO: 对于这种情况，输出 ANSI 转义字符
@@ -275,52 +308,137 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
         }
         match tag.as_str() {
             "u" => self.underlining = true,
-            "/u" => {
-                if self.data.has_extra_effect_config(&self.underline) {
-                    self.result.push_str("{{效果说明|");
-                    self.result.push_str(&self.underline);
-                    self.result.push_str("}}");
-                } else {
-                    self.result.push_str("<u>");
-                    self.result.push_str(&self.underline);
-                    self.result.push_str("</u>");
+            "/u" => match self.syntax {
+                Syntax::Raw => unreachable!(),
+                Syntax::MediaWiki => {
+                    if self.data.has_extra_effect_config(&self.underline) {
+                        self.result.push_str("{{效果说明|");
+                        self.result.push_str(&self.underline);
+                        self.result.push_str("}}");
+                    } else {
+                        self.result.push_str("<u>");
+                        self.result.push_str(&self.underline);
+                        self.result.push_str("</u>");
+                    }
+                    self.underlining = false;
+                    self.underline = String::new();
                 }
-                self.underlining = false;
-                self.underline = String::new();
-            }
-            "s" => self.push_str("<s>"),
-            "/s" => self.push_str("</s>"),
-            "i" | "/i" => self.push_str("''"),
-            "b" | "/b" => self.push_str("'''"),
-            "color" => {
-                self.push_str("{{颜色|");
-                let color = val.unwrap();
-                self.push_str(match &color[1..] {
-                    "e47d00" | "e47d00ff" => "描述",
-                    "88785a" | "88785aff" => "描述1",
-                    "f29e38" | "f29e38ff" => "描述2",
-                    _ => &color[1..],
-                });
-                self.push('|');
-            }
-            "/color" => self.push_str("}}"),
+                Syntax::AnsiSequence => {
+                    self.result.push_str("\x1B[4m");
+                    self.result.push_str(&self.underline);
+                    self.result.push_str("\x1B[24m");
+                    self.underlining = false;
+                    self.underline = String::new();
+                }
+            },
+            "s" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "<s>",
+                Syntax::AnsiSequence => "\x1B[9m",
+            }),
+            "/s" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "</s>",
+                Syntax::AnsiSequence => "\x1B[29m",
+            }),
+            "i" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "''",
+                Syntax::AnsiSequence => "\x1B[3m",
+            }),
+            "/i" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "''",
+                Syntax::AnsiSequence => "\x1B[23m",
+            }),
+            "b" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "'''",
+                Syntax::AnsiSequence => "\x1B[1m",
+            }),
+            "/b" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "'''",
+                Syntax::AnsiSequence => "\x1B[m",
+            }),
+            "color" => match self.syntax {
+                Syntax::Raw => (),
+                Syntax::MediaWiki => {
+                    self.push_str("{{颜色|");
+                    let color = val.unwrap();
+                    self.push_str(match &color[1..] {
+                        "e47d00" | "e47d00ff" => "描述",
+                        "88785a" | "88785aff" => "描述1",
+                        "f29e38" | "f29e38ff" => "描述2",
+                        _ => &color[1..],
+                    });
+                    self.push('|');
+                }
+                Syntax::AnsiSequence => {
+                    use std::str::FromStr;
+                    if let Some(val) = val {
+                        if let Ok(color) = base::serde::Color::from_str(&val) {
+                            self.push_str("\x1B[38;2;");
+                            self.push_str(&color.0.to_string());
+                            self.push(';');
+                            self.push_str(&color.1.to_string());
+                            self.push(';');
+                            self.push_str(&color.2.to_string());
+                            self.push('m');
+                        }
+                    }
+                }
+            },
+            "/color" => self.push_str(match self.syntax {
+                Syntax::Raw => "",
+                Syntax::MediaWiki => "}}",
+                Syntax::AnsiSequence => "\x1B[39m",
+            }),
             "unbreak" | "/unbreak" => (),
             "align" => {
                 // 三种 <align="center"> <align="left"> <align="right">
-                self.push_str("<p style=\"text-align: ");
-                let align = val
-                    .as_deref()
-                    .map(|val| val.strip_prefix('"').unwrap_or(val))
-                    .map(|val| val.strip_suffix('"').unwrap_or(val))
-                    .unwrap();
-                self.push_str(align);
-                self.push_str("\">");
+                match self.syntax {
+                    Syntax::Raw => (),
+                    Syntax::MediaWiki => {
+                        self.push_str("<p style=\"text-align: ");
+                        let align = val
+                            .as_deref()
+                            .map(|val| val.strip_prefix('"').unwrap_or(val))
+                            .map(|val| val.strip_suffix('"').unwrap_or(val))
+                            .unwrap();
+                        self.push_str(align);
+                        self.push_str("\">");
+                    }
+                    Syntax::AnsiSequence => {
+                        let align = val
+                            .as_deref()
+                            .map(|val| val.strip_prefix('"').unwrap_or(val))
+                            .map(|val| val.strip_suffix('"').unwrap_or(val))
+                            .unwrap();
+                        self.push_str(match align {
+                            "left" => "",
+                            "center" => "                   ",
+                            "right" => "                                        ",
+                            _ => unreachable!(),
+                        });
+                    }
+                }
             }
-            "/align" => {
-                self.push_str("</p>");
-                self.omit_br_once = true;
-            }
-            "size" => {
+            "/align" => match self.syntax {
+                Syntax::Raw => (),
+                Syntax::MediaWiki => {
+                    self.push_str("</p>");
+                    if self.newline_after_block {
+                        self.push('\n');
+                    }
+                    self.omit_br_once = true;
+                }
+                Syntax::AnsiSequence => {
+                    self.push('\n');
+                    self.omit_br_once = true;
+                }
+            },
+            "size" if self.syntax.is_media_wiki() => {
                 // 两种形式
                 // 1. <size=32> <size=18px> 直接指定字号
                 // 2. <size=+2> <size=-2>   指定相对字号
@@ -346,10 +464,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                 }
                 self.push_str("em\">");
             }
-            "/size" => self.push_str("</span>"),
+            "/size" if self.syntax.is_media_wiki() => self.push_str("</span>"),
             _ => {
                 // 不认识的标签原样填回去
-                if self.media_wiki_syntax {
+                if self.syntax.is_media_wiki() {
                     self.push_str("&lt;");
                     self.push_str(&tag.replace('\u{00A0}', "&nbsp;"));
                     if let Some(val) = val {
@@ -410,7 +528,11 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             }
             "TEXTJOIN" => {
                 let id: u8 = val.unwrap().parse().unwrap();
-                let item = self.data.default_text_join_item(id, self.media_wiki_syntax);
+                let item = self.data.default_text_join_item(
+                    id,
+                    self.syntax.is_media_wiki(),
+                    self.newline_after_block,
+                );
                 self.push_str(&item);
             }
             _ => {

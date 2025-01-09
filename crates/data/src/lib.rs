@@ -63,6 +63,7 @@ pub struct GameData {
     /// 道具
     _item_config: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
     _item_config_avatar_rank: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
+    _item_config_book: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
     _item_config_equipment: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemConfig>>>,
     /// 道具使用效果
     _item_use_data: OnceLock<FnvIndexMap<u32, Arc<model::item::ItemUseData>>>,
@@ -174,6 +175,8 @@ pub struct GameData {
     /// 其中 GroupID 字段就是 ChallengeGroupConfig 中的 ID 外键
     _challenge_maze_in_group:
         OnceLock<FnvMultiMap<u16, Arc<model::challenge::ChallengeMazeConfig>>>,
+    /// 按照 LocalbookConfig 中 SeriesID 聚合的 LocalbookConfig
+    _localbook_in_book_series: OnceLock<FnvMultiMap<u16, Arc<model::book::LocalbookConfig>>>,
     /// 按照 MonsterConfig 中的 GroupID 字段重新聚合 MonsterConfig
     _monster_template_config_group:
         OnceLock<FnvMultiMap<u32, Arc<model::monster::MonsterTemplateConfig>>>,
@@ -326,6 +329,7 @@ pub trait SealedGameData {
     // item
     declare!(_item_config, u32 => item::ItemConfig);
     declare!(_item_config_avatar_rank, u32 => item::ItemConfig);
+    declare!(_item_config_book, u32 => item::ItemConfig);
     declare!(_item_config_equipment, u32 => item::ItemConfig);
     declare!(_item_use_data, u32 => item::ItemUseData);
     // map
@@ -411,6 +415,7 @@ pub trait SealedGameData {
     fn _monster_template_config_group(&self) -> &FnvMultiMap<u32, Arc<model::monster::MonsterTemplateConfig>>;
     #[rustfmt::skip]
     fn _challenge_maze_in_group(&self) -> &FnvMultiMap<u16, Arc<model::challenge::ChallengeMazeConfig>>;
+    fn _localbook_in_book_series(&self) -> &FnvMultiMap<u16, Arc<model::book::LocalbookConfig>>;
     #[rustfmt::skip]
     fn _message_section_in_contacts(&self) -> &FnvMultiMap<u16, Arc<model::message::MessageSectionConfig>>;
     #[rustfmt::skip]
@@ -512,6 +517,7 @@ impl SealedGameData for GameData {
     // item
     implement!(_item_config, u32 => item::ItemConfig);
     implement!(_item_config_avatar_rank, u32 => item::ItemConfig);
+    implement!(_item_config_book, u32 => item::ItemConfig);
     implement!(_item_config_equipment, u32 => item::ItemConfig);
     implement!(_item_use_data, u32 => item::ItemUseData);
     // map
@@ -641,6 +647,15 @@ impl SealedGameData for GameData {
                 .get(&schedule_id)
                 .map(|sched| sched.begin_time <= now && now <= sched.end_time)
                 .unwrap_or_default()
+        })
+    }
+
+    fn _localbook_in_book_series(&self) -> &FnvMultiMap<u16, Arc<model::book::LocalbookConfig>> {
+        self._localbook_in_book_series.get_or_init(|| {
+            self._localbook_config()
+                .values()
+                .map(|book| (book.book_series_id, Arc::clone(book)))
+                .collect()
         })
     }
 

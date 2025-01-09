@@ -11,10 +11,10 @@ pub use formatter::Formatter;
 mod test {
     struct Data;
     impl crate::data::GameData for Data {
-        fn default_text_join_item(&self, _id: u8) -> &str {
-            ""
+        fn default_text_join_item(&self, _: u8, _: bool, _: bool) -> std::string::String {
+            std::string::String::new()
         }
-        fn has_extra_effect_config(&self, _name: &str) -> bool {
+        fn has_extra_effect_config(&self, _: &str) -> bool {
             false
         }
     }
@@ -68,13 +68,13 @@ mod test {
     fn text_join() {
         struct Data;
         impl crate::data::GameData for Data {
-            fn default_text_join_item(&self, id: u8) -> &str {
-                match id {
+            fn default_text_join_item(&self, id: u8, _: bool, _: bool) -> std::string::String {
+                std::string::String::from(match id {
                     1 => "你好",
                     2 => "谢谢",
                     3 => "再见",
                     _ => "",
-                }
+                })
             }
             fn has_extra_effect_config(&self, name: &str) -> bool {
                 ["谢谢"].contains(&name)
