@@ -85,4 +85,19 @@ mod test {
         assert_eq!(f.format("<u>{TEXTJOIN#2}</u>", &[]), "{{效果说明|谢谢}}");
         assert_eq!(f.format("<u>{TEXTJOIN#3}</u>", &[]), "<u>再见</u>");
     }
+
+    #[test]
+    fn newline_after_block() {
+        let mut f = Formatter::new(&Data)
+            .media_wiki_syntax(true)
+            .newline_after_block(true);
+        assert_eq!(
+            f.format(r#"<size=20><align="right">居中</align></size>"#, &[]),
+            "<span style=\"font-size: 1em\"><p style=\"text-align: right\">居中</p></span>\n",
+        );
+        assert_eq!(
+            f.format(r#"<i><align="center">居中斜体</align></i>"#, &[]),
+            "''<p style=\"text-align: center\">居中斜体</p>''\n"
+        );
+    }
 }

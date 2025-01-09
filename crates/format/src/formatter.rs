@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 #[derive(Debug, Eq, PartialEq)]
 enum State {
     Literal,
@@ -59,6 +57,8 @@ pub struct Formatter<'a, Data: crate::data::GameData + ?Sized> {
     ruby: String,
     // 对于 <align="..."> 这种输出 display: block，需要省略一次 <br>
     omit_br_once: bool,
+    // 在 </p> 或者 <br /> 之后需要写一个 \n，但是避免后续仍是闭合标签的情况
+    need_write_newline: bool,
 }
 
 impl<'a, Data: crate::data::GameData> Formatter<'a, Data> {
@@ -77,6 +77,7 @@ impl<'a, Data: crate::data::GameData> Formatter<'a, Data> {
             m_content: String::new(),
             ruby: String::new(),
             omit_br_once: false,
+            need_write_newline: false,
         }
     }
 }
@@ -124,6 +125,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             State::Literal => {
                 if char != '<' && char != '\\' {
                     self.omit_br_once = false;
+                }
+                if char != '<' && self.need_write_newline {
+                    self.push('\n');
+                    self.need_write_newline = false;
                 }
                 match char {
                     '#' => self.state = State::Hashbang,
@@ -187,18 +192,19 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             }
             State::UnityEscape => {
                 self.state = State::Literal;
-                self.push_str(&match char {
-                    'n' => Cow::Borrowed(if !self.syntax.is_media_wiki() {
-                        "\n"
-                    } else if !self.omit_br_once && self.newline_after_block {
-                        "<br />\n"
-                    } else if !self.omit_br_once && !self.newline_after_block {
-                        "<br />"
-                    } else {
-                        ""
-                    }),
-                    _ => Cow::Owned("\\".to_string() + &char.to_string()),
-                });
+                match char {
+                    'n' => {
+                        if !self.syntax.is_media_wiki() {
+                            self.push('\n');
+                        } else if !self.omit_br_once {
+                            self.push_str("<br />");
+                            if self.newline_after_block {
+                                self.need_write_newline = true;
+                            }
+                        }
+                    }
+                    _ => self.push_str(&("\\".to_string() + &char.to_string())),
+                }
                 self.omit_br_once = false;
             }
             State::UnityTagKey(tag) => {
@@ -213,6 +219,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                         // 因为可能存在 <size=50><align="center">！！！警告！！！</align></size>
                         // 所以闭合标签继续省略一次 br
                         self.omit_br_once = false;
+                    }
+                    if !tag.starts_with('/') && self.need_write_newline {
+                        self.push('\n');
+                        self.need_write_newline = false;
                     }
                     self.unity_tag_to_wiki(tag, None);
                     return;
@@ -302,7 +312,6 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
         if self.syntax.is_raw()
             && ["u", "i", "color", "align", "size"].contains(&tag.strip_prefix('/').unwrap_or(&tag))
         {
-            // TODO: 对于这种情况，输出 ANSI 转义字符
             self.state = State::Literal;
             return;
         }
@@ -429,7 +438,7 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                 Syntax::MediaWiki => {
                     self.push_str("</p>");
                     if self.newline_after_block {
-                        self.push('\n');
+                        self.need_write_newline = true;
                     }
                     self.omit_br_once = true;
                 }
@@ -583,6 +592,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             self.push('#');
             self.push_str(&val);
             // 特地不闭合 }
+        }
+        if self.need_write_newline {
+            self.push('\n');
+            self.need_write_newline = false;
         }
         self.state = State::Literal;
     }

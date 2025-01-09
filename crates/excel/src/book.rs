@@ -93,7 +93,6 @@ impl<Data: ExcelOutput + format::GameData> Wiki for BookSeriesConfig<'_, Data> {
             190014 => "录像带", // 只出现在匹诺康尼
             _ => unreachable!("可能是新版本新增不同类型的图书 {} {}", self.name, icon),
         });
-        wiki.push_str("\n|获取方式=");
         wiki.push_str("\n|实装版本=");
         wiki.push_str("\n|相关角色=");
         wiki.push_str("\n|相关任务=");
@@ -103,11 +102,18 @@ impl<Data: ExcelOutput + format::GameData> Wiki for BookSeriesConfig<'_, Data> {
             wiki.push_str("\n|名称=");
             wiki.push_str(&formatter.format(book.inside_name, &[]));
             wiki.push_str("\n|卷数=");
-            wiki.push_str(&book.inside_id.to_string());
+            wiki.push_str(&format!(
+                "{:01$}",
+                &book.inside_id,
+                if self.num < 10 { 1 } else { 2 },
+            ));
             wiki.push_str("\n|获取方式=");
             wiki.push_str("\n|内容=");
             wiki.push_str(&formatter.format(book.content, &[]));
-            wiki.push_str("\n}}\n\n");
+            if wiki.as_bytes().last() != Some(&b'\n') {
+                wiki.push('\n');
+            }
+            wiki.push_str("}}\n\n");
         }
         Cow::Owned(wiki)
     }
