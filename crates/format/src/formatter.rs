@@ -140,6 +140,11 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                     } else {
                         " "
                     }),
+                    '>' => self.push_str(if self.syntax.is_media_wiki() {
+                        "&gt;"
+                    } else {
+                        ">"
+                    }),
                     '|' if self.syntax.is_media_wiki() => self.push_str("&#x7c;"),
                     '=' if self.syntax.is_media_wiki() => self.push_str("{{=}}"),
                     _ => self.push(char),
@@ -212,6 +217,17 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             }
             State::UnityTagKey(tag) => {
                 let mut tag = std::mem::take(tag);
+                if char == '<' {
+                    // 处理 <<<</align> 的特殊情况
+                    self.omit_br_once = false;
+                    self.state = State::Literal;
+                    if self.syntax.is_media_wiki() {
+                        self.push_str("&lt;");
+                    } else {
+                        self.push('<');
+                    }
+                    return self.feed('<', arguments);
+                }
                 if char == '=' {
                     self.omit_br_once = false;
                     self.state = State::UnityTagVal(tag, String::new());

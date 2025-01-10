@@ -52,6 +52,10 @@ mod test {
             f.format("<Grand\u{00A0}Melodie\u{00A0}黄金的时刻>", &[]),
             "&lt;Grand&nbsp;Melodie&nbsp;黄金的时刻&gt;"
         );
+        assert_eq!(
+            f.format(r#"<align="center">>>>点击链接<<<</align>"#, &[]),
+            "<p style=\"text-align: center\">&gt;&gt;&gt;点击链接&lt;&lt;&lt;</p>"
+        );
     }
 
     #[test]
