@@ -203,7 +203,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
                             }
                         }
                     }
-                    _ => self.push_str(&("\\".to_string() + &char.to_string())),
+                    _ => {
+                        self.push('\\');
+                        self.push(char);
+                    }
                 }
                 self.omit_br_once = false;
             }
@@ -233,6 +236,10 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             State::UnityTagVal(tag, val) => {
                 let (tag, mut val) = (std::mem::take(tag), std::mem::take(val));
                 if char == '>' {
+                    if !tag.starts_with('/') && self.need_write_newline {
+                        self.push('\n');
+                        self.need_write_newline = false;
+                    }
                     self.unity_tag_to_wiki(tag, Some(val));
                     return;
                 }
@@ -597,6 +604,7 @@ impl<Data: crate::data::GameData> Formatter<'_, Data> {
             self.push('\n');
             self.need_write_newline = false;
         }
+        self.omit_br_once = false;
         self.state = State::Literal;
     }
 

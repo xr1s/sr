@@ -92,12 +92,16 @@ mod test {
             .media_wiki_syntax(true)
             .newline_after_block(true);
         assert_eq!(
-            f.format(r#"<size=20><align="right">居中</align></size>"#, &[]),
-            "<span style=\"font-size: 1em\"><p style=\"text-align: right\">居中</p></span>\n",
+            f.format(r#"<size=20><align="right">居右大字</align></size>"#, &[]),
+            "<span style=\"font-size: 1em\"><p style=\"text-align: right\">居右大字</p></span>\n",
         );
         assert_eq!(
             f.format(r#"<i><align="center">居中斜体</align></i>"#, &[]),
             "''<p style=\"text-align: center\">居中斜体</p>''\n"
+        );
+        assert_eq!(
+            f.format(r#"\n<align="right">换行后居右</align>"#, &[]),
+            "<br />\n<p style=\"text-align: right\">换行后居右</p>\n"
         );
     }
 }
