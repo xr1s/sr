@@ -64,7 +64,7 @@ impl<Data: ExcelOutput + format::GameData> Wiki for BookSeriesConfig<'_, Data> {
         wiki.push_str(&self.num.to_string());
         wiki.push_str("\n|编号=");
         wiki.push_str("\n|描述=");
-        wiki.push_str(self.comments);
+        wiki.push_str(&formatter.format(self.comments, &[]));
         wiki.push_str("\n|所属=");
         wiki.push_str(&self.world.id.to_string());
         wiki.push_str("\n|类型=");
