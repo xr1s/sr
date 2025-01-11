@@ -178,6 +178,8 @@ pub trait ExcelOutput: data::Text {
     declare!(schedule_data_challenge_maze, u32 => misc::ScheduleData);
     declare!(schedule_data_challenge_story, u32 => misc::ScheduleData);
     declare!(schedule_data_global, u32 => misc::ScheduleDataGlobal);
+    declare!(text_join_config, u8 => misc::TextJoinConfig);
+    declare!(text_join_item, u16 => misc::TextJoinItem);
     // mission
     declare!(main_mission, u32 => mission::MainMission);
     declare!(mission_chapter_config, u32 => mission::MissionChapterConfig);
@@ -311,6 +313,8 @@ impl ExcelOutput for data::GameData {
     implement!(schedule_data_challenge_maze, u32 => misc::ScheduleData);
     implement!(schedule_data_challenge_story, u32 => misc::ScheduleData);
     implement!(schedule_data_global, u32 => misc::ScheduleDataGlobal);
+    implement!(text_join_config, u8 => misc::TextJoinConfig);
+    implement!(text_join_item, u16 => misc::TextJoinItem);
     // mission
     implement!(main_mission, u32 => mission::MainMission);
     implement!(mission_chapter_config, u32 => mission::MissionChapterConfig);

@@ -1,3 +1,5 @@
+pub use model::misc::TextJoinType;
+
 use crate::{ExcelOutput, FromModel};
 
 #[derive(Clone, Debug)]
@@ -144,6 +146,49 @@ impl<Data: ExcelOutput> FromModel<'_, Data> for ScheduleDataGlobal {
             begin_time: model.schedule.begin_time,
             end_time: model.schedule.end_time,
             global_end_time: model.global_end_time,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TextJoinConfig<'a> {
+    pub id: u8,
+    pub default: TextJoinItem<'a>,
+    pub item_list: Vec<TextJoinItem<'a>>,
+    pub is_override: bool,
+    pub r#type: Option<TextJoinType>,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for TextJoinConfig<'a> {
+    type Model = model::misc::TextJoinConfig;
+    fn from_model(game: &'a Data, model: &Self::Model) -> Self {
+        Self {
+            id: model.text_join_id,
+            default: game.text_join_item(model.default_item).unwrap(),
+            item_list: model
+                .text_join_item_list
+                .iter()
+                .map(|&id| game.text_join_item(id))
+                .map(Option::unwrap)
+                .collect(),
+            is_override: model.is_override,
+            r#type: model.r#type,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TextJoinItem<'a> {
+    pub id: u16,
+    pub text: &'a str,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for TextJoinItem<'a> {
+    type Model = model::misc::TextJoinItem;
+    fn from_model(game: &'a Data, model: &Self::Model) -> Self {
+        Self {
+            id: model.text_join_item_id,
+            text: game.text(model.text_join_text),
         }
     }
 }
