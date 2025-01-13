@@ -52,6 +52,8 @@ pub enum ItemSubType {
     /// 星天演武仪典技能和饮料
     /// 对应 ItemMainType 为 Material
     FightFestSkill,
+    /// 3.0 新增
+    FindChest,
     /// 食品
     /// 对应 ItemMainType 为 Usable
     Food,
@@ -140,6 +142,8 @@ pub enum ItemUseMethod {
     ExternalSystemFoodBenefit,
     /// 只有一个星天演武仪典的纪念道具
     FightFestMemorialPaper,
+    /// 3.0 新增
+    FindChest,
     /// 固定奖励
     /// 当 UseMethod 为此时, 会通过 UseDataID 关联到 ItemUseData.json
     /// 再通过对应 ItemUseData 对象的 UerParam 作为主键关联到 RewardData.json
@@ -154,6 +158,8 @@ pub enum ItemUseMethod {
     /// 再通过对应 ItemUseData 对象的 UerParam 作为主键关联到 RewardData.json
     /// 再通过 RewardData 的 ItemID_* 作为主键关联到角色、光锥或道具
     PlayerSelectedReward,
+    /// 3.0 新增
+    PlayerSelectedRewardPack,
     /// 随机多选一, 机制不明
     RandomRewardGift,
     /// 合成台配方

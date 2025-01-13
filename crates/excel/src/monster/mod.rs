@@ -145,7 +145,7 @@ pub struct MonsterConfig<'a, Data: ExcelOutput + ?Sized> {
     pub speed_modify_ratio: f32,
     /// 目前该值只有 1
     pub stance_modify_ratio: f32,
-    pub speed_modify_value: i16,
+    pub speed_modify_value: f32,
     pub stance_modify_value: i16,
     pub skill_list: Vec<MonsterSkillConfig<'a>>,
     pub custom_values: FnvIndexMap<&'a str, i32>,
@@ -176,7 +176,11 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterConfig<'a, Data> {
             elite_group: game.elite_group(model.elite_group).unwrap(),
             hard_level_group: game.hard_level_group(model.hard_level_group),
             attack_modify_ratio: model.attack_modify_ratio.value,
-            defence_modify_ratio: model.defence_modify_ratio.value,
+            defence_modify_ratio: model
+                .defence_modify_ratio
+                .as_ref()
+                .map(|ratio| ratio.value)
+                .unwrap_or(1.),
             hp_modify_ratio: model.hp_modify_ratio.value,
             speed_modify_ratio: model.speed_modify_ratio.value,
             stance_modify_ratio: model.stance_modify_ratio.value,
@@ -194,7 +198,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterConfig<'a, Data> {
             custom_values: model
                 .custom_values
                 .iter()
-                .map(|o| (o.key.as_str(), o.value))
+                .map(|o| (o.key.as_str(), o.value.map(NonZero::get).unwrap_or(0)))
                 .collect(),
             debuff_resist: model
                 .debuff_resist
@@ -278,7 +282,7 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
             .map(|template| template.speed_base)
             .unwrap_or_default() as f32
             * self.speed_modify_ratio
-            + self.speed_modify_value as f32
+            + self.speed_modify_value
     }
 
     /// 在某一级的速度
@@ -336,7 +340,7 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
         is_attr_change |= self.hp_modify_ratio != 1.;
         is_attr_change |= self.speed_modify_ratio != 1.;
         is_attr_change |= self.stance_modify_ratio != 1.;
-        is_attr_change |= self.speed_modify_value != 0;
+        is_attr_change |= self.speed_modify_value != 0.;
         is_attr_change |= self.stance_modify_value != 0;
         if is_attr_change {
             return true;
@@ -354,7 +358,7 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
         is_attr_change |= self.hp_modify_ratio != 1.;
         is_attr_change |= self.speed_modify_ratio != 1.;
         is_attr_change |= self.stance_modify_ratio != 1.;
-        is_attr_change |= self.speed_modify_value != 0;
+        is_attr_change |= self.speed_modify_value != 0.;
         is_attr_change |= self.stance_modify_value != 0;
         let proto = self.prototype();
         let is_resist_change = self.damage_type_resistance != proto.damage_type_resistance;
@@ -388,7 +392,7 @@ impl<Data: ExcelOutput> MonsterConfig<'_, Data> {
                 let ratio = f32::round(self.hp_modify_ratio * 10000.) / 100.;
                 attr_change.push(format!("生命：{}", ratio));
             }
-            if self.speed_modify_ratio != 1. || self.speed_modify_value != 0 {
+            if self.speed_modify_ratio != 1. || self.speed_modify_value != 0. {
                 let ratio = self.speed() / template.speed_base as f32;
                 let ratio = f32::round(ratio * 10000.) / 100.;
                 attr_change.push(format!("速度：{}", ratio));
@@ -856,6 +860,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterTemplateConfig<'a, Da
             1005010, 1012010, 3024012, 8022020,
             // 1.2 缺漏数据
             2013011,
+            // 3.0 缺漏数据
+            4012050,
         ];
         let camp = model
             .monster_camp_id

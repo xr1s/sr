@@ -122,13 +122,24 @@ pub enum AudioEmotionState {
     Tense,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum SubType {
+    Activity,
+    Game,
+    System,
+    World,
+}
+
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
 pub struct MainMission {
     #[serde(rename = "MainMissionID")]
     pub main_mission_id: u32,
-    pub r#type: MainMissionType, // TODO: 有个 MainMissionType.json
+    pub r#type: MainMissionType,
+    pub sub_type: Option<SubType>, // 3.0 新增字段
+    #[serde(rename = "WorldID")]
+    pub world_id: Option<NonZero<u16>>, // 3.0 新增字段
     pub display_priority: u32,
     #[serde(default)]
     pub is_display_activity_icon: bool,

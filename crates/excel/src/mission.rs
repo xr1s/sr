@@ -24,6 +24,7 @@ impl<Data: ExcelOutput> FromModel<'_, Data> for MissionChapterConfig {
 pub struct MainMission<'a> {
     pub id: u32,
     pub r#type: MainMissionType,
+    pub world: Option<crate::map::WorldDataConfig<'a>>,
     pub display_priority: u32,
     pub name: &'a str,
     pub next_track_main_mission: Option<NonZero<u32>>, // 不能直接存自己，不然会递归
@@ -40,6 +41,11 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MainMission<'a> {
         Self {
             id: model.main_mission_id,
             r#type: model.r#type,
+            world: model
+                .world_id
+                .map(NonZero::get)
+                .map(|id| game.world_data_config(id))
+                .map(Option::unwrap),
             display_priority: model.display_priority,
             name: game.text(model.name),
             next_track_main_mission: model.next_track_main_mission,

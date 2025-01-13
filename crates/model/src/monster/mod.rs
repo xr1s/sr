@@ -147,6 +147,7 @@ pub struct AISkillSequence {
     #[serde(alias = "GKBBPHMLLNG")] // 2.5
     #[serde(alias = "PGKKLADJKGK")] // 2.6
     #[serde(alias = "CAMGCAFNKPK")] // 2.7
+    #[serde(alias = "LDKCGGLDKCK")] // 3.0
     pub id: u32,
 }
 
@@ -164,12 +165,12 @@ pub struct MonsterConfig {
     pub hard_level_group: u16,                     // 目前只有 1
     pub elite_group: u16,
     pub attack_modify_ratio: Value<f32>,
-    pub defence_modify_ratio: Value<f32>,
+    pub defence_modify_ratio: Option<Value<f32>>,
     #[serde(rename = "HPModifyRatio")]
     pub hp_modify_ratio: Value<f32>,
     pub speed_modify_ratio: Value<f32>,  // 目前只有 1
     pub stance_modify_ratio: Value<f32>, // 目前只有 1
-    pub speed_modify_value: Option<Value<i16>>,
+    pub speed_modify_value: Option<Value<f32>>,
     pub stance_modify_value: Option<Value<i16>>,
     pub skill_list: Vec<u32>,
     pub custom_values: Vec<CustomValue>,
@@ -344,6 +345,7 @@ pub struct CustomValue {
     #[serde(alias = "MFKLINKCPPA")] // 2.6
     #[serde(alias = "MFKLINKCPPA")] // 2.6
     #[serde(alias = "BNCHHJCHKON")] // 2.7
+    #[serde(alias = "EGIHHBKIHAK")] // 3.0
     pub key: String,
     #[serde(alias = "LKJLPJMIGNJ")] // 1.0
     #[serde(alias = "BHLILFMLNEE")] // 1.1
@@ -360,7 +362,8 @@ pub struct CustomValue {
     #[serde(alias = "NLABNDMDIKM")] // 2.5
     #[serde(alias = "HPPEILAONGE")] // 2.6
     #[serde(alias = "ODPKJEJKOIH")] // 2.7
-    pub value: i32,
+    #[serde(alias = "CPPHDJHHGGN")] // 3.0
+    pub value: Option<NonZero<i32>>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

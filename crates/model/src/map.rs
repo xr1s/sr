@@ -121,8 +121,11 @@ pub enum MappingInfoType {
     OfferingReward,
     RaidEntrance,
     RewardCollection,
+    RewardCollectionBug,
     RogueEntrance,
     SubMapEntrance,
+    SwitchHand,
+    TitanAtlas,
     WorldShopEntrance,
 }
 
@@ -181,6 +184,8 @@ impl MainSubID for MappingInfo {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum FloorTag {
+    AmphoreusDay,
+    AmphoreusNight,
     DeepDream,
     Dream,
     PenaconyReality,
@@ -208,6 +213,8 @@ pub enum BGM {
     XianzhouAlliance,
     #[serde(alias = "State_Penacony", alias = "StateGroup_Penocony")]
     Penacony,
+    #[serde(alias = "State_Amphoreus")]
+    Amphoreus,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
@@ -417,6 +424,10 @@ impl ID for MazeProp {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum MapSpaceType {
+    AmphoreusDay,
+    AmphoreusNight,
+    AmphoreusSpecial,
+    /// 匹诺康尼梦境
     Dream,
     Reality,
     Unknow,

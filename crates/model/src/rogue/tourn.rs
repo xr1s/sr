@@ -177,6 +177,7 @@ pub struct DescParam {
     #[serde(alias = "FGMDOEKGPEE")] // 2.5
     #[serde(alias = "EOMLKKGEAEF")] // 2.6
     #[serde(alias = "MPNJPFDCBDG")] // 2.7
+    #[serde(alias = "PGCFPBGPDGG")] // 3.0
     pub r#type: DescParamType,
     #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(alias = "EPBOOFFCKPJ")] // 2.3
@@ -184,6 +185,7 @@ pub struct DescParam {
     #[serde(alias = "NLABNDMDIKM")] // 2.5
     #[serde(alias = "HPPEILAONGE")] // 2.6
     #[serde(alias = "ODPKJEJKOIH")] // 2.7
+    #[serde(alias = "CPPHDJHHGGN")] // 3.0
     pub value: u32,
 }
 
