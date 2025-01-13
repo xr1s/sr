@@ -10,6 +10,7 @@ pub mod misc;
 pub mod mission;
 pub mod monster;
 pub mod rogue;
+pub mod story;
 pub mod talk;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]

@@ -29,7 +29,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueBonus<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub struct RogueTournBuff<'a, Data: ExcelOutput + ?Sized> {
+pub struct RogueTournBuff<'a, Data: ?Sized> {
     game: &'a Data,
     pub id: u32,
     pub level: u8,
@@ -166,20 +166,20 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournContentDisplay<'a>
 #[derive(educe::Educe)]
 #[educe(Clone, Debug)]
 /// 周期演算
-pub struct RogueTournWeeklyChallenge<'a, Data: ExcelOutput + ?Sized> {
+pub struct RogueTournWeeklyChallenge<'a, Data: ?Sized> {
     #[educe(Debug(ignore))]
     game: &'a Data,
     pub id: u8,
     /// 标题
     pub name: &'a str,
     /// 文字介绍，一般是初始获得方程和初始获得奇物的介绍
-    pub content: Vec<RogueTournWeeklyDisplay<'a>>,
+    pub content: Vec<RogueTournWeeklyDisplay<'a, Data>>,
     /// 点进介绍后的详情，一般是多一句进入第一位面时获得本周预设构筑
-    pub content_detail: Vec<RogueTournWeeklyDisplay<'a>>,
+    pub content_detail: Vec<RogueTournWeeklyDisplay<'a, Data>>,
     /// 左下角展示的奖励，目前为止全部都是固定的 3 遗失晶块 + 30 遗器残骸
     pub reward: crate::misc::RewardData<'a>,
     /// 从 .content 成员中提取出来的本周所有预设构筑方程
-    pub formula: Vec<RogueTournFormula<'a>>,
+    pub formula: Vec<RogueTournFormula<'a, Data>>,
     /// 从 .content 成员中提取出来的本周所有预设构筑奇物
     pub miracle: Vec<RogueTournMiracle<'a>>,
     /// 第一位面首领
@@ -385,14 +385,14 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournWeeklyChallenge<'_
 }
 
 #[derive(Clone, Debug)]
-pub struct RogueTournWeeklyDisplay<'a> {
+pub struct RogueTournWeeklyDisplay<'a, Data: ?Sized> {
     pub id: u16,
     pub content: &'a str,
-    pub formula: Vec<RogueTournFormula<'a>>,
+    pub formula: Vec<RogueTournFormula<'a, Data>>,
     pub miracle: Vec<RogueTournMiracle<'a>>,
 }
 
-impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a> {
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a, Data> {
     type Model = model::rogue::tourn::RogueTournWeeklyDisplay;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
         use model::rogue::tourn::DescParamType::{Formula, Miracle};
@@ -488,7 +488,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournHandbookMiracle<'a
 
 #[derive(Clone, Debug)]
 /// 差分宇宙方程
-pub struct RogueTournFormula<'a> {
+pub struct RogueTournFormula<'a, Data: ?Sized> {
+    game: &'a Data,
     pub id: u32,
     /// 主要命途
     pub main_buff_type: RogueTournBuffType<'a>,
@@ -507,15 +508,16 @@ pub struct RogueTournFormula<'a> {
     /// 是否在图鉴中（临界方程均为 false）
     pub is_in_handbook: bool,
     /// 临界方程和三星方程首次展开的推演故事
-    pub story: &'a std::path::Path,
+    pub story: Option<crate::story::Story<'a>>,
     /// 图鉴中未解锁时的提示文案，目前只有一种
     pub unlock_display: Option<RogueTournContentDisplay<'a>>,
 }
 
-impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournFormula<'a> {
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournFormula<'a, Data> {
     type Model = model::rogue::tourn::RogueTournFormula;
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
         Self {
+            game,
             id: model.formula_id,
             main_buff_type: game.rogue_tourn_buff_type(model.main_buff_type_id).unwrap(),
             main_buff_num: model.main_buff_num,
@@ -535,7 +537,11 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournFormula<'a> {
                 .rogue_tourn_formula_display(model.formula_display_id)
                 .unwrap(),
             is_in_handbook: model.is_in_handbook,
-            story: &model.formula_story_json,
+            story: if !model.formula_story_json.as_os_str().is_empty() {
+                Some(game.story(&model.formula_story_json).unwrap())
+            } else {
+                None
+            },
             unlock_display: model
                 .unlock_display_id
                 .map(NonZero::get)
@@ -545,18 +551,96 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournFormula<'a> {
     }
 }
 
-impl Name for RogueTournFormula<'_> {
+impl<Data: ExcelOutput> Name for RogueTournFormula<'_, Data> {
     fn name(&self) -> &str {
         self.maze_buff.name
     }
     fn wiki_name(&self) -> Cow<'_, str> {
-        if self.category == FormulaCategory::PathEcho
-            || ["赏金猎人", "筑城者", "混沌医师"].contains(&self.name())
-        {
+        const CAMP_NAMES: &[&str] = &[
+            "赏金猎人",
+            "筑城者",
+            "混沌医师",
+            "假面愚者",
+            "反物质军团",
+            "孳孽王虫",
+            "巡海游侠",
+            "星空生态学派",
+            "求药使",
+            "流光忆庭",
+            "混沌医师",
+            "筑城者",
+            "自灭者",
+            "赏金猎人",
+        ];
+        if self.category == FormulaCategory::PathEcho || CAMP_NAMES.contains(&self.name()) {
             Cow::Owned(self.name().to_string() + "（方程）")
         } else {
             Cow::Borrowed(self.name())
         }
+    }
+}
+
+impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournFormula<'_, Data> {
+    fn wiki(&self) -> Cow<'static, str> {
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
+        let mut wiki = String::new();
+        wiki.push_str("{{差分宇宙方程");
+        wiki.push_str("\n|名称=");
+        wiki.push_str(&self.wiki_name());
+        wiki.push_str("\n|稀有度=");
+        wiki.push_str(match self.category {
+            FormulaCategory::Epic => "2星",
+            FormulaCategory::Legendary => "3星",
+            FormulaCategory::PathEcho => "4星",
+            FormulaCategory::Rare => "1星",
+        });
+        wiki.push_str("\n|命途1=");
+        wiki.push_str(self.main_buff_type.name);
+        wiki.push_str("\n|命途1需求=");
+        wiki.push_str(&self.main_buff_num.to_string());
+        if let Some(buff) = &self.sub_buff_type {
+            wiki.push_str("\n|命途2=");
+            wiki.push_str(buff.name);
+            wiki.push_str(&self.sub_buff_num.to_string());
+        }
+        wiki.push_str("\n|实装版本=");
+        wiki.push_str("\n|效果=");
+        wiki.push_str(&formatter.format(self.maze_buff.desc, &self.maze_buff.params));
+        wiki.push_str("\n演绎=");
+        wiki.push_str(&formatter.format(self.display.story, &[]));
+        if let Some(story) = &self.story {
+            use crate::story::Task;
+            assert!(story.on_init_sequence.is_empty());
+            wiki.push_str("\n推演=\n");
+            // wiki.push_str(&format!("{:#?}", story));
+            for seq in &story.on_start_sequence {
+                for task in &seq.task_list {
+                    if let Task::PlayAndWaitRogueSimpleTalk { simple_talk_list } = task {
+                        for talk in simple_talk_list {
+                            wiki.push_str("  {{事件|");
+                            wiki.push_str(talk.sentence.name);
+                            wiki.push('|');
+                            wiki.push_str(talk.sentence.text);
+                            wiki.push_str("}}\n");
+                        }
+                    }
+                    if let Task::PlayRogueOptionTalk { option_list } = task {
+                        // 按说选项之后应该要有分支，但是差分宇宙方程里就是没有分支，因此先不管它了
+                        wiki.push_str("  {{剧情选项");
+                        for (index, option) in option_list.iter().enumerate() {
+                            let index = index + 1;
+                            wiki.push_str("|选项");
+                            wiki.push_str(&index.to_string());
+                            wiki.push('=');
+                            wiki.push_str(option.sentence.as_ref().unwrap().text);
+                        }
+                        wiki.push_str("}}\n");
+                    }
+                }
+            }
+        }
+        wiki.push_str("\n}}");
+        Cow::Owned(wiki)
     }
 }
 

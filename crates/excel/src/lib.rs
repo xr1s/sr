@@ -10,6 +10,7 @@ pub mod misc;
 pub mod mission;
 pub mod monster;
 pub mod rogue;
+pub mod story;
 pub mod talk;
 
 pub mod prelude {
@@ -221,13 +222,13 @@ pub trait ExcelOutput: data::Text {
     main_sub_declare!(rogue_tourn_buff, u32 => rogue::tourn::RogueTournBuff<Self>);
     declare!(rogue_tourn_buff_type, u8 => rogue::tourn::RogueTournBuffType);
     declare!(rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
-    declare!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
+    declare!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula<Self>);
     declare!(rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
     declare!(rogue_tourn_handbook_miracle, u16 => rogue::tourn::RogueTournHandbookMiracle);
     declare!(rogue_tourn_miracle, u16 => rogue::tourn::RogueTournMiracle);
     declare!(rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
     declare!(rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge<Self>);
-    declare!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay);
+    declare!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay<Self>);
     // talk
     declare!(talk_sentence_config, u32 => talk::TalkSentenceConfig);
     declare!(voice_config, u32 => talk::VoiceConfig);
@@ -250,6 +251,7 @@ pub trait ExcelOutput: data::Text {
     // 按名称索引
     fn rogue_buff_by_name(&self, name: &str) -> Option<rogue::RogueBuff<Self>>;
     fn rogue_tourn_buff_by_name(&self, name: &str) -> Option<rogue::tourn::RogueTournBuff<Self>>;
+    fn story(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<story::Story>;
 }
 
 impl ExcelOutput for data::GameData {
@@ -356,13 +358,13 @@ impl ExcelOutput for data::GameData {
     main_sub_implement!(rogue_tourn_buff, u32 => rogue::tourn::RogueTournBuff<Self>);
     implement!(rogue_tourn_buff_type, u8 => rogue::tourn::RogueTournBuffType);
     implement!(rogue_tourn_content_display, u16 => rogue::tourn::RogueTournContentDisplay);
-    implement!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula);
+    implement!(rogue_tourn_formula, u32 => rogue::tourn::RogueTournFormula<Self>);
     implement!(rogue_tourn_formula_display, u32 => rogue::tourn::RogueTournFormulaDisplay);
     implement!(rogue_tourn_handbook_miracle, u16 => rogue::tourn::RogueTournHandbookMiracle);
     implement!(rogue_tourn_miracle, u16 => rogue::tourn::RogueTournMiracle);
     implement!(rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
     implement!(rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge<Self>);
-    implement!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay);
+    implement!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay<Self>);
     // talk
     implement!(talk_sentence_config, u32 => talk::TalkSentenceConfig);
     implement!(voice_config, u32 => talk::VoiceConfig);
@@ -454,5 +456,9 @@ impl ExcelOutput for data::GameData {
         self._rogue_buff_by_name()
             .get(name)
             .map(|model| rogue::RogueBuff::from_model(self, model))
+    }
+
+    fn story(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<story::Story> {
+        Ok(story::Story::from_model(self, self._load_story(path)?))
     }
 }

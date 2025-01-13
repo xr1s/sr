@@ -434,6 +434,9 @@ pub trait SealedGameData {
     fn _rogue_buff_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::rogue::RogueBuff>>;
     #[rustfmt::skip]
     fn _rogue_tourn_buff_by_name(&self) -> &FnvHashMap<Arc<str>, Arc<model::rogue::tourn::RogueTournBuff>>;
+
+    #[rustfmt::skip]
+    fn _load_story(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<model::story::Story>;
 }
 
 macro_rules! implement {
@@ -751,5 +754,14 @@ impl SealedGameData for GameData {
                 })
                 .collect()
         })
+    }
+
+    fn _load_story(
+        &self,
+        path: impl AsRef<std::path::Path>,
+    ) -> std::io::Result<model::story::Story> {
+        let path = std::path::PathBuf::from(&self.base).join(path.as_ref());
+        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        Ok(serde_json::from_reader(reader).unwrap())
     }
 }
