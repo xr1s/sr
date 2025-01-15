@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, num::NonZero};
 
 pub mod battle;
 pub mod book;
@@ -88,7 +88,7 @@ impl base::Wiki for Path {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Text {
-    pub hash: i32,
+    pub hash: NonZero<i32>,
 }
 
 #[derive(

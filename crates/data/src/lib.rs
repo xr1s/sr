@@ -211,7 +211,7 @@ pub trait Text {
 impl Text for GameData {
     fn text(&self, text: model::Text) -> &str {
         self.text_map
-            .get(&text.hash)
+            .get(&text.hash.get())
             .map(Arc::as_ref)
             .unwrap_or_default()
     }
@@ -715,7 +715,7 @@ impl SealedGameData for GameData {
                 .chain(self._rogue_extra_config().values())
                 .filter_map(|effect| {
                     self.text_map
-                        .get(&effect.extra_effect_name.hash)
+                        .get(&effect.extra_effect_name.hash.get())
                         .map(|name| (Arc::clone(name), Arc::clone(effect)))
                 })
                 .collect()
@@ -731,7 +731,7 @@ impl SealedGameData for GameData {
                     self._rogue_maze_buff()
                         .get(&buff.maze_buff_id)
                         .map(|maze_buff| maze_buff.buff_name.hash)
-                        .and_then(|hash| self.text_map.get(&hash))
+                        .and_then(|hash| self.text_map.get(&hash.get()))
                         .map(|name| (Arc::clone(name), Arc::clone(buff)))
                 })
                 .collect()
@@ -749,7 +749,7 @@ impl SealedGameData for GameData {
                     self._rogue_maze_buff()
                         .get(&buff.maze_buff_id)
                         .map(|maze_buff| maze_buff.buff_name.hash)
-                        .and_then(|hash| self.text_map.get(&hash))
+                        .and_then(|hash| self.text_map.get(&hash.get()))
                         .map(|name| (Arc::clone(name), Arc::clone(buff)))
                 })
                 .collect()
