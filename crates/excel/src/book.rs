@@ -91,14 +91,15 @@ impl<Data: ExcelOutput + format::GameData> Wiki for BookSeriesConfig<'_, Data> {
             190012 => "如意",  // 只出现在罗浮
             190013 => "便条",  // 只出现在匹诺康尼
             190014 => "录像带", // 只出现在匹诺康尼
+            190017..=190020 => "3.0翁法罗斯待定",
             _ => unreachable!("可能是新版本新增不同类型的图书 {} {}", self.name, icon),
         });
         wiki.push_str("\n|实装版本=");
         wiki.push_str("\n|相关角色=");
         wiki.push_str("\n|相关任务=");
-        wiki.push_str("\n}}\n\n");
+        wiki.push_str("\n}}");
         for book in books {
-            wiki.push_str("{{书籍/分卷");
+            wiki.push_str("\n\n{{书籍/分卷");
             wiki.push_str("\n|名称=");
             wiki.push_str(&formatter.format(book.inside_name, &[]));
             wiki.push_str("\n|卷数=");
@@ -113,7 +114,7 @@ impl<Data: ExcelOutput + format::GameData> Wiki for BookSeriesConfig<'_, Data> {
             if wiki.as_bytes().last() != Some(&b'\n') {
                 wiki.push('\n');
             }
-            wiki.push_str("}}\n\n");
+            wiki.push_str("}}");
         }
         Cow::Owned(wiki)
     }

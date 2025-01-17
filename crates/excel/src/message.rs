@@ -250,6 +250,7 @@ pub struct MessageContactsConfig<'a, Data: ExcelOutput + ?Sized> {
 impl<Data: ExcelOutput + format::GameData> Wiki for MessageContactsConfig<'_, Data> {
     fn wiki(&self) -> std::borrow::Cow<'static, str> {
         let mut wiki = String::new();
+        let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         wiki.push_str("{{#subobject:");
         wiki.push_str(self.name);
         wiki.push_str("-短信内容");
@@ -264,27 +265,24 @@ impl<Data: ExcelOutput + format::GameData> Wiki for MessageContactsConfig<'_, Da
         wiki.push_str(contacts_type);
         wiki.push_str("\n}}");
         for section in self.game.message_section_in_contacts(self.id) {
-            if section.contacts().id != self.id {
-                continue;
-            }
-            wiki.push_str("\n\n{{#subobject:");
-            wiki.push_str(self.name);
-            wiki.push('-');
-            wiki.push_str("<!-- 填入标题，ID=");
-            wiki.push_str(&section.id.to_string());
-            wiki.push_str(" -->");
-            wiki.push_str("\n|@category=短信内容");
+            wiki.push_str("\n\n");
+            wiki.push_str("{{短信内容");
             wiki.push_str("\n|人物=");
             wiki.push_str(self.name);
             wiki.push_str("\n|短信标题=<!-- 填入相关事件或任务 -->");
             wiki.push_str("\n|版本=<!-- 填入版本 -->");
+            if let Some(mission) = &section.main_mission_link {
+                wiki.push_str("\n|接取任务=");
+                wiki.push_str(mission.name);
+            } else {
+                wiki.push_str("\n|任务链接=<!-- 填入任务名 -->");
+                wiki.push_str("\n|活动链接=<!-- 填入活动名 -->");
+            }
             wiki.push_str("\n|内容=");
             let mut indent = String::from("\n  ");
-            wiki.push_str(&indent);
-            section.wiki_message_template(&mut wiki, &mut indent);
+            section.wiki_message_content(&mut wiki, &mut formatter, &mut indent);
             wiki.push_str("\n}}");
         }
-
         Cow::Owned(wiki)
     }
 }
@@ -496,6 +494,10 @@ impl<Data: ExcelOutput> MessageSectionConfig<'_, Data> {
 }
 
 impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
+    /// 处理单条非选项（分支）消息
+    /// 参数 message 是消息本身
+    ///
+    /// 主要逻辑复杂在于判断消息类型（文字、图片、表情包）、发送者接收者真实账号
     fn wiki_message_single_item_content(
         &self,
         wiki: &mut String,
@@ -586,6 +588,16 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
         };
     }
 
+    /// 处理需要玩家选择的选项（分支）消息
+    /// 本函数会直接写入这条选项分支开的后续剧情
+    /// 直到所有分支重新汇合为止
+    ///
+    /// 参数 start 是分支开始的选项消息
+    ///
+    /// 返回的 Option 是分支消息后重新汇合的那条消息
+    /// 对于外面的调用方来说，直接从返回值开始继续往后处理即可
+    ///
+    /// 如果分支消息是一次聊天的最后一系列消息，那么返回 None
     fn wiki_message_single_selection_content(
         &self,
         wiki: &mut String,
@@ -595,7 +607,7 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
     ) -> Option<MessageItemConfig<Data>> {
         wiki.push_str(prefix);
         wiki.push_str("{{短信选项");
-        // 存在选项为表情的情况，需要在聊天记录中再手动发一条表情
+        // 存在分支选项为表情的情况，需要在聊天记录中再手动发一条表情
         let is_sticker_selection = selections
             .iter()
             .all(|message| message.r#type == MessageItemType::Sticker);
@@ -637,6 +649,7 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
 
     const INDENT: &'static str = "  ";
     const INDENT_LENGTH: usize = Self::INDENT.len();
+
     fn wiki_next_message(
         &self,
         wiki: &mut String,
@@ -650,7 +663,7 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
         }
         self.wiki_message_single_item_content(wiki, prefix, formatter, message);
         if message.next_item_id_list.len() == 1 {
-            // 快速判断，不需要求聚合点，直接往后走即可
+            // 后续只有 1 项的时候可以快速判断，此时不需要求聚合点，直接往后走即可
             // 快速判断不是完全准确，具体就是唯一的 next 是选项的情况，在下面处理了
             // 准确的判断需要先获取所有后继节点
             let next = self
@@ -663,7 +676,7 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
                 // 那就不需要求聚合点
                 //
                 // 但是考虑到这个节点恰好是其它分支的聚合点（存在的，见花火短信 2012400）
-                // 因此需要额外加上判断 next 是不是聚合点
+                // 因此 if 里需要额外加上判断 next 是不是聚合点
                 wiki.push_str(prefix);
                 wiki.push_str("{{短信选项|选项1=");
                 wiki.push_str(&formatter.format(next.option_text, &[]));
@@ -687,10 +700,31 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
         }
     }
 
-    fn wiki_message_template(&self, wiki: &mut String, prefix: &mut String) {
+    fn wiki_message_content(
+        &self,
+        wiki: &mut String,
+        formatter: &mut format::Formatter<Data>,
+        prefix: &mut String,
+    ) {
+        if self.start_message_item_list.len() == 1 {
+            self.wiki_next_message(wiki, prefix, formatter, &self.start_message_item_list[0], 0);
+            return;
+        }
+        let start = &self.start_message_item_list;
+        if let Some(next) =
+            self.wiki_message_single_selection_content(wiki, prefix, formatter, start)
+        {
+            self.wiki_next_message(wiki, prefix, formatter, &next, 0);
+        }
+    }
+}
+
+impl<Data: ExcelOutput + format::GameData> Wiki for MessageSectionConfig<'_, Data> {
+    fn wiki(&self) -> std::borrow::Cow<'static, str> {
+        let mut wiki = String::from("{{角色对话|模板开始|");
+        let mut indent = String::from("\n");
         let mut formatter = format::Formatter::new(self.game).media_wiki_syntax(true);
         let contacts = self.contacts();
-        wiki.push_str("{{角色对话|模板开始|");
         wiki.push_str(&formatter.format(contacts.name, &[]));
         // 非自机角色的短信签名需要作为参数传入（自机角色由模板自动查询了）
         let contacts_type = contacts
@@ -703,46 +737,20 @@ impl<Data: ExcelOutput + format::GameData> MessageSectionConfig<'_, Data> {
             wiki.push_str(contacts.signature_text);
         }
         wiki.push_str("}}");
-        prefix.push_str(Self::INDENT);
-        if self.start_message_item_list.len() == 1 {
-            self.wiki_next_message(
-                wiki,
-                prefix,
-                &mut formatter,
-                &self.start_message_item_list[0],
-                0,
-            );
-        }
-        if self.start_message_item_list.len() > 1 {
-            if let Some(next) = self.wiki_message_single_selection_content(
-                wiki,
-                prefix,
-                &mut formatter,
-                &self.start_message_item_list,
-            ) {
-                self.wiki_next_message(wiki, prefix, &mut formatter, &next, 0);
-            }
-        }
+        indent.push_str(Self::INDENT);
+        self.wiki_message_content(&mut wiki, &mut formatter, &mut indent);
         if let Some(mission) = &self.main_mission_link {
-            wiki.push_str(prefix);
+            wiki.push_str(&indent);
             wiki.push_str("{{接取任务|");
             wiki.push_str(&mission.r#type.wiki());
             wiki.push('|');
             wiki.push_str(mission.name);
             wiki.push_str("}}");
         }
-        prefix.truncate(prefix.len() - Self::INDENT_LENGTH);
-        wiki.push_str(prefix);
+        indent.truncate(indent.len() - Self::INDENT_LENGTH);
+        wiki.push_str(&indent);
         wiki.push_str("{{角色对话|模板结束}}");
-        prefix.truncate(prefix.len() - Self::INDENT_LENGTH);
-    }
-}
-
-impl<Data: ExcelOutput + format::GameData> Wiki for MessageSectionConfig<'_, Data> {
-    fn wiki(&self) -> std::borrow::Cow<'static, str> {
-        let mut wiki = String::from("{{#subobject:");
-        let mut indent = String::from("\n");
-        self.wiki_message_template(&mut wiki, &mut indent);
+        indent.truncate(indent.len() - Self::INDENT_LENGTH);
         Cow::Owned(wiki)
     }
 }
