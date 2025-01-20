@@ -826,7 +826,12 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         wiki.push_str("\n|");
         wiki.push_str(half);
         wiki.push_str("首领=");
-        wiki.push_str(&monster.wiki_name());
+        let name = if monster.name != "无望冽风的幻灭者" {
+            monster.wiki_name()
+        } else {
+            Cow::Borrowed("无望冽风的幻灭者•虚妄之母")
+        };
+        wiki.push_str(&name);
         let guide = self.game.monster_guide_config(monster.id).unwrap();
         for (tag_no, tag) in guide.tag_list.iter().enumerate() {
             let tag_no = (tag_no + 1).to_string();
@@ -853,7 +858,14 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             wiki.push_str("特性");
             wiki.push_str(&tag_no);
             wiki.push('=');
-            let mut description = formatter.format(tag.brief_description, &tag.parameter_list);
+            let mut description = formatter.format(
+                tag.brief_description,
+                if let Some(skill) = &tag.skill {
+                    skill.params.as_slice()
+                } else {
+                    tag.parameter_list.as_slice()
+                },
+            );
             let mut effect_explain = String::new();
             for effect in &tag.effect {
                 let effect_wiki = String::from("{{效果说明|") + effect.name + "}}";
@@ -861,7 +873,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
                 effect_explain.push_str("<br />'''· ");
                 effect_explain.push_str(effect.name);
                 effect_explain.push_str("'''<br />");
-                effect_explain.push_str(effect.desc);
+                effect_explain.push_str(&formatter.format(effect.desc, &[]));
             }
             wiki.push_str(&description);
             if !effect_explain.is_empty() {
@@ -906,7 +918,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
             "末法余烬",
             Some(&mazes[0].maze_buff),
         );
-        let maze = &mazes[2];
+        let maze = &mazes[3];
         let extra = self.extra();
         self.boss_wiki_write_tags(&mut wiki, 1, &maze.event_list_1[0], extra);
         self.boss_wiki_write_tags(&mut wiki, 2, &maze.event_list_2[0], extra);
