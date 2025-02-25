@@ -216,6 +216,17 @@ pub struct User {
     pub avatar_ext: UserAvatarExt,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum RecommendType {
+    #[serde(rename = "")]
+    None,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum ReleaseTimeType {
+    ReleaseTimeTypeNone,
+}
+
 #[serde_with::serde_as]
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
@@ -235,11 +246,14 @@ pub struct UserPost {
     pub vote_count: u8,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub last_modify_time: DateTime<Utc>,
-    pub recommend_type: String, // 只有空串
+    pub recommend_type: RecommendType,
+    pub release_time_type: ReleaseTimeType,
     pub collection: Option<()>, // 只有空值
     pub vod_list: Vec<crate::model::media::Video>,
     pub is_block_on: bool,
-    pub forum_rank_info: Option<()>,  // 只有空值
+    pub forum_rank_info: Option<()>, // 只有空值
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub future_release_time: DateTime<Utc>,
     pub link_card_list: Vec<()>,      // 只有空串
     pub news_meta: Option<()>,        // 只有空值
     pub recommend_reason: Option<()>, // 只有空值

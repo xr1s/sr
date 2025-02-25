@@ -237,6 +237,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         }
         let weakness: String = weaknesses
             .iter()
+            .rev()
             .map(Element::wiki)
             .intersperse(Cow::Borrowed("、"))
             .collect();
@@ -304,7 +305,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         }
         wiki.push_str("\n}}");
         wiki.push_str(&self.special_monster_wiki(specials, floors));
-        wiki.push_str("<br />\n<br />\n----");
+        wiki.push_str("\n<br />\n<br />\n----");
         Cow::Owned(wiki)
     }
 }
@@ -435,6 +436,7 @@ impl<Data: ExcelOutput + format::GameData> ChallengeGroupConfig<'_, Data> {
         }
         let weaknesses: String = weakness
             .iter()
+            .rev()
             .map(Element::wiki)
             .intersperse(Cow::Borrowed("、"))
             .collect();

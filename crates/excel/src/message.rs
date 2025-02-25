@@ -170,8 +170,15 @@ impl Wiki for EmojiConfig<'_> {
                 wiki_id(group.id as u32 - 99, self.same_group_order as u32)
             }
             _ => Cow::Owned(format!(
-                "表情未匹配 wiki，id: {}, name: {}, path: {:?}",
-                self.id, self.keywords, self.path
+                "表情未匹配 wiki，id: {}, name: {}, group: {}, order: {}, path: {:?}",
+                self.id,
+                self.keywords,
+                self.group
+                    .as_ref()
+                    .map(|group| group.id)
+                    .unwrap_or_default(),
+                self.same_group_order,
+                self.path
             )),
         }
     }
@@ -213,13 +220,27 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MessageContactsCamp<'a> {
     }
 }
 
+#[derive(educe::Educe)]
+#[educe(Clone, Debug)]
+pub struct MessageContactsConfig<'a, Data: ExcelOutput + ?Sized> {
+    #[educe(Debug(ignore))]
+    game: &'a Data,
+    pub id: u16,
+    pub name: &'a str,
+    pub icon_path: &'a str,
+    pub signature_text: &'a str,
+    pub r#type: Option<MessageContactsType<'a>>,
+    pub camp: Option<MessageContactsCamp<'a>>,
+}
+
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MessageContactsConfig<'a, Data> {
     type Model = model::message::MessageContactsConfig;
-    fn from_model(game: &'a Data, model: &Self::Model) -> Self {
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
         Self {
             game,
             id: model.id,
             name: game.text(model.name),
+            icon_path: &model.icon_path,
             signature_text: game.text(model.signature_text),
             r#type: model
                 .contacts_type
@@ -233,18 +254,6 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MessageContactsConfig<'a, Da
                 .map(Option::unwrap),
         }
     }
-}
-
-#[derive(educe::Educe)]
-#[educe(Clone, Debug)]
-pub struct MessageContactsConfig<'a, Data: ExcelOutput + ?Sized> {
-    #[educe(Debug(ignore))]
-    game: &'a Data,
-    pub id: u16,
-    pub name: &'a str,
-    pub signature_text: &'a str,
-    pub r#type: Option<MessageContactsType<'a>>,
-    pub camp: Option<MessageContactsCamp<'a>>,
 }
 
 impl<Data: ExcelOutput + format::GameData> Wiki for MessageContactsConfig<'_, Data> {

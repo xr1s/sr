@@ -82,7 +82,7 @@ pub struct MessageContactsConfig {
     #[serde(rename = "ID")]
     pub id: u16,
     pub name: Text,
-    pub icon_path: PathBuf,
+    pub icon_path: String,
     pub signature_text: Text,
     pub contacts_type: Option<NonZero<u8>>, // 只有 1, 2, 3 三种
     pub contacts_camp: Option<NonZero<u8>>,

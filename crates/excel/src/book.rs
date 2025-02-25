@@ -82,32 +82,33 @@ impl<Data: ExcelOutput + format::GameData> Wiki for BookSeriesConfig<'_, Data> {
             0 => "资料", // 大地图或者剧情中散落的阅读物
             // 按顺序分别是 雅利洛 | 空间站黑塔 | 仙舟罗浮 | 匹诺康尼
             // 特殊图标单独备注
-            190001 | 190004 | 190007 | 190016 => "书籍",
-            190002 | 190005 | 190008 | 190015 => "资料",
+            190001 | 190004 | 190007 | 190016 | 190017 => "书籍",
+            190002 | 190005 | 190008 | 190015 | 190018 => "资料",
             190003 | 190006 | 190009 => "信件",
             140236 => "信件2", // 目前只有罗浮的《钟珊的来信》和匹诺康尼的《关于财富学院代表的联名投诉信》
-            190010 => "石碑",  // 只出现在罗浮
+            190010 | 190020 => "石碑", // 只出现在罗浮
             190011 => "拓印",  // 只出现在罗浮
             190012 => "如意",  // 只出现在罗浮
             190013 => "便条",  // 只出现在匹诺康尼
             190014 => "录像带", // 只出现在匹诺康尼
-            190017..=190020 => "3.0翁法罗斯待定",
+            190019 => "回响",  // 只出现在翁法罗斯
             _ => unreachable!("可能是新版本新增不同类型的图书 {} {}", self.name, icon),
         });
         wiki.push_str("\n|实装版本=");
         wiki.push_str("\n|相关角色=");
         wiki.push_str("\n|相关任务=");
         wiki.push_str("\n}}");
-        for book in books {
+        for (index, book) in books.iter().enumerate() {
             wiki.push_str("\n\n{{书籍/分卷");
             wiki.push_str("\n|名称=");
             wiki.push_str(&formatter.format(book.inside_name, &[]));
             wiki.push_str("\n|卷数=");
             wiki.push_str(&format!(
                 "{:01$}",
-                &book.inside_id,
+                index + 1,
                 if self.num < 10 { 1 } else { 2 },
             ));
+            wiki.push_str("\n|实装版本=");
             wiki.push_str("\n|获取方式=");
             wiki.push_str("\n|内容=");
             wiki.push_str(&formatter.format(book.content, &[]));

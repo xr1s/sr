@@ -45,6 +45,7 @@ pub enum VoiceType {
     #[serde(rename = "NPC_Normal_NoDuck")]
     NPCNormalNoDuck,
     StoryNew,
+    SystemReverb1,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

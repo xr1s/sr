@@ -1,6 +1,11 @@
 use std::num::NonZero;
 
+use model::story::PerformanceType;
+
 use crate::ExcelOutput;
+
+pub mod talk;
+pub use talk::{OptionTalk, RogueOptionTalk, RogueSimpleTalk, SimpleTalk};
 
 #[derive(Clone, Debug)]
 pub struct Story<'a> {
@@ -50,92 +55,45 @@ impl<'a> Sequence<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub struct RogueSimpleTalk<'a> {
-    pub bg_id: u8,
-    pub sentence: crate::talk::TalkSentenceConfig<'a>,
-    pub text_speed: Option<u8>,
-}
-
-impl<'a> RogueSimpleTalk<'a> {
-    pub fn from_model<Data: ExcelOutput>(
-        game: &'a Data,
-        model: model::story::RogueSimpleTalk,
-    ) -> Self {
-        Self {
-            bg_id: model.talk_bg_id.map(NonZero::get).unwrap_or_default(),
-            sentence: game.talk_sentence_config(model.talk_sentence_id).unwrap(),
-            text_speed: model.text_speed,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct RogueOptionTalk<'a> {
-    pub sentence: Option<crate::talk::TalkSentenceConfig<'a>>,
-    pub option: &'a str,
-    pub option_icon_type: Option<model::story::OptionIconType>,
-    pub rogue_option_id: u32,
-    pub trigger_custom_string: String,
-    pub trigger_custom_string_talk: Option<crate::talk::TalkSentenceConfig<'a>>,
-}
-
-impl<'a> RogueOptionTalk<'a> {
-    pub fn from_model<Data: ExcelOutput>(
-        game: &'a Data,
-        model: model::story::RogueOptionTalk,
-    ) -> Self {
-        Self {
-            sentence: model
-                .talk_sentence_id
-                .map(NonZero::get)
-                .map(|id| game.talk_sentence_config(id))
-                .map(Option::unwrap),
-            option: model
-                .option_textmap_id
-                .map(NonZero::get)
-                .map(|hash| model::Text { hash })
-                .map(|text| game.text(text))
-                .unwrap_or_default(),
-            option_icon_type: model.option_icon_type,
-            rogue_option_id: model.rogue_option_id.map(NonZero::get).unwrap_or_default(),
-            trigger_custom_string_talk: if model.trigger_custom_string.starts_with("TalkSentence_")
-            {
-                let id = model
-                    .trigger_custom_string
-                    .split('_')
-                    .nth(1)
-                    .unwrap()
-                    .parse::<u32>()
-                    .unwrap();
-                Some(game.talk_sentence_config(id).unwrap())
-            } else {
-                None
-            },
-            trigger_custom_string: model.trigger_custom_string,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub enum Task<'a> {
+    EndPerformance,
+    FinishLevelGraph {
+        make_owner_entity_die: bool,
+    },
+    LevelPerformanceInitialize {
+        performance_type: PerformanceType,
+        use_new_streaming_source_type: bool,
+    },
     PlayAndWaitRogueSimpleTalk {
         simple_talk_list: Vec<RogueSimpleTalk<'a>>,
+    },
+    PlayAndWaitSimpleTalk {
+        backgrounds: Vec<model::story::talk::SimpleTalkBackground>,
+        black_mask: bool,
+        keep_display: bool,
+        simple_talk_list: Vec<SimpleTalk<'a>>,
+        need_fade_black_mask: bool,
+        skip_first_bg_fade_in: bool,
+        target_behaviors: Vec<model::story::talk::TargetBehavior>,
+        use_background: bool,
+        use_target_behavior: bool,
     },
     PlayRogueOptionTalk {
         option_list: Vec<RogueOptionTalk<'a>>,
     },
-    SetAsRogueDialogue,
-    ShowRogueTalkUI {
-        show: bool,
+    PlayOptionTalk {
+        hide_button_auto: bool,
+        hide_selected: bool,
+        option_list: Vec<OptionTalk<'a>>,
+        trigger_string: Option<String>,
+        trigger_string_when_all_selected: bool,
     },
+    SetAsRogueDialogue,
     ShowRogueTalkBg {
         talk_bg_id: u32,
     },
-    TriggerCustomString {
-        custom_string: String,
-    },
-    TriggerDialogueEvent {
-        dialogue_event_id: u8,
+    ShowRogueTalkUI {
+        show: bool,
     },
     TriggerCustomSound {
         emitter_type: Option<model::story::EmitterType>,
@@ -145,6 +103,12 @@ pub enum Task<'a> {
         target_type: (),
         task_enabled: (),
         unique_name: (),
+    },
+    TriggerCustomString {
+        custom_string: String,
+    },
+    TriggerDialogueEvent {
+        dialogue_event_id: u8,
     },
     TutorialTaskUnlock {
         trigger_param: String,
@@ -156,15 +120,21 @@ pub enum Task<'a> {
         wait_owner_only: bool,
     },
     WaitPerformanceEnd,
-    FinishLevelGraph {
-        make_owner_entity_die: bool,
-    },
 }
 
 impl<'a> Task<'a> {
     pub fn from_model<Data: ExcelOutput>(game: &'a Data, model: model::story::Task) -> Self {
         use model::story::Task;
         match model {
+            Task::EndPerformance => Self::EndPerformance,
+            Task::LevelPerformanceInitialize {
+                performance_type,
+                use_new_streaming_source_type,
+                ..
+            } => Self::LevelPerformanceInitialize {
+                performance_type,
+                use_new_streaming_source_type,
+            },
             Task::PlayAndWaitRogueSimpleTalk { simple_talk_list } => {
                 Self::PlayAndWaitRogueSimpleTalk {
                     simple_talk_list: simple_talk_list
@@ -173,11 +143,51 @@ impl<'a> Task<'a> {
                         .collect(),
                 }
             }
+            Task::PlayAndWaitSimpleTalk {
+                backgrounds,
+                black_mask,
+                keep_display,
+                simple_talk_list,
+                need_fade_black_mask,
+                skip_first_bg_fade_in,
+                target_behaviors,
+                use_background,
+                use_target_behavior,
+            } => Self::PlayAndWaitSimpleTalk {
+                backgrounds: backgrounds.unwrap_or_default(),
+                black_mask,
+                keep_display,
+                need_fade_black_mask,
+                simple_talk_list: simple_talk_list
+                    .into_iter()
+                    .map(|talk| SimpleTalk::from_model(game, talk))
+                    .collect(),
+                skip_first_bg_fade_in,
+                target_behaviors: target_behaviors.unwrap_or_default(),
+                use_background,
+                use_target_behavior,
+            },
             Task::PlayRogueOptionTalk { option_list } => Self::PlayRogueOptionTalk {
                 option_list: option_list
                     .into_iter()
                     .map(|option| RogueOptionTalk::from_model(game, option))
                     .collect(),
+            },
+            Task::PlayOptionTalk {
+                hide_button_auto,
+                hide_selected,
+                option_list,
+                trigger_string,
+                trigger_string_when_all_selected,
+            } => Self::PlayOptionTalk {
+                hide_button_auto,
+                hide_selected,
+                option_list: option_list
+                    .into_iter()
+                    .map(|option| OptionTalk::from_model(game, option))
+                    .collect(),
+                trigger_string,
+                trigger_string_when_all_selected,
             },
             Task::SetAsRogueDialogue => Self::SetAsRogueDialogue,
             Task::ShowRogueTalkUI { show } => Self::ShowRogueTalkUI { show },
