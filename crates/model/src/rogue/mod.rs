@@ -107,6 +107,8 @@ pub struct RogueMiracle {
     pub miracle_id: u16,
     #[serde(rename = "MiracleDisplayID")]
     pub miracle_display_id: Option<NonZero<u16>>, // 1.2 及之前无此字段
+    #[serde(rename = "MiracleEffectDisplayID")]
+    pub miracle_effect_display_id: Option<NonZero<u16>>,
     #[serde(rename = "UnlockIDList")]
     /// 不太清楚是什么作用, 只有少数几个可能值, 大部分为空: [], [5], [6], [27], [1000021], [1000022]
     pub unlock_id_list: Option<Vec<u32>>, // 2.3 及之后无此字段
@@ -147,17 +149,37 @@ impl ID for RogueMiracle {
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(deny_unknown_fields)]
+// 模拟宇宙奇物
+pub struct RogueMiracleEffectDisplay {
+    #[serde(rename = "MiracleEffectDisplayID")]
+    pub miracle_effect_display_id: u16,
+    pub miracle_desc: Option<Text>,
+    pub miracle_simple_desc: Option<Text>,
+    pub desc_param_list: Vec<Value<f32>>,
+    pub extra_effect: Vec<u32>,
+}
+
+impl ID for RogueMiracleEffectDisplay {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.miracle_effect_display_id
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
 // 模拟宇宙奇物展示数据（效果、背景故事等）
 pub struct RogueMiracleDisplay {
     #[serde(rename = "MiracleDisplayID")]
     pub miracle_display_id: u16,
     pub miracle_name: Text,
-    pub miracle_desc: Text,
-    pub desc_param_list: Vec<Value<f32>>,
+    pub miracle_desc: Option<Text>,
+    pub desc_param_list: Option<Vec<Value<f32>>>,
     pub extra_effect: Option<Vec<u32>>,
     #[serde(rename = "MiracleBGDesc")]
-    pub miracle_bg_desc: Text,
-    pub miracle_tag: Text,
+    pub miracle_bg_desc: Option<Text>,
+    pub miracle_tag: Option<Text>,
     pub miracle_icon_path: String,
     pub miracle_figure_icon_path: String,
 }

@@ -79,8 +79,8 @@ pub struct MazeBuff {
     pub buff_icon: String,
     pub buff_name: Text,
     pub buff_desc: Text,
-    pub buff_simple_desc: Text,
-    pub buff_desc_battle: Text,
+    pub buff_simple_desc: Option<Text>,
+    pub buff_desc_battle: Option<Text>,
     pub buff_effect: String,
     pub maze_buff_type: MazeBuffType,
     pub use_type: Option<MazeBuffUseType>, // 只在 1.6 及之前出现
@@ -300,7 +300,7 @@ impl ID for TextJoinConfig {
 pub struct TextJoinItem {
     #[serde(rename = "TextJoinItemID")]
     pub text_join_item_id: u16,
-    pub text_join_text: Text,
+    pub text_join_text: Option<Text>,
 }
 
 impl ID for TextJoinItem {

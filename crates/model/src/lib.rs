@@ -67,6 +67,8 @@ pub enum Path {
     Propagation,
     /// 智识
     Erudition,
+    /// 同谐
+    Harmony,
 }
 
 impl base::Wiki for Path {
@@ -81,6 +83,7 @@ impl base::Wiki for Path {
             Path::Elation => "欢愉",
             Path::Propagation => "繁育",
             Path::Erudition => "智识",
+            Path::Harmony => "同谐",
         })
     }
 }
@@ -88,7 +91,7 @@ impl base::Wiki for Path {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Text {
-    pub hash: NonZero<i32>,
+    pub hash: NonZero<i128>,
 }
 
 #[derive(

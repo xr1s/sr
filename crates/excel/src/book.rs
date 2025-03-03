@@ -40,7 +40,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for BookSeriesConfig<'a, Data> {
             game,
             id: model.book_series_id,
             name: game.text(model.book_series),
-            comments: game.text(model.book_series_comments),
+            comments: model
+                .book_series_comments
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             num: model.book_series_num,
             world: game.book_series_world(model.book_series_world).unwrap(),
             is_show_in_bookshelf: model.is_show_in_bookshelf,

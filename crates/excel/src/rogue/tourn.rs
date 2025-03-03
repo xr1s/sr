@@ -1,7 +1,9 @@
 use crate::{ExcelOutput, FromModel};
 
 use base::{Name, Wiki};
-pub use model::rogue::tourn::{FormulaCategory, MiracleCategory};
+pub use model::rogue::tourn::{
+    BlessBattleDisplayCategory, FormulaCategory, MiracleCategory, TitanType, TournMode,
+};
 use model::rogue::RogueBuffCategory;
 pub use model::Path;
 
@@ -133,6 +135,8 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournBuff<'_, Data> {
 pub struct RogueTournBuffType<'a> {
     pub id: u8,
     pub name: &'a str,
+    pub title: &'a str,
+    pub subtitle: &'a str,
     pub deco_name: model::Path,
 }
 
@@ -142,6 +146,14 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournBuffType<'a> {
         Self {
             id: model.rogue_buff_type,
             name: game.text(model.rogue_buff_type_name),
+            title: model
+                .rogue_buff_type_title
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            subtitle: model
+                .rogue_buff_type_title
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             deco_name: model.rogue_buff_type_deco_name.into(),
         }
     }
@@ -182,6 +194,8 @@ pub struct RogueTournWeeklyChallenge<'a, Data: ?Sized> {
     pub formula: Vec<RogueTournFormula<'a, Data>>,
     /// 从 .content 成员中提取出来的本周所有预设构筑奇物
     pub miracle: Vec<RogueTournMiracle<'a>>,
+    /// 从 .content 成员中提取出来的本周所有预设构筑金血祝颂
+    pub titan_blessing: Vec<RogueTournTitanBless<'a>>,
     /// 第一位面首领
     pub monster_group_1: Vec<(u8, crate::rogue::RogueMonsterGroup<'a>)>,
     /// 第二位面首领
@@ -202,6 +216,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyChallenge<'a
             .map(|&id| game.rogue_tourn_weekly_display(id))
             .map(Option::unwrap)
             .collect::<Vec<_>>();
+
         Self {
             game,
             id: model.challenge_id,
@@ -228,6 +243,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyChallenge<'a
             miracle: content_list
                 .iter_mut()
                 .flat_map(|content| std::mem::take(&mut content.miracle))
+                .collect(),
+            titan_blessing: content_list
+                .iter_mut()
+                .flat_map(|content| std::mem::take(&mut content.titan_bless))
                 .collect(),
             monster_group_1: model
                 .display_monster_groups_1
@@ -283,18 +302,21 @@ impl<Data: ExcelOutput> RogueTournWeeklyChallenge<'_, Data> {
             if self.formula.is_empty() {
                 return None;
             }
-            let mut bonus = self.game.rogue_bonus(410).unwrap();
-            for id in 2..=self.id {
-                let challenge = self.game.rogue_tourn_weekly_challenge(id).unwrap();
-                if challenge.formula.is_empty() {
-                    continue;
-                }
-                bonus = self.game.rogue_bonus(bonus.id + 1).unwrap();
-                while !bonus.desc.starts_with("获得一些") {
+            if self.id <= 37 {
+                let mut bonus = self.game.rogue_bonus(410).unwrap();
+                for id in 2..=self.id {
+                    let challenge = self.game.rogue_tourn_weekly_challenge(id).unwrap();
+                    if challenge.formula.is_empty() {
+                        continue;
+                    }
                     bonus = self.game.rogue_bonus(bonus.id + 1).unwrap();
+                    while !bonus.desc.starts_with("获得一些") {
+                        bonus = self.game.rogue_bonus(bonus.id + 1).unwrap();
+                    }
                 }
+                return Some(bonus);
             }
-            Some(bonus)
+            self.game.rogue_bonus(500 + self.id as u16 - 37)
         })
     }
 }
@@ -310,6 +332,16 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournWeeklyChallenge<'_
         wiki.push_str("\n|结束时间=");
         let end_date = self.end_time().date_naive().pred_opt().unwrap();
         wiki.push_str(&end_date.format("%Y/%m/%d").to_string());
+        if !self.titan_blessing.is_empty() {
+            let blessings = self
+                .titan_blessing
+                .iter()
+                .map(|blessing| blessing.maze_buff[0].name)
+                .intersperse(",")
+                .collect::<String>();
+            wiki.push_str("\n|起始金血祝颂=");
+            wiki.push_str(&blessings);
+        }
         if !self.miracle.is_empty() {
             let miracles = self
                 .miracle
@@ -390,12 +422,13 @@ pub struct RogueTournWeeklyDisplay<'a, Data: ?Sized> {
     pub content: &'a str,
     pub formula: Vec<RogueTournFormula<'a, Data>>,
     pub miracle: Vec<RogueTournMiracle<'a>>,
+    pub titan_bless: Vec<RogueTournTitanBless<'a>>,
 }
 
 impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a, Data> {
     type Model = model::rogue::tourn::RogueTournWeeklyDisplay;
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
-        use model::rogue::tourn::DescParamType::{Formula, Miracle};
+        use model::rogue::tourn::DescParamType::{Formula, Miracle, TitanBless};
         let formula = model
             .desc_params
             .iter()
@@ -407,7 +440,15 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a, 
             .desc_params
             .iter()
             .filter(|param| param.r#type == Miracle)
+            .filter(|&param| ![6907, 6908].contains(&param.value)) // 疑似缺数据
             .map(|param| game.rogue_tourn_miracle(param.value as _))
+            .map(Option::unwrap)
+            .collect();
+        let titan_bless = model
+            .desc_params
+            .iter()
+            .filter(|param| param.r#type == TitanBless)
+            .map(|param| game.rogue_tourn_titan_bless(param.value as _))
             .map(Option::unwrap)
             .collect();
         Self {
@@ -415,6 +456,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a, 
             content: game.text(model.weekly_display_content),
             formula,
             miracle,
+            titan_bless,
         }
     }
 }
@@ -423,10 +465,12 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournWeeklyDisplay<'a, 
 /// 差分宇宙奇物
 pub struct RogueTournMiracle<'a> {
     pub id: u16,
+    pub mode: TournMode,
     /// 奇物星级：加权、三星、二星、一星、负面
     pub category: MiracleCategory,
     /// 奇物文案和图标
     pub display: crate::rogue::RogueMiracleDisplay<'a>,
+    pub effect_display: Option<crate::rogue::RogueMiracleEffectDisplay<'a>>,
     /// 图鉴中的奇物展示
     pub handbook: Option<RogueTournHandbookMiracle<'a>>,
 }
@@ -436,10 +480,17 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournMiracle<'a> {
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
         Self {
             id: model.miracle_id,
+            mode: model.tourn_mode,
             category: model.miracle_category,
-            display: game
-                .rogue_tourn_miracle_display(model.miracle_display_id)
+            display: None
+                .or_else(|| game.rogue_miracle_display(model.miracle_display_id))
+                .or_else(|| game.rogue_tourn_miracle_display(model.miracle_display_id))
                 .unwrap(),
+            effect_display: model
+                .miracle_effect_display_id
+                .map(NonZero::get)
+                .map(|id| game.rogue_miracle_effect_display(id))
+                .map(Option::unwrap),
             handbook: model
                 .handbook_miracle_id
                 .map(NonZero::get)
@@ -477,8 +528,9 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournHandbookMiracle<'a
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
         Self {
             id: model.handbook_miracle_id,
-            display: game
-                .rogue_tourn_miracle_display(model.miracle_display_id)
+            display: None
+                .or_else(|| game.rogue_tourn_miracle_display(model.miracle_display_id))
+                .or_else(|| game.rogue_miracle_display(model.miracle_display_id))
                 .unwrap(),
             category: model.miracle_category,
             unlock_desc: game.rogue_tourn_content_display(model.unlock_desc).unwrap(),
@@ -601,6 +653,7 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournFormula<'_, Data> 
         if let Some(buff) = &self.sub_buff_type {
             wiki.push_str("\n|命途2=");
             wiki.push_str(buff.name);
+            wiki.push_str("\n|命途2需求=");
             wiki.push_str(&self.sub_buff_num.to_string());
         }
         wiki.push_str("\n|实装版本=");
@@ -612,7 +665,6 @@ impl<Data: ExcelOutput + format::GameData> Wiki for RogueTournFormula<'_, Data> 
             use crate::story::Task;
             assert!(story.on_init_sequence.is_empty());
             wiki.push_str("\n推演=\n");
-            // wiki.push_str(&format!("{:#?}", story));
             for seq in &story.on_start_sequence {
                 for task in &seq.task_list {
                     if let Task::PlayAndWaitRogueSimpleTalk { simple_talk_list } = task {
@@ -665,6 +717,37 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournFormulaDisplay<'a>
                 .map(|&id| game.extra_effect_config(id))
                 .map(Option::unwrap)
                 .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RogueTournTitanBless<'a> {
+    pub id: u16,
+    pub r#type: TitanType,
+    pub level: u8,
+    pub maze_buff: Vec<crate::misc::MazeBuff<'a>>,
+    pub extra_effect: Vec<crate::misc::ExtraEffectConfig<'a>>,
+    pub ratio: i8,
+    pub battle_display_category_list: &'a [BlessBattleDisplayCategory],
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueTournTitanBless<'a> {
+    type Model = model::rogue::tourn::RogueTournTitanBless;
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
+        Self {
+            id: model.titan_bless_id,
+            r#type: model.titan_type,
+            level: model.titan_bless_level,
+            maze_buff: game.rogue_maze_buff(model.maze_buff_id),
+            extra_effect: model
+                .extra_effect_id_list
+                .iter()
+                .map(|&id| game.extra_effect_config(id))
+                .map(Option::unwrap)
+                .collect(),
+            ratio: model.bless_ratio.map(NonZero::get).unwrap_or_default(),
+            battle_display_category_list: &model.bless_battle_display_category_list,
         }
     }
 }

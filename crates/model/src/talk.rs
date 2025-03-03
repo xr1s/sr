@@ -11,8 +11,8 @@ pub struct TalkSentenceConfig {
     #[serde(rename = "TalkSentenceID")]
     #[serde(default)]
     pub talk_sentence_id: u32,
-    pub textmap_talk_sentence_name: Text,
-    pub talk_sentence_text: Text,
+    pub textmap_talk_sentence_name: Option<Text>,
+    pub talk_sentence_text: Option<Text>,
     #[serde(rename = "VoiceID")]
     pub voice_id: Option<NonZero<u32>>,
 }

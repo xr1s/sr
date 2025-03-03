@@ -126,6 +126,7 @@ pub enum AudioEmotionState {
 pub enum SubType {
     Activity,
     Game,
+    Rogue,
     System,
     World,
 }
@@ -146,7 +147,7 @@ pub struct MainMission {
     #[serde(default)]
     pub is_in_raid: bool,
     pub next_main_mission_list: Vec<u32>, // 只有空 []
-    pub name: Text,
+    pub name: Option<Text>,
     pub take_type_a: Option<ParamType>,          // 1.0 及之前
     pub take_param_a_int_1: Option<u32>,         // 1.0 及之前
     pub take_param_a_int_list: Option<Vec<u32>>, // 1.0 及之前

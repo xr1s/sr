@@ -56,12 +56,21 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for ItemConfig<'a> {
     fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
         Self {
             id: model.id,
-            name: game.text(model.item_name),
+            name: model
+                .item_name
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             main_type: model.item_main_type,
             sub_type: model.item_sub_type,
             rarity: model.rarity,
-            desc: game.text(model.item_desc),
-            bg_desc: game.text(model.item_bg_desc),
+            desc: model
+                .item_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            bg_desc: model
+                .item_bg_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             icon_path: &model.item_icon_path,
             figure_icon_path: &model.item_figure_icon_path,
             currency_icon_path: &model.item_currency_icon_path,

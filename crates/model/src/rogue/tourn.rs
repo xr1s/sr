@@ -105,6 +105,8 @@ pub enum BuffDecoNameTest {
 pub struct RogueTournBuffType {
     pub rogue_buff_type: u8,
     pub rogue_buff_type_name: Text,
+    pub rogue_buff_type_title: Option<Text>,
+    pub rogue_buff_type_sub_title: Option<Text>,
     pub rogue_buff_type_deco_name: BuffDecoName,
     pub rogue_buff_type_icon: String,
     pub rogue_buff_type_small_icon: String,
@@ -122,11 +124,13 @@ impl ID for RogueTournBuffType {
 pub enum DescParamType {
     Formula,
     Miracle,
+    TitanBless,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum TournMode {
     Tourn1,
+    Tourn2,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
@@ -178,6 +182,7 @@ pub struct DescParam {
     #[serde(alias = "EOMLKKGEAEF")] // 2.6
     #[serde(alias = "MPNJPFDCBDG")] // 2.7
     #[serde(alias = "PGCFPBGPDGG")] // 3.0
+    #[serde(alias = "PICHIHHCOCB")] // 3.1
     pub r#type: DescParamType,
     #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(alias = "EPBOOFFCKPJ")] // 2.3
@@ -186,6 +191,7 @@ pub struct DescParam {
     #[serde(alias = "HPPEILAONGE")] // 2.6
     #[serde(alias = "ODPKJEJKOIH")] // 2.7
     #[serde(alias = "CPPHDJHHGGN")] // 3.0
+    #[serde(alias = "HMCDHMFHABF")] // 3.1
     pub value: u32,
 }
 
@@ -263,6 +269,8 @@ pub struct RogueTournMiracle {
     pub miracle_category: MiracleCategory,
     #[serde(rename = "MiracleDisplayID")]
     pub miracle_display_id: u16,
+    #[serde(rename = "MiracleEffectDisplayID")]
+    pub miracle_effect_display_id: Option<NonZero<u16>>,
     #[serde(rename = "HandbookMiracleID")]
     pub handbook_miracle_id: Option<NonZero<u16>>,
 }
@@ -282,6 +290,8 @@ pub struct RogueTournHandbookMiracle {
     pub handbook_miracle_id: u16,
     #[serde(rename = "MiracleDisplayID")]
     pub miracle_display_id: u16,
+    #[serde(rename = "MiracleEffectDisplayID")]
+    pub miracle_effect_display_id: Option<NonZero<u16>>,
     pub miracle_category: MiracleCategory,
     pub unlock_desc: u16,
 }
@@ -312,11 +322,11 @@ pub struct RogueTournFormula {
     pub maze_buff_id: u32,
     #[serde(rename = "FormulaDisplayID")]
     pub formula_display_id: u32,
-    pub formula_icon: PathBuf,
-    pub formula_sub_icon: PathBuf,
+    pub formula_icon: Option<PathBuf>,
+    pub formula_sub_icon: Option<PathBuf>,
     #[serde(default)]
     pub is_in_handbook: bool,
-    pub ultra_formula_icon: PathBuf,
+    pub ultra_formula_icon: Option<PathBuf>,
     pub formula_story_json: PathBuf,
     #[serde(rename = "UnlockDisplayID")]
     pub unlock_display_id: Option<NonZero<u16>>,
@@ -339,11 +349,52 @@ pub struct RogueTournFormulaDisplay {
     pub formula_type_display: Option<NonZero<u16>>, // 不知道是什么
     pub formula_story: Text,
     pub extra_effect: Vec<u32>,
+    #[serde(rename = "HandbookUnlockDisplayID")]
+    pub handbook_unlock_display_id: Option<NonZero<u16>>,
 }
 
 impl ID for RogueTournFormulaDisplay {
     type ID = u32;
     fn id(&self) -> Self::ID {
         self.formula_display_id
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum TitanType {
+    Ianos,
+    Moneta,
+    Nikadory,
+    Phageina,
+    Xenatos,
+    Zagreus,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum BlessBattleDisplayCategory {
+    Day,
+    Night,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+#[serde(deny_unknown_fields)]
+pub struct RogueTournTitanBless {
+    #[serde(rename = "TitanBlessID")]
+    pub titan_bless_id: u16,
+    pub titan_type: TitanType,
+    pub titan_bless_level: u8,
+    #[serde(rename = "MazeBuffID")]
+    pub maze_buff_id: u32,
+    #[serde(rename = "ExtraEffectIDList")]
+    pub extra_effect_id_list: Vec<u32>,
+    pub bless_ratio: Option<NonZero<i8>>,
+    pub bless_battle_display_category_list: Vec<BlessBattleDisplayCategory>,
+}
+
+impl ID for RogueTournTitanBless {
+    type ID = u16;
+    fn id(&self) -> Self::ID {
+        self.titan_bless_id
     }
 }

@@ -725,7 +725,6 @@ impl<Data: ExcelOutput> Wiki for MonsterConfig<'_, Data> {
 pub struct NPCMonsterData<'a> {
     pub id: u32,
     pub name: &'a str,
-    pub title: &'a str,
     pub character_type: MonsterCharacterType,
     pub sub_type: MonsterSubType,
     pub rank: MonsterRank,
@@ -736,8 +735,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for NPCMonsterData<'a> {
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
         Self {
             id: model.id,
-            name: game.text(model.npc_name),
-            title: game.text(model.npc_title),
+            name: model
+                .npc_name
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             character_type: model.character_type,
             sub_type: model.sub_type,
             rank: model.rank,
@@ -818,7 +819,7 @@ pub struct MonsterTemplateConfig<'a, Data: ExcelOutput + ?Sized> {
     /// 基础攻击值
     /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
     /// 也会随着等级提升成长
-    pub attack_base: u16,
+    pub attack_base: f32,
     /// 基础防御值
     /// 在具体的 MonsterConfig 中会按对应 modify_ratio 增长
     /// 也会随着等级提升成长

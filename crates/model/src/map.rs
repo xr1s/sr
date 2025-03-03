@@ -163,8 +163,8 @@ pub struct MappingInfo {
     pub config_id: Option<NonZero<u32>>,
     #[serde(default)]
     pub initial_enable: bool,
-    pub name: Text,
-    pub desc: Text,
+    pub name: Option<Text>,
+    pub desc: Option<Text>,
     pub show_monster_list: Vec<u32>,
     pub display_item_list: Vec<crate::item::ItemList>,
     #[serde(rename = "EntranceID")]
@@ -444,7 +444,7 @@ pub struct WorldDataConfig {
     pub is_real_world: bool,
     #[serde(default)]
     pub is_show: bool,
-    pub world_name: Text,
+    pub world_name: Option<Text>,
     pub world_desc: Option<Text>, // 仅在 1.6 及之前出现
     // 后面的字段都仅在 2.0 及之后出现
     pub world_language_name: Option<Text>,

@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 #[derive(Default)]
 pub struct GameData {
     base: PathBuf,
-    text_map: std::collections::HashMap<i32, Arc<str>, fnv::FnvBuildHasher>,
+    text_map: std::collections::HashMap<i128, Arc<str>, fnv::FnvBuildHasher>,
 
     // battle
     // 战斗配置
@@ -136,6 +136,8 @@ pub struct GameData {
     _rogue_maze_buff: OnceLock<FnvMultiMap<u32, Arc<model::misc::MazeBuff>>>,
     /// 模拟宇宙奇物
     _rogue_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracle>>>,
+    _rogue_miracle_effect_display:
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracleEffectDisplay>>>,
     _rogue_miracle_display: OnceLock<FnvIndexMap<u16, Arc<model::rogue::RogueMiracleDisplay>>>,
     _rogue_monster: OnceLock<FnvIndexMap<u32, Arc<model::rogue::RogueMonster>>>,
     _rogue_monster_group: OnceLock<FnvIndexMap<u32, Arc<model::rogue::RogueMonsterGroup>>>,
@@ -156,6 +158,8 @@ pub struct GameData {
         OnceLock<FnvIndexMap<u32, Arc<model::rogue::tourn::RogueTournFormulaDisplay>>>,
     _rogue_tourn_handbook_miracle:
         OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournHandbookMiracle>>>,
+    _rogue_tourn_titan_bless:
+        OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournTitanBless>>>,
     /// 差分宇宙奇物
     _rogue_tourn_miracle: OnceLock<FnvIndexMap<u16, Arc<model::rogue::tourn::RogueTournMiracle>>>,
     _rogue_tourn_miracle_display:
@@ -390,6 +394,7 @@ pub trait SealedGameData {
     declare!(_rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_declare!(_rogue_maze_buff, u32 => misc::MazeBuff);
     declare!(_rogue_miracle, u16 => rogue::RogueMiracle);
+    declare!(_rogue_miracle_effect_display, u16 => rogue::RogueMiracleEffectDisplay);
     declare!(_rogue_miracle_display, u16 => rogue::RogueMiracleDisplay);
     declare!(_rogue_monster, u32 => rogue::RogueMonster);
     declare!(_rogue_monster_group, u32 => rogue::RogueMonsterGroup);
@@ -405,6 +410,7 @@ pub trait SealedGameData {
     declare!(_rogue_tourn_handbook_miracle, u16 => rogue::tourn::RogueTournHandbookMiracle);
     declare!(_rogue_tourn_miracle, u16 => rogue::tourn::RogueTournMiracle);
     declare!(_rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
+    declare!(_rogue_tourn_titan_bless, u16 => rogue::tourn::RogueTournTitanBless);
     declare!(_rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge);
     declare!(_rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay);
     // talk
@@ -581,6 +587,7 @@ impl SealedGameData for GameData {
     implement!(_rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_implement!(_rogue_maze_buff, u32 => misc::MazeBuff);
     implement!(_rogue_miracle, u16 => rogue::RogueMiracle);
+    implement!(_rogue_miracle_effect_display, u16 => rogue::RogueMiracleEffectDisplay);
     implement!(_rogue_miracle_display, u16 => rogue::RogueMiracleDisplay);
     implement!(_rogue_monster, u32 => rogue::RogueMonster);
     implement!(_rogue_monster_group, u32 => rogue::RogueMonsterGroup);
@@ -596,6 +603,7 @@ impl SealedGameData for GameData {
     implement!(_rogue_tourn_handbook_miracle, u16 => rogue::tourn::RogueTournHandbookMiracle);
     implement!(_rogue_tourn_miracle, u16 => rogue::tourn::RogueTournMiracle);
     implement!(_rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
+    implement!(_rogue_tourn_titan_bless, u16 => rogue::tourn::RogueTournTitanBless);
     implement!(_rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge);
     implement!(_rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay);
     // talk

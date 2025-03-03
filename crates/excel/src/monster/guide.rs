@@ -59,7 +59,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterGuideConfig<'a> {
                 .map(|&id| game.monster_guide_phase(id))
                 .map(Option::unwrap)
                 .collect(),
-            brief_guide: game.text(model.brief_guide),
+            brief_guide: model
+                .brief_guide
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             difficulty_guide_list: model
                 .difficulty_guide_list
                 .iter()
@@ -127,7 +130,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterGuideSkill<'a> {
                 .map(|&id| game.monster_guide_skill_text(id))
                 .map(Option::unwrap)
                 .collect(),
-            answer: game.text(model.skill_answer),
+            answer: model
+                .skill_answer
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
         }
     }
 }
@@ -175,7 +181,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MonsterGuideTag<'a> {
             id: model.tag_id,
             name: game.text(model.tag_name),
             brief_description: game.text(model.tag_brief_description),
-            detail_description: game.text(model.tag_detail_description),
+            detail_description: model
+                .tag_detail_description
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             parameter_list: format::Argument::from_array(&model.parameter_list),
             skill: model
                 .skill_id

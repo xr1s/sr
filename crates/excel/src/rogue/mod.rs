@@ -189,6 +189,7 @@ pub struct RogueMiracle<'a> {
     pub id: u16,
     /// 1.2 及之前版本的 display 为空
     pub display: RogueMiracleDisplay<'a>,
+    pub effect_display: Option<RogueMiracleEffectDisplay<'a>>,
     pub desc: &'a str,
     pub desc_params: Vec<format::Argument<'a>>,
     /// 没有 unlock_handbook 的一般是可以同时携带多个、效果不同的奇物
@@ -239,6 +240,11 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracle<'a> {
                         .unwrap_or_default(),
                 }
             },
+            effect_display: model
+                .miracle_effect_display_id
+                .map(NonZero::get)
+                .map(|id| game.rogue_miracle_effect_display(id))
+                .map(Option::unwrap),
             desc: model
                 .miracle_desc
                 .map(|hash| game.text(hash))
@@ -268,6 +274,40 @@ impl Name for RogueMiracle<'_> {
 
 #[derive(Clone, Debug)]
 /// 模拟宇宙奇物展示数据（效果、背景故事等）
+pub struct RogueMiracleEffectDisplay<'a> {
+    pub id: u16,
+    pub desc: &'a str,
+    pub simple_desc: &'a str,
+    pub desc_params: Vec<format::Argument<'a>>,
+    pub extra_effect: Vec<crate::misc::ExtraEffectConfig<'a>>,
+}
+
+impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracleEffectDisplay<'a> {
+    type Model = model::rogue::RogueMiracleEffectDisplay;
+    fn from_model(game: &'a Data, model: &'a Self::Model) -> Self {
+        Self {
+            id: model.miracle_effect_display_id,
+            desc: model
+                .miracle_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            simple_desc: model
+                .miracle_simple_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            desc_params: format::Argument::from_array(&model.desc_param_list),
+            extra_effect: model
+                .extra_effect
+                .iter()
+                .map(|&id| game.extra_effect_config(id))
+                .map(Option::unwrap)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+/// 模拟宇宙奇物展示数据（效果、背景故事等）
 pub struct RogueMiracleDisplay<'a> {
     pub id: u16,
     /// 名称
@@ -292,8 +332,15 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracleDisplay<'a> {
         Self {
             id: model.miracle_display_id,
             name: game.text(model.miracle_name),
-            desc: game.text(model.miracle_desc),
-            desc_params: format::Argument::from_array(&model.desc_param_list),
+            desc: model
+                .miracle_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            desc_params: model
+                .desc_param_list
+                .as_deref()
+                .map(format::Argument::from_array)
+                .unwrap_or_default(),
             extra_effect: model
                 .extra_effect
                 .as_deref()
@@ -302,8 +349,14 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for RogueMiracleDisplay<'a> {
                 .map(|&id| game.extra_effect_config(id))
                 .map(Option::unwrap)
                 .collect(),
-            bg_desc: game.text(model.miracle_bg_desc),
-            tag: game.text(model.miracle_tag),
+            bg_desc: model
+                .miracle_bg_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            tag: model
+                .miracle_tag
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             icon_path: &model.miracle_icon_path,
             figure_icon_path: &model.miracle_figure_icon_path,
         }

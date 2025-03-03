@@ -92,8 +92,8 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MappingInfo<'a, Data> {
             group_id: model.group_id.map(NonZero::get).unwrap_or_default(),
             config_id: model.config_id.map(NonZero::get).unwrap_or_default(),
             initial_enable: model.initial_enable,
-            name: game.text(model.name),
-            desc: game.text(model.desc),
+            name: model.name.map(|hash| game.text(hash)).unwrap_or_default(),
+            desc: model.desc.map(|hash| game.text(hash)).unwrap_or_default(),
             show_monster_list: model
                 .show_monster_list
                 .iter()
@@ -233,7 +233,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for WorldDataConfig<'a> {
             id: model.id,
             is_real_world: model.is_real_world,
             is_show: model.is_show,
-            name: game.text(model.world_name),
+            name: model
+                .world_name
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             language_name: model
                 .world_language_name
                 .map(|hash| game.text(hash))

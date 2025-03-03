@@ -23,8 +23,14 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for TalkSentenceConfig<'a> {
         ];
         Self {
             id: model.talk_sentence_id,
-            name: game.text(model.textmap_talk_sentence_name),
-            text: game.text(model.talk_sentence_text),
+            name: model
+                .textmap_talk_sentence_name
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            text: model
+                .talk_sentence_text
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             voice: model
                 .voice_id
                 .map(NonZero::get)

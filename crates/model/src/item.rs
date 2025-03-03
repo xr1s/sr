@@ -215,10 +215,10 @@ pub struct ItemConfig {
     pub purpose_type: Option<NonZero<u8>>,
     #[serde(rename = "isVisible", default)]
     pub is_visible: bool,
-    pub item_name: Text,
-    pub item_desc: Text,
+    pub item_name: Option<Text>,
+    pub item_desc: Option<Text>,
     #[serde(rename = "ItemBGDesc")]
-    pub item_bg_desc: Text,
+    pub item_bg_desc: Option<Text>,
     pub item_icon_path: String,
     pub item_figure_icon_path: String,
     pub item_currency_icon_path: String,

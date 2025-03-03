@@ -24,7 +24,7 @@ impl GameData for data::GameData {
             .map(|config| config.default_item)
             .map(|id| self._text_join_item().get(&id))
             .map(Option::unwrap)
-            .map(|item| item.text_join_text)
+            .and_then(|item| item.text_join_text)
             .map(|text| {
                 crate::formatter::Formatter::new(self)
                     .media_wiki_syntax(media_wiki_syntax)

@@ -148,6 +148,7 @@ pub struct AISkillSequence {
     #[serde(alias = "PGKKLADJKGK")] // 2.6
     #[serde(alias = "CAMGCAFNKPK")] // 2.7
     #[serde(alias = "LDKCGGLDKCK")] // 3.0
+    #[serde(alias = "BMEJEMLFEIO")] // 3.1
     pub id: u32,
 }
 
@@ -173,6 +174,8 @@ pub struct MonsterConfig {
     pub speed_modify_value: Option<Value<f32>>,
     pub stance_modify_value: Option<Value<i16>>,
     pub skill_list: Vec<u32>,
+    #[serde(rename = "SummonIDList")]
+    pub summon_id_list: [(); 0], // 目前只有空
     pub custom_values: Vec<CustomValue>,
     pub dynamic_values: [(); 0], // 目前只有空 []
     pub debuff_resist: Vec<DebuffResist>,
@@ -184,6 +187,7 @@ pub struct MonsterConfig {
     pub override_ai_path: PathBuf,
     #[serde(rename = "OverrideAISkillSequence")]
     pub override_ai_skill_sequence: Vec<AISkillSequence>,
+    pub override_skill_params: [(); 0], // 目前只有空
 }
 
 impl ID for MonsterConfig {
@@ -210,13 +214,13 @@ pub struct NPCMonsterData {
     #[serde(rename = "ID")]
     pub id: u32,
     #[serde(rename = "NPCName")]
-    pub npc_name: Text,
+    pub npc_name: Option<Text>,
     pub prefab_path: Option<String>, // 1.1 及之前
     pub config_entity_path: PathBuf,
     #[serde(rename = "NPCIconPath")]
     pub npc_icon_path: PathBuf,
     #[serde(rename = "NPCTitle")]
-    pub npc_title: Text,
+    pub npc_title: Option<()>,
     pub board_show_list: [u8; 1], // 目前只有 [2]
     pub json_path: PathBuf,
     #[serde(rename = "DefaultAIPath")]
@@ -343,9 +347,9 @@ pub struct CustomValue {
     #[serde(alias = "MBBNDDLBEPE")] // 2.4
     #[serde(alias = "PFMLCKGCKOB")] // 2.5
     #[serde(alias = "MFKLINKCPPA")] // 2.6
-    #[serde(alias = "MFKLINKCPPA")] // 2.6
     #[serde(alias = "BNCHHJCHKON")] // 2.7
     #[serde(alias = "EGIHHBKIHAK")] // 3.0
+    #[serde(alias = "HEIKKHLKMOA")] // 3.1
     pub key: String,
     #[serde(alias = "LKJLPJMIGNJ")] // 1.0
     #[serde(alias = "BHLILFMLNEE")] // 1.1
@@ -363,6 +367,7 @@ pub struct CustomValue {
     #[serde(alias = "HPPEILAONGE")] // 2.6
     #[serde(alias = "ODPKJEJKOIH")] // 2.7
     #[serde(alias = "CPPHDJHHGGN")] // 3.0
+    #[serde(alias = "MBMDOCJIMEJ")] // 3.1
     pub value: Option<NonZero<i32>>,
 }
 
@@ -393,7 +398,7 @@ pub struct MonsterTemplateConfig {
     pub manikin_image_path: Option<String>, // 1.2 及之后
     #[serde(rename = "NatureID")]
     pub nature_id: u8, // 目前只有 1
-    pub attack_base: Value<u16>,
+    pub attack_base: Value<f32>,
     pub defence_base: Option<Value<NonZero<u16>>>,
     #[serde(rename = "HPBase")]
     pub hp_base: Value<f32>,
@@ -403,6 +408,8 @@ pub struct MonsterTemplateConfig {
     pub critical_damage_base: Option<Value<f32>>,
     pub status_resistance_base: Option<Value<f32>>,
     pub minimum_fatigue_ratio: Value<f32>,
+    pub speed_modify_value: Option<Value<NonZero<i32>>>,
+    pub stance_modify_value: Option<Value<NonZero<i32>>>,
     #[serde(rename = "AIPath")]
     pub ai_path: PathBuf,
     pub stance_count: Option<NonZero<u8>>,

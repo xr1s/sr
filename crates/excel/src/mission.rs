@@ -47,7 +47,7 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MainMission<'a> {
                 .map(|id| game.world_data_config(id))
                 .map(Option::unwrap),
             display_priority: model.display_priority,
-            name: game.text(model.name),
+            name: model.name.map(|hash| game.text(hash)).unwrap_or_default(),
             next_track_main_mission: model.next_track_main_mission,
             track_weight: model.track_weight,
             reward: model

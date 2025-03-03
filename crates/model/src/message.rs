@@ -83,7 +83,7 @@ pub struct MessageContactsConfig {
     pub id: u16,
     pub name: Text,
     pub icon_path: String,
-    pub signature_text: Text,
+    pub signature_text: Option<Text>,
     pub contacts_type: Option<NonZero<u8>>, // 只有 1, 2, 3 三种
     pub contacts_camp: Option<NonZero<u8>>,
 }
@@ -165,11 +165,11 @@ pub struct MessageItemConfig {
     pub contacts_id: Option<NonZero<u16>>,
     pub sender: MessageSender,
     pub item_type: MessageItemType,
-    pub main_text: Text,
+    pub main_text: Option<Text>,
     #[serde(rename = "ItemContentID")]
     #[serde(alias = "ItemImageID")] // 1.2 之前叫做 ItemImageID
     pub item_content_id: Option<NonZero<u32>>,
-    pub option_text: Text,
+    pub option_text: Option<Text>,
     #[serde(rename = "NextItemIDList")]
     pub next_item_id_list: Vec<u32>,
     #[serde(rename = "SectionID")]

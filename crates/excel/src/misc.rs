@@ -54,8 +54,14 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MazeBuff<'a> {
             icon: &model.buff_icon,
             name: game.text(model.buff_name),
             desc: game.text(model.buff_desc),
-            simple_desc: game.text(model.buff_simple_desc),
-            desc_battle: game.text(model.buff_desc_battle),
+            simple_desc: model
+                .buff_simple_desc
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
+            desc_battle: model
+                .buff_desc_battle
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
         }
     }
 }
@@ -188,7 +194,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for TextJoinItem<'a> {
     fn from_model(game: &'a Data, model: &Self::Model) -> Self {
         Self {
             id: model.text_join_item_id,
-            text: game.text(model.text_join_text),
+            text: model
+                .text_join_text
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
         }
     }
 }

@@ -159,6 +159,7 @@ pub struct StageConfigData {
     #[serde(alias = "MFKLINKCPPA")] // 2.6
     #[serde(alias = "BNCHHJCHKON")] // 2.7
     #[serde(alias = "EGIHHBKIHAK")] // 3.0
+    #[serde(alias = "HEIKKHLKMOA")] // 3.1
     pub r#type: StageConfigType,
     #[serde(alias = "LKJLPJMIGNJ")] // 1.0
     #[serde(alias = "BHLILFMLNEE")] // 1.1
@@ -176,6 +177,7 @@ pub struct StageConfigData {
     #[serde(alias = "HPPEILAONGE")] // 2.6
     #[serde(alias = "ODPKJEJKOIH")] // 2.7
     #[serde(alias = "CPPHDJHHGGN")] // 3.0
+    #[serde(alias = "MBMDOCJIMEJ")] // 3.1
     pub value: String,
 }
 

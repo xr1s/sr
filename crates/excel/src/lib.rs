@@ -212,6 +212,7 @@ pub trait ExcelOutput: data::Text {
     declare!(rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_declare!(rogue_maze_buff, u32 => misc::MazeBuff);
     declare!(rogue_miracle, u16 => rogue::RogueMiracle);
+    declare!(rogue_miracle_effect_display, u16 => rogue::RogueMiracleEffectDisplay);
     declare!(rogue_miracle_display, u16 => rogue::RogueMiracleDisplay);
     declare!(rogue_monster, u32 => rogue::RogueMonster);
     declare!(rogue_monster_group, u32 => rogue::RogueMonsterGroup);
@@ -227,6 +228,7 @@ pub trait ExcelOutput: data::Text {
     declare!(rogue_tourn_handbook_miracle, u16 => rogue::tourn::RogueTournHandbookMiracle);
     declare!(rogue_tourn_miracle, u16 => rogue::tourn::RogueTournMiracle);
     declare!(rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
+    declare!(rogue_tourn_titan_bless, u16 => rogue::tourn::RogueTournTitanBless);
     declare!(rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge<Self>);
     declare!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay<Self>);
     // talk
@@ -348,6 +350,7 @@ impl ExcelOutput for data::GameData {
     implement!(rogue_handbook_miracle_type, u16 => rogue::RogueHandbookMiracleType);
     main_sub_implement!(rogue_maze_buff, u32 => misc::MazeBuff);
     implement!(rogue_miracle, u16 => rogue::RogueMiracle);
+    implement!(rogue_miracle_effect_display, u16 => rogue::RogueMiracleEffectDisplay);
     implement!(rogue_miracle_display, u16 => rogue::RogueMiracleDisplay);
     implement!(rogue_monster, u32 => rogue::RogueMonster);
     implement!(rogue_monster_group, u32 => rogue::RogueMonsterGroup);
@@ -363,6 +366,7 @@ impl ExcelOutput for data::GameData {
     implement!(rogue_tourn_handbook_miracle, u16 => rogue::tourn::RogueTournHandbookMiracle);
     implement!(rogue_tourn_miracle, u16 => rogue::tourn::RogueTournMiracle);
     implement!(rogue_tourn_miracle_display, u16 => rogue::RogueMiracleDisplay);
+    implement!(rogue_tourn_titan_bless, u16 => rogue::tourn::RogueTournTitanBless);
     implement!(rogue_tourn_weekly_challenge, u8 => rogue::tourn::RogueTournWeeklyChallenge<Self>);
     implement!(rogue_tourn_weekly_display, u16 => rogue::tourn::RogueTournWeeklyDisplay<Self>);
     // talk

@@ -241,7 +241,10 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MessageContactsConfig<'a, Da
             id: model.id,
             name: game.text(model.name),
             icon_path: &model.icon_path,
-            signature_text: game.text(model.signature_text),
+            signature_text: model
+                .signature_text
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             r#type: model
                 .contacts_type
                 .map(NonZero::get)
@@ -365,9 +368,15 @@ impl<'a, Data: ExcelOutput> FromModel<'a, Data> for MessageItemConfig<'a, Data> 
                 .map(Option::unwrap),
             sender: model.sender,
             r#type: model.item_type,
-            main_text: game.text(model.main_text),
+            main_text: model
+                .main_text
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             content_id: model.item_content_id.map(NonZero::get).unwrap_or_default(),
-            option_text: game.text(model.option_text),
+            option_text: model
+                .option_text
+                .map(|hash| game.text(hash))
+                .unwrap_or_default(),
             next_item_id_list: &model.next_item_id_list,
             section_id: model.section_id,
         }

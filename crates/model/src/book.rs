@@ -25,7 +25,7 @@ pub struct BookSeriesConfig {
     #[serde(rename = "BookSeriesID")]
     pub book_series_id: u16,
     pub book_series: Text,
-    pub book_series_comments: Text,
+    pub book_series_comments: Option<Text>,
     pub book_series_num: u8,
     pub book_series_world: u8,
     #[serde(default)]
